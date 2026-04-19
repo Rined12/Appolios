@@ -13,9 +13,9 @@ if (!$book) {
     die('Livre introuvable.');
 }
 
-function getBookCoverUrl(array $book): string
+function getBookCoverUrl(Book $book): string
 {
-    $category = strtolower((string)($book['category_name'] ?? ''));
+    $category = strtolower($book->getCategory()->getName());
 
     $covers = [
         'science' => 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=1400&q=80',
@@ -59,11 +59,11 @@ function getBookCoverUrl(array $book): string
         <section class="hero-banner p-4 p-md-5 mb-4" style="background-image: url('<?php echo htmlspecialchars(getBookCoverUrl($book)); ?>');">
             <div class="hero-content d-flex justify-content-between align-items-end gap-3 h-100 flex-wrap">
                 <div>
-                    <h1 class="h2 fw-bold mb-2"><?php echo htmlspecialchars($book['title']); ?></h1>
-                    <p class="lead mb-0"><?php echo htmlspecialchars($book['author']); ?></p>
+                    <h1 class="h2 fw-bold mb-2"><?php echo htmlspecialchars($book->getTitle()); ?></h1>
+                    <p class="lead mb-0"><?php echo htmlspecialchars($book->getAuthor()); ?></p>
                 </div>
-                <span class="hero-pill <?php echo ((int)$book['status'] === 1) ? 'border-success' : 'border-light'; ?>">
-                    <?php echo ((int)$book['status'] === 1) ? 'Disponible' : 'Indisponible'; ?>
+                <span class="hero-pill <?php echo ($book->getStatus() === true) ? 'border-success' : 'border-light'; ?>">
+                    <?php echo ($book->getStatus() === true) ? 'Disponible' : 'Indisponible'; ?>
                 </span>
             </div>
         </section>
@@ -81,37 +81,37 @@ function getBookCoverUrl(array $book): string
                             <div class="col-md-6">
                                 <div class="metric-chip h-100">
                                     <div class="label">ID</div>
-                                    <div class="value"><?php echo (int)$book['id']; ?></div>
+                                    <div class="value"><?php echo $book->getId(); ?></div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="metric-chip h-100">
                                     <div class="label">Catégorie</div>
-                                    <div class="value"><?php echo htmlspecialchars($book['category_name']); ?></div>
+                                    <div class="value"><?php echo htmlspecialchars($book->getCategory()->getName()); ?></div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="metric-chip h-100">
                                     <div class="label">Date de publication</div>
-                                    <div class="value"><?php echo htmlspecialchars($book['publication_date']); ?></div>
+                                    <div class="value"><?php echo htmlspecialchars($book->getPublicationDate()->format('Y-m-d')); ?></div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="metric-chip h-100">
                                     <div class="label">Langue</div>
-                                    <div class="value"><?php echo htmlspecialchars($book['language']); ?></div>
+                                    <div class="value"><?php echo htmlspecialchars($book->getLanguage()); ?></div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="metric-chip h-100">
                                     <div class="label">Nombre d'exemplaires</div>
-                                    <div class="value"><?php echo (int)$book['number_of_copies']; ?></div>
+                                    <div class="value"><?php echo $book->getNumberOfCopies(); ?></div>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="metric-chip h-100">
                                     <div class="label">Statut</div>
-                                    <div class="value"><?php echo ((int)$book['status'] === 1) ? 'Disponible' : 'Indisponible'; ?></div>
+                                    <div class="value"><?php echo ($book->getStatus() === true) ? 'Disponible' : 'Indisponible'; ?></div>
                                 </div>
                             </div>
                         </div>

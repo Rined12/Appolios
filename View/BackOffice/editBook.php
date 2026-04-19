@@ -54,17 +54,17 @@ if (!$book) {
 
                     <div class="col-md-6">
                         <label class="form-label">Titre</label>
-                        <input class="form-control" type="text" name="title" value="<?php echo htmlspecialchars($book['title']); ?>" required>
+                        <input class="form-control" type="text" name="title" value="<?php echo htmlspecialchars($book->getTitle()); ?>" required>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label">Auteur</label>
-                        <input class="form-control" type="text" name="author" value="<?php echo htmlspecialchars($book['author']); ?>" required>
+                        <input class="form-control" type="text" name="author" value="<?php echo htmlspecialchars($book->getAuthor()); ?>" required>
                     </div>
 
                     <div class="col-md-4">
                         <label class="form-label">Date de publication</label>
-                        <input class="form-control" type="date" name="publication_date" value="<?php echo htmlspecialchars($book['publication_date']); ?>" required>
+                        <input class="form-control" type="date" name="publication_date" value="<?php echo htmlspecialchars($book->getPublicationDate()->format('Y-m-d')); ?>" required>
                     </div>
 
                     <div class="col-md-4">
@@ -73,7 +73,7 @@ if (!$book) {
                             <?php
                             $languages = ['FR', 'EN', 'AR'];
                             foreach ($languages as $lang) {
-                                $selected = ($book['language'] === $lang) ? 'selected' : '';
+                                $selected = ($book->getLanguage() === $lang) ? 'selected' : '';
                                 echo "<option value=\"{$lang}\" {$selected}>{$lang}</option>";
                             }
                             ?>
@@ -83,21 +83,21 @@ if (!$book) {
                     <div class="col-md-4">
                         <label class="form-label">Statut</label>
                         <select class="form-select" name="status" required>
-                            <option value="1" <?php echo ((int)$book['status'] === 1) ? 'selected' : ''; ?>>Disponible</option>
-                            <option value="0" <?php echo ((int)$book['status'] === 0) ? 'selected' : ''; ?>>Indisponible</option>
+                            <option value="1" <?php echo ($book->getStatus() === true) ? 'selected' : ''; ?>>Disponible</option>
+                            <option value="0" <?php echo ($book->getStatus() === false) ? 'selected' : ''; ?>>Indisponible</option>
                         </select>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label">Nombre d'exemplaires</label>
-                        <input class="form-control" type="number" name="number_of_copies" min="1" value="<?php echo (int)$book['number_of_copies']; ?>" required>
+                        <input class="form-control" type="number" name="number_of_copies" min="1" value="<?php echo $book->getNumberOfCopies(); ?>" required>
                     </div>
 
                     <div class="col-md-6">
                         <label class="form-label">Catégorie</label>
                         <select class="form-select" name="category_id" required>
                             <?php foreach ($categories as $category): ?>
-                                <option value="<?php echo (int)$category['id']; ?>" <?php echo ((int)$book['category_id'] === (int)$category['id']) ? 'selected' : ''; ?>>
+                                <option value="<?php echo (int)$category['id']; ?>" <?php echo ($book->getCategory()->getId() === (int)$category['id']) ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($category['name']); ?>
                                 </option>
                             <?php endforeach; ?>

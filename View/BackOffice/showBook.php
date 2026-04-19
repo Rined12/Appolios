@@ -2,11 +2,11 @@
 require_once __DIR__ . "/../../Controller/BookController.php";
 
 $controller = new BookController();
-$books = $controller->findAllWithCategory();
+$books = $controller->findAll();
 
-function getBookCoverUrl(array $book): string
+function getBookCoverUrl(Book $book): string
 {
-    $category = strtolower((string)($book['category_name'] ?? ''));
+    $category = strtolower($book->getCategory()->getName());
 
     $covers = [
         'science' => 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=900&q=80',
@@ -58,8 +58,8 @@ function getBookCoverUrl(array $book): string
 
             <div class="hero-metrics mt-3">
                 <span class="hero-pill">Total: <?php echo count($books); ?></span>
-                <span class="hero-pill">Disponibles: <?php echo count(array_filter($books, static fn($item) => (int)$item['status'] === 1)); ?></span>
-                <span class="hero-pill">Indisponibles: <?php echo count(array_filter($books, static fn($item) => (int)$item['status'] === 0)); ?></span>
+                <span class="hero-pill">Disponibles: <?php echo count(array_filter($books, static fn(Book $item) => $item->getStatus() === true)); ?></span>
+                <span class="hero-pill">Indisponibles: <?php echo count(array_filter($books, static fn(Book $item) => $item->getStatus() === false)); ?></span>
             </div>
         </section>
 
@@ -88,23 +88,23 @@ function getBookCoverUrl(array $book): string
                             <?php foreach ($books as $book): ?>
                                 <tr>
                                     <td><img class="book-cover-thumb" src="<?php echo htmlspecialchars(getBookCoverUrl($book)); ?>" alt="Cover"></td>
-                                    <td><?php echo (int)$book['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($book['title']); ?></td>
-                                    <td><?php echo htmlspecialchars($book['author']); ?></td>
-                                    <td><?php echo htmlspecialchars($book['publication_date']); ?></td>
-                                    <td><?php echo htmlspecialchars($book['language']); ?></td>
+                                    <td><?php echo $book->getId(); ?></td>
+                                    <td><?php echo htmlspecialchars($book->getTitle()); ?></td>
+                                    <td><?php echo htmlspecialchars($book->getAuthor()); ?></td>
+                                    <td><?php echo htmlspecialchars($book->getPublicationDate()->format('Y-m-d')); ?></td>
+                                    <td><?php echo htmlspecialchars($book->getLanguage()); ?></td>
                                     <td>
-                                        <?php if ((int)$book['status'] === 1): ?>
+                                        <?php if ($book->getStatus() === true): ?>
                                             <span class="badge text-bg-success badge-status">Disponible</span>
                                         <?php else: ?>
                                             <span class="badge text-bg-secondary badge-status">Indisponible</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td><?php echo (int)$book['number_of_copies']; ?></td>
-                                    <td><?php echo htmlspecialchars($book['category_name']); ?></td>
+                                    <td><?php echo $book->getNumberOfCopies(); ?></td>
+                                    <td><?php echo htmlspecialchars($book->getCategory()->getName()); ?></td>
                                     <td>
-                                        <a class="btn btn-outline-warning btn-sm" href="editBook.php?id=<?php echo (int)$book['id']; ?>">Modifier</a>
-                                        <a class="btn btn-danger btn-sm" href="deleteBook.php?id=<?php echo (int)$book['id']; ?>" onclick="return confirm('Supprimer ce livre ?');">Supprimer</a>
+                                        <a class="btn btn-outline-warning btn-sm" href="editBook.php?id=<?php echo $book->getId(); ?>">Modifier</a>
+                                        <a class="btn btn-danger btn-sm" href="deleteBook.php?id=<?php echo $book->getId(); ?>" onclick="return confirm('Supprimer ce livre ?');">Supprimer</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

@@ -20,9 +20,14 @@ if ($id < 1 || $title === '' || $author === '' || $publicationDate === '' || $la
     die('Donnees invalides.');
 }
 
-$book = new Book($id, $title, $author, $publicationDate, $language, $status, $copies, $categoryId);
-
 $controller = new BookController();
+$category = $controller->findCategoryById($categoryId);
+if (!$category) {
+    die('Categorie invalide.');
+}
+
+$book = new Book($id, $title, $author, $publicationDate, $language, $status, $copies, $category);
+
 $controller->update($book);
 
 header('Location: showBook.php');

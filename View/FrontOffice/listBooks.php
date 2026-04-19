@@ -2,11 +2,11 @@
 require_once __DIR__ . "/../../Controller/BookController.php";
 
 $controller = new BookController();
-$books = $controller->findAllWithCategory();
+$books = $controller->findAll();
 
-function getBookCoverUrl(array $book): string
+function getBookCoverUrl(Book $book): string
 {
-    $category = strtolower((string)($book['category_name'] ?? ''));
+    $category = strtolower($book->getCategory()->getName());
 
     $covers = [
         'science' => 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=1100&q=80',
@@ -67,12 +67,12 @@ function getBookCoverUrl(array $book): string
                         <img class="book-card-media" src="<?php echo htmlspecialchars(getBookCoverUrl($book)); ?>" alt="Photo livre">
                         <div class="book-card-body">
                             <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-                                <h2 class="h6 mb-0 fw-bold"><?php echo htmlspecialchars($book['title']); ?></h2>
-                                <span class="badge badge-category"><?php echo htmlspecialchars($book['category_name']); ?></span>
+                                <h2 class="h6 mb-0 fw-bold"><?php echo htmlspecialchars($book->getTitle()); ?></h2>
+                                <span class="badge badge-category"><?php echo htmlspecialchars($book->getCategory()->getName()); ?></span>
                             </div>
-                            <p class="book-meta mb-2">Auteur: <?php echo htmlspecialchars($book['author']); ?></p>
-                            <p class="book-meta mb-3">Langue: <?php echo htmlspecialchars($book['language']); ?></p>
-                            <a class="btn btn-sm btn-outline-primary w-100" href="detailBook.php?id=<?php echo (int)$book['id']; ?>">Voir detail</a>
+                            <p class="book-meta mb-2">Auteur: <?php echo htmlspecialchars($book->getAuthor()); ?></p>
+                            <p class="book-meta mb-3">Langue: <?php echo htmlspecialchars($book->getLanguage()); ?></p>
+                            <a class="btn btn-sm btn-outline-primary w-100" href="detailBook.php?id=<?php echo $book->getId(); ?>">Voir detail</a>
                         </div>
                     </article>
                 <?php endforeach; ?>

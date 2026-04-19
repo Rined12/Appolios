@@ -19,15 +19,21 @@ class BookController
 
         $statement = $this->pdo->prepare($sql);
 
-        return $statement->execute([
+        $result = $statement->execute([
             ':title' => $book->getTitle(),
             ':author' => $book->getAuthor(),
-            ':publication_date' => $book->getPublicationDate(),
+            ':publication_date' => $book->getPublicationDate()->format('Y-m-d'),
             ':language' => $book->getLanguage(),
             ':status' => $book->getStatus() ? 1 : 0,
             ':number_of_copies' => $book->getNumberOfCopies(),
-            ':category_id' => $book->getCategoryId(),
+            ':category_id' => $book->getCategory()->getId(),
         ]);
+
+        if ($result) {
+            $book->getCategory()->addBook($book);
+        }
+
+        return $result;
     }
 
     public function update(Book $book): bool
@@ -52,11 +58,11 @@ class BookController
             ':id' => $book->getId(),
             ':title' => $book->getTitle(),
             ':author' => $book->getAuthor(),
-            ':publication_date' => $book->getPublicationDate(),
+            ':publication_date' => $book->getPublicationDate()->format('Y-m-d'),
             ':language' => $book->getLanguage(),
             ':status' => $book->getStatus() ? 1 : 0,
             ':number_of_copies' => $book->getNumberOfCopies(),
-            ':category_id' => $book->getCategoryId(),
+            ':category_id' => $book->getCategory()->getId(),
         ]);
     }
 
@@ -66,7 +72,7 @@ class BookController
         return $statement->execute([':id' => $id]);
     }
 
-    public function findAllWithCategory(): array
+    public function findAll(): array
     {
         $categoryLabelColumn = $this->getCategoryLabelColumn();
 
@@ -83,10 +89,29 @@ class BookController
                 INNER JOIN category c ON c.id = b.category_id
                 ORDER BY b.id DESC";
 
-        return $this->pdo->query($sql)->fetchAll();
+        $results = $this->pdo->query($sql)->fetchAll();
+        $books = [];
+
+        foreach ($results as $row) {
+            $category = new Category((int)$row['category_id'], $row['category_name']);
+            $book = new Book(
+                (int)$row['id'],
+                $row['title'],
+                $row['author'],
+                $row['publication_date'],
+                $row['language'],
+                (bool)$row['status'],
+                (int)$row['number_of_copies'],
+                $category
+            );
+            $category->addBook($book);
+            $books[] = $book;
+        }
+
+        return $books;
     }
 
-    public function findById(int $id): ?array
+    public function findById(int $id): ?Book
     {
         $categoryLabelColumn = $this->getCategoryLabelColumn();
 
@@ -107,7 +132,23 @@ class BookController
         $statement->execute([':id' => $id]);
         $result = $statement->fetch();
 
-        return $result ?: null;
+        if ($result) {
+            $category = new Category((int)$result['category_id'], $result['category_name']);
+            $book = new Book(
+                (int)$result['id'],
+                $result['title'],
+                $result['author'],
+                $result['publication_date'],
+                $result['language'],
+                (bool)$result['status'],
+                (int)$result['number_of_copies'],
+                $category
+            );
+            $category->addBook($book);
+            return $book;
+        }
+
+        return null;
     }
 
     public function getAllCategories(): array
@@ -135,6 +176,21 @@ class BookController
         }
 
         throw new RuntimeException("Impossible de trouver la colonne du nom de categorie dans la table category.");
+    }
+
+    public function findCategoryById(int $id): ?Category
+    {
+        $categoryLabelColumn = $this->getCategoryLabelColumn();
+
+        $statement = $this->pdo->prepare("SELECT id, {$categoryLabelColumn} AS name FROM category WHERE id = :id");
+        $statement->execute([':id' => $id]);
+        $result = $statement->fetch();
+
+        if ($result) {
+            return new Category((int)$result['id'], $result['name']);
+        }
+
+        return null;
     }
 }
 ?>

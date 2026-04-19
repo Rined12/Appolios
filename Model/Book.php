@@ -5,11 +5,11 @@ class Book
     private ?int $id;
     private string $title;
     private string $author;
-    private string $publicationDate;
+    private DateTime $publicationDate;
     private string $language;
     private bool $status;
     private int $numberOfCopies;
-    private int $categoryId;
+    private Category $category;
 
     public function __construct(
         ?int $id,
@@ -19,16 +19,16 @@ class Book
         string $language,
         bool $status,
         int $numberOfCopies,
-        int $categoryId
+        Category $category
     ) {
         $this->id = $id;
         $this->title = $title;
         $this->author = $author;
-        $this->publicationDate = $publicationDate;
+        $this->publicationDate = new DateTime($publicationDate);
         $this->language = $language;
         $this->status = $status;
         $this->numberOfCopies = $numberOfCopies;
-        $this->categoryId = $categoryId;
+        $this->category = $category;
     }
 
     public function getId(): ?int
@@ -46,7 +46,7 @@ class Book
         return $this->author;
     }
 
-    public function getPublicationDate(): string
+    public function getPublicationDate(): DateTime
     {
         return $this->publicationDate;
     }
@@ -66,9 +66,9 @@ class Book
         return $this->numberOfCopies;
     }
 
-    public function getCategoryId(): int
+    public function getCategory(): Category
     {
-        return $this->categoryId;
+        return $this->category;
     }
 }
 

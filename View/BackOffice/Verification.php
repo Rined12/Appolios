@@ -19,9 +19,14 @@ if ($title === '' || $author === '' || $publicationDate === '' || $language === 
 	die('Donnees invalides.');
 }
 
-$book = new Book(null, $title, $author, $publicationDate, $language, $status, $copies, $categoryId);
-
 $controller = new BookController();
+$category = $controller->findCategoryById($categoryId);
+if (!$category) {
+    die('Categorie invalide.');
+}
+
+$book = new Book(null, $title, $author, $publicationDate, $language, $status, $copies, $category);
+
 $controller->create($book);
 
 header('Location: showBook.php');
