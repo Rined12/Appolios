@@ -1,0 +1,16 @@
+# User uploads (group covers, etc.) — keep folder, not binaries
+EspritBookMVC/uploads/groupes/*
+!EspritBookMVC/uploads/groupes/.gitkeep
+
+# Local / secrets
+.env
+*.local.php
+
+# OS & IDE
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo

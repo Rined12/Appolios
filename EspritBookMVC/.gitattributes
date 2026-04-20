@@ -1,0 +1,19 @@
+# Normalize text files to LF in the repository
+* text=auto
+
+# Keep common source files in LF
+*.php text eol=lf
+*.css text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
