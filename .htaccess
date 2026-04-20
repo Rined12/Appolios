@@ -1,0 +1,12 @@
+# APPOLIOS - URL Rewriting
+# Rewrite all requests to index.php
+
+RewriteEngine On
+RewriteBase /projetWeb/APPOLIOS/
+
+# Don't rewrite files or directories
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rewrite all other URLs to index.php
+RewriteRule ^(.*)$ public/index.php?url=$1 [QSA,L]

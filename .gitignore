@@ -1,3 +1,6 @@
+/vendor/
+*.log
+
 # User uploads (group covers, etc.) — keep folder, not binaries
 EspritBookMVC/uploads/groupes/*
 !EspritBookMVC/uploads/groupes/.gitkeep
