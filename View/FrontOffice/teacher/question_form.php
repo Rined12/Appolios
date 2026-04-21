@@ -109,19 +109,19 @@ $opts = $isEdit ? ($question['options'] ?? ['', '']) : ['', ''];
 
                         <div class="teacher-qf-field teacher-qf-field--full">
                             <label for="qf-text">Question</label>
-                            <textarea id="qf-text" name="question_text" rows="4" class="form-control" minlength="3"><?= htmlspecialchars($question['question_text'] ?? '') ?></textarea>
+                            <textarea id="qf-text" name="question_text" rows="4" class="form-control"><?= htmlspecialchars($question['question_text'] ?? '') ?></textarea>
                         </div>
 
                         <?php foreach ($opts as $i => $o): ?>
                             <div class="teacher-qf-field">
                                 <label for="qf-opt-<?= $i ?>">Option <?= $i + 1 ?></label>
-                                <input id="qf-opt-<?= $i ?>" type="text" name="options[]" class="form-control" maxlength="500" minlength="3" value="<?= htmlspecialchars($o) ?>">
+                                <input id="qf-opt-<?= $i ?>" type="text" name="options[]" class="form-control" maxlength="500" value="<?= htmlspecialchars($o) ?>">
                             </div>
                         <?php endforeach; ?>
 
                         <div class="teacher-qf-field">
                             <label for="qf-opt-extra">Option supplémentaire</label>
-                            <input id="qf-opt-extra" type="text" name="options[]" class="form-control" maxlength="500" minlength="3" value="">
+                            <input id="qf-opt-extra" type="text" name="options[]" class="form-control" maxlength="500" value="">
                         </div>
 
                         <div class="teacher-qf-field">

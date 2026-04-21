@@ -86,6 +86,7 @@ class QuestionBank extends BaseModel
                 $ca = 0;
             }
             $out[] = [
+                'question_bank_id' => $id,
                 'question' => trim((string) ($row['question_text'] ?? '')),
                 'options' => array_values($opts),
                 'correctAnswer' => $ca,

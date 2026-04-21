@@ -159,7 +159,7 @@ $questionBank = $questionBank ?? [];
                     <div class="teacher-qz-grid">
                         <div class="teacher-qz-field teacher-qz-field--full">
                             <label for="qz-title">Titre du quiz</label>
-                            <input id="qz-title" type="text" name="title" class="form-control" maxlength="255" minlength="3" value="<?= htmlspecialchars($quiz['title'] ?? '') ?>">
+                            <input id="qz-title" type="text" name="title" class="form-control" maxlength="255" value="<?= htmlspecialchars($quiz['title'] ?? '') ?>">
                         </div>
 
                         <div class="teacher-qz-field teacher-qz-field--full">
@@ -219,15 +219,21 @@ $questionBank = $questionBank ?? [];
                             <div class="q-block">
                                 <p class="q-block-title">Question <?= (int) ($qi + 1) ?></p>
                                 <div class="q-block-grid">
+                                    <?php if (!empty($q['question_bank_id'])): ?>
+                                        <input type="hidden" name="questions[<?= $qi ?>][question_bank_id]" value="<?= (int) $q['question_bank_id'] ?>">
+                                        <div class="teacher-qz-field full">
+                                            <p class="teacher-qz-hint" style="margin:0;">Question importée depuis la banque <strong>#<?= (int) $q['question_bank_id'] ?></strong></p>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="teacher-qz-field full">
                                         <label>Intitulé</label>
-                                        <input type="text" name="questions[<?= $qi ?>][question]" class="form-control" maxlength="8000" minlength="3" value="<?= htmlspecialchars($q['question'] ?? '') ?>">
+                                        <input type="text" name="questions[<?= $qi ?>][question]" class="form-control" maxlength="8000" value="<?= htmlspecialchars($q['question'] ?? '') ?>">
                                     </div>
 
                                     <?php $opts = $q['options'] ?? ['', '']; foreach ($opts as $oi => $opt): ?>
                                         <div class="teacher-qz-field">
                                             <label>Option <?= $oi + 1 ?></label>
-                                            <input type="text" name="questions[<?= $qi ?>][options][]" class="form-control" maxlength="500" minlength="3" value="<?= htmlspecialchars($opt) ?>">
+                                            <input type="text" name="questions[<?= $qi ?>][options][]" class="form-control" maxlength="500" value="<?= htmlspecialchars($opt) ?>">
                                         </div>
                                     <?php endforeach; ?>
 
@@ -331,9 +337,9 @@ function appValidateQuizForm(f) {
     d.className = 'q-block';
     d.innerHTML = '<p class=\"q-block-title\">Question ' + (idx + 1) + '</p>' +
       '<div class=\"q-block-grid\">' +
-      '<div class=\"teacher-qz-field full\"><label>Intitulé</label><input type=\"text\" name=\"questions['+idx+'][question]\" class=\"form-control\" maxlength=\"8000\" minlength=\"3\"></div>' +
-      '<div class=\"teacher-qz-field\"><label>Option 1</label><input type=\"text\" name=\"questions['+idx+'][options][]\" class=\"form-control\" maxlength=\"500\" minlength=\"3\"></div>' +
-      '<div class=\"teacher-qz-field\"><label>Option 2</label><input type=\"text\" name=\"questions['+idx+'][options][]\" class=\"form-control\" maxlength=\"500\" minlength=\"3\"></div>' +
+      '<div class=\"teacher-qz-field full\"><label>Intitulé</label><input type=\"text\" name=\"questions['+idx+'][question]\" class=\"form-control\" maxlength=\"8000\"></div>' +
+      '<div class=\"teacher-qz-field\"><label>Option 1</label><input type=\"text\" name=\"questions['+idx+'][options][]\" class=\"form-control\" maxlength=\"500\"></div>' +
+      '<div class=\"teacher-qz-field\"><label>Option 2</label><input type=\"text\" name=\"questions['+idx+'][options][]\" class=\"form-control\" maxlength=\"500\"></div>' +
       '<div class=\"teacher-qz-field\"><label>Index bonne réponse</label><input type=\"text\" name=\"questions['+idx+'][correctAnswer]\" value=\"0\" class=\"form-control\" maxlength=\"4\"></div>' +
       '</div>';
     wrap.appendChild(d);

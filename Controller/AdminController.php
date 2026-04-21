@@ -1144,7 +1144,7 @@ class AdminController extends BaseController {
             return;
         }
 
-        $quizModel->create([
+        $createdId = $quizModel->create([
             'chapter_id' => $chapterId,
             'title' => $this->sanitize($meta['title']),
             'difficulty' => $meta['difficulty'],
@@ -1153,6 +1153,12 @@ class AdminController extends BaseController {
             'questions' => $questions,
             'created_by' => (int) $_SESSION['user_id'],
         ]);
+
+        if ($createdId === false) {
+            $this->setFlash('error', 'Impossible d’enregistrer le quiz (vérifiez la base de données).');
+            $this->redirect('admin/add-quiz');
+            return;
+        }
 
         $this->setFlash('success', 'Quiz enregistré.');
         $this->redirect('admin/quizzes');
@@ -1236,7 +1242,7 @@ class AdminController extends BaseController {
             return;
         }
 
-        $quizModel->update((int) $id, [
+        $updated = $quizModel->update((int) $id, [
             'chapter_id' => $chapterId,
             'title' => $this->sanitize($meta['title']),
             'difficulty' => $meta['difficulty'],
@@ -1244,6 +1250,12 @@ class AdminController extends BaseController {
             'time_limit_sec' => $meta['time_limit_sec'],
             'questions' => $questions,
         ]);
+
+        if ($updated === false) {
+            $this->setFlash('error', 'Impossible de mettre à jour le quiz (vérifiez la base de données).');
+            $this->redirect('admin/edit-quiz/' . (int) $id);
+            return;
+        }
 
         $this->setFlash('success', 'Quiz mis à jour.');
         $this->redirect('admin/quizzes');

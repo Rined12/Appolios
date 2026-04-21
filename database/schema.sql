@@ -112,6 +112,21 @@ CREATE TABLE IF NOT EXISTS quizzes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
+-- QUIZ <-> QUESTION BANK (jointure / liaison)
+-- ============================================
+CREATE TABLE IF NOT EXISTS quiz_question_bank (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    quiz_id INT NOT NULL,
+    question_bank_id INT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_quiz_question (quiz_id, question_bank_id),
+    INDEX idx_quiz_sort (quiz_id, sort_order),
+    FOREIGN KEY (quiz_id) REFERENCES quizzes(id) ON DELETE CASCADE,
+    FOREIGN KEY (question_bank_id) REFERENCES question_bank(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
 -- QUIZ ATTEMPTS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS quiz_attempts (
