@@ -1,0 +1,19 @@
+/vendor/
+*.log
+
+# Group cover uploads (keep directory)
+uploads/groupes/*
+!uploads/groupes/.gitkeep
+
+# Local / secrets
+.env
+*.local.php
+
+# OS & IDE
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
