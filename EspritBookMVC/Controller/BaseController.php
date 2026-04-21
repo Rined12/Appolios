@@ -168,7 +168,7 @@ abstract class BaseController
             return ['url' => null, 'error' => $msg['save_failed']];
         }
 
-        $url = rtrim(APP_URL, '/') . '/uploads/groupes/' . $name;
+        $url = rtrim(GROUP_UPLOAD_URL, '/') . '/' . $name;
         return ['url' => $url, 'error' => null];
     }
 
@@ -178,7 +178,7 @@ abstract class BaseController
             return;
         }
 
-        $base = rtrim(APP_URL, '/') . '/uploads/groupes/';
+        $base = rtrim(GROUP_UPLOAD_URL, '/') . '/';
         if (strncmp($url, $base, strlen($base)) !== 0) {
             return;
         }

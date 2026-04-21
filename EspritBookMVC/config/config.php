@@ -20,8 +20,10 @@ $appBaseDir = preg_replace('#/(public|Controller)$#', '', $scriptDir) ?? $script
 define('APP_URL', $scheme . '://' . $host . $appBaseDir);
 define('APP_ENTRY', APP_URL . '/Controller/index.php');
 
-// Group cover images (stored under EspritBookMVC/uploads/groupes/)
-define('GROUP_UPLOAD_DIR', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'groupes');
+// Project root = parent of EspritBookMVC (group images live outside MVC folders)
+define('PROJECT_ROOT', dirname(dirname(__DIR__)));
+define('GROUP_UPLOAD_DIR', PROJECT_ROOT . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'groupes');
+define('GROUP_UPLOAD_URL', $scheme . '://' . $host . dirname($appBaseDir) . '/uploads/groupes');
 define('GROUP_UPLOAD_MAX_BYTES', 2 * 1024 * 1024);
 
 // Database Configuration
