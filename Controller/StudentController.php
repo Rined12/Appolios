@@ -10,9 +10,6 @@ require_once __DIR__ . '/../Model/Enrollment.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
 require_once __DIR__ . '/../Model/Chapter.php';
-require_once __DIR__ . '/../Model/Quiz.php';
-require_once __DIR__ . '/../Model/QuestionBank.php';
-require_once __DIR__ . '/../Model/QuizAttempt.php';
 require_once __DIR__ . '/QuizQuestionValidation.php';
 
 class StudentController extends BaseController {
@@ -188,10 +185,8 @@ class StudentController extends BaseController {
         $attemptedCourseQuizCount = 0;
         $courseProgress = 0;
         if ($isEnrolled) {
-            $quizModel = $this->model('Quiz');
-            $attemptModel = $this->model('QuizAttempt');
-
-            $enrolledQuizzes = $quizModel->getForEnrolledStudent($userId);
+            $quizService = $this->service('QuizService');
+            $enrolledQuizzes = $quizService->getQuizzesForEnrolledStudent($userId);
             $courseQuizIds = [];
             foreach ($enrolledQuizzes as $quizRow) {
                 if ((int) ($quizRow['course_id'] ?? 0) === $courseId) {
@@ -201,7 +196,7 @@ class StudentController extends BaseController {
 
             $courseQuizCount = count($courseQuizIds);
             if ($courseQuizCount > 0) {
-                $attempts = $attemptModel->getByUserWithQuizTitles($userId);
+                $attempts = $quizService->getAttemptsByUser($userId);
                 $attemptedQuizIds = [];
                 foreach ($attempts as $attempt) {
                     $attemptQuizId = (int) ($attempt['quiz_id'] ?? 0);
@@ -311,10 +306,10 @@ class StudentController extends BaseController {
             return;
         }
 
-        $quizModel = $this->model('Quiz');
+        $quizService = $this->service('QuizService');
         $uid = (int) $_SESSION['user_id'];
-        $chapters = $quizModel->getChaptersForEnrolledStudent($uid);
-        $quizzes = $quizModel->getForEnrolledStudent($uid);
+        $chapters = $quizService->getChaptersForEnrolledStudent($uid);
+        $quizzes = $quizService->getQuizzesForEnrolledStudent($uid);
 
         $quizzesByChapter = [];
         foreach ($quizzes as $qz) {
@@ -353,19 +348,18 @@ class StudentController extends BaseController {
      * /student/quiz/{id} (passer un quiz)
      */
     public function quiz($id = null) {
+        if ($id !== null && $id !== '') {
+            $this->takeQuiz((int) $id);
+            return;
+        }
         if (!$this->requireStudentRole()) {
             return;
         }
 
-        if ($id !== null) {
-            $this->takeQuiz((int) $id);
-            return;
-        }
-
-        $quizModel = $this->model('Quiz');
+        $quizService = $this->service('QuizService');
         $this->view('FrontOffice/student/quiz_list', [
-            'title' => 'Quiz - ' . APP_NAME,
-            'quizzes' => $quizModel->getForEnrolledStudent((int) $_SESSION['user_id']),
+            'title' => 'Mes quiz - ' . APP_NAME,
+            'quizzes' => $quizService->getQuizzesForEnrolledStudent((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -375,10 +369,16 @@ class StudentController extends BaseController {
             return;
         }
 
-        $quizModel = $this->model('Quiz');
-        $quiz = $quizModel->findWithChapterCourse((int) $id);
+        $quizService = $this->service('QuizService');
+        $quiz = $quizService->findWithChapterCourse((int) $id);
         if (!$quiz) {
             $this->setFlash('error', 'Quiz introuvable.');
+            $this->redirect('student/quiz');
+            return;
+        }
+
+        if (!empty($quiz['status']) && $quiz['status'] !== 'approved') {
+            $this->setFlash('error', 'Ce quiz n’est pas disponible pour le moment.');
             $this->redirect('student/quiz');
             return;
         }
@@ -412,10 +412,16 @@ class StudentController extends BaseController {
             return;
         }
 
-        $quizModel = $this->model('Quiz');
-        $quiz = $quizModel->findWithChapterCourse((int) $id);
+        $quizService = $this->service('QuizService');
+        $quiz = $quizService->findWithChapterCourse((int) $id);
         if (!$quiz) {
             $this->setFlash('error', 'Quiz introuvable.');
+            $this->redirect('student/quiz');
+            return;
+        }
+
+        if (!empty($quiz['status']) && $quiz['status'] !== 'approved') {
+            $this->setFlash('error', 'Ce quiz n’est pas disponible pour le moment.');
             $this->redirect('student/quiz');
             return;
         }
@@ -429,11 +435,14 @@ class StudentController extends BaseController {
 
         $questions = $quiz['questions'] ?? [];
         $answers = $_POST['answers'] ?? [];
-        $ansErr = QuizQuestionValidation::validateStudentQuizAnswers($answers, $questions);
-        if ($ansErr !== null) {
-            $this->setFlash('error', $ansErr);
-            $this->redirect('student/quiz/' . (int) $id);
-            return;
+        $timedOut = !empty($_POST['timed_out']);
+        if (!$timedOut) {
+            $ansErr = QuizQuestionValidation::validateStudentQuizAnswers($answers, $questions);
+            if ($ansErr !== null) {
+                $this->setFlash('error', $ansErr);
+                $this->redirect('student/quiz/' . (int) $id);
+                return;
+            }
         }
 
         $score = 0;
@@ -447,8 +456,7 @@ class StudentController extends BaseController {
 
         $total = count($questions);
         $percentage = $total > 0 ? (int) round(($score / $total) * 100) : 0;
-        $attemptModel = $this->model('QuizAttempt');
-        $attemptModel->record((int) $_SESSION['user_id'], (int) $id, $score, $total, $percentage);
+        $quizService->recordAttempt((int) $_SESSION['user_id'], (int) $id, $score, $total, $percentage);
 
         $this->view('FrontOffice/student/quiz_result', [
             'title' => 'Résultat du quiz - ' . APP_NAME,
@@ -456,6 +464,7 @@ class StudentController extends BaseController {
             'score' => $score,
             'total' => $total,
             'percentage' => $percentage,
+            'timed_out' => $timedOut,
         ]);
     }
 
@@ -463,10 +472,10 @@ class StudentController extends BaseController {
         if (!$this->requireStudentRole()) {
             return;
         }
-        $qb = $this->model('QuestionBank');
+        $quizService = $this->service('QuizService');
         $this->view('FrontOffice/student/questions_bank', [
             'title' => 'Banque de questions - ' . APP_NAME,
-            'questions' => $qb->getAllReadable(),
+            'questions' => $quizService->getQuestionBankReadable(),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -475,10 +484,10 @@ class StudentController extends BaseController {
         if (!$this->requireStudentRole()) {
             return;
         }
-        $attemptModel = $this->model('QuizAttempt');
+        $quizService = $this->service('QuizService');
         $this->view('FrontOffice/student/quiz_history', [
             'title' => 'Historique des quiz - ' . APP_NAME,
-            'attempts' => $attemptModel->getByUserWithQuizTitles((int) $_SESSION['user_id']),
+            'attempts' => $quizService->getAttemptsByUser((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }

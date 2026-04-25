@@ -35,15 +35,17 @@ unset($_SESSION['flash']);
                 </div>
             <?php endif; ?>
 
-            <form action="<?= APP_ENTRY ?>?url=authenticate" method="POST">
+            <form action="<?= APP_ENTRY ?>?url=authenticate" method="POST" onsubmit="return appValidateLogin(this);">
                 <div class="neo-field">
                     <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                    <input type="text" id="email" name="email" placeholder="you@example.com" autocomplete="email">
+                    <div class="neo-muted" id="email_err" style="margin-top:0.35rem; font-weight:700; color:#b91c1c; display:none;"></div>
                 </div>
 
                 <div class="neo-field">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password">
+                    <div class="neo-muted" id="pass_err" style="margin-top:0.35rem; font-weight:700; color:#b91c1c; display:none;"></div>
                 </div>
 
                 <div class="neo-field">
@@ -62,3 +64,40 @@ unset($_SESSION['flash']);
         </div>
     </div>
 </section>
+
+<script>
+function appTrim(s) { return String(s || '').replace(/^\s+|\s+$/g, ''); }
+function appShowErr(id, msg) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function appIsEmailLike(v) {
+  // volontairement simple (pas de validation HTML navigateur)
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+}
+function appValidateLogin(f) {
+  var email = appTrim(f.email && f.email.value);
+  var pass = appTrim(f.password && f.password.value);
+  var ok = true;
+
+  if (!email) { appShowErr('email_err', 'Email obligatoire.'); ok = false; }
+  else if (!appIsEmailLike(email)) { appShowErr('email_err', 'Format email invalide.'); ok = false; }
+  else appShowErr('email_err', '');
+
+  if (!pass) { appShowErr('pass_err', 'Mot de passe obligatoire.'); ok = false; }
+  else if (pass.length < 6) { appShowErr('pass_err', 'Minimum 6 caractères.'); ok = false; }
+  else appShowErr('pass_err', '');
+
+  return ok;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  var f = document.querySelector('.neo-login-page form');
+  if (!f) return;
+  if (f.email) f.email.addEventListener('input', function () { appValidateLogin(f); });
+  if (f.password) f.password.addEventListener('input', function () { appValidateLogin(f); });
+});
+</script>

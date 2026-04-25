@@ -1,133 +1,74 @@
 <?php
 
-require_once __DIR__ . '/../Model/BaseModel.php';
+declare(strict_types=1);
 
-class QuestionBank extends BaseModel
+require_once __DIR__ . '/Entities/BaseEntity.php';
+
+class QuestionBank extends BaseEntity
 {
-    protected string $table = 'question_bank';
+    private ?int $id;
+    private ?string $title;
+    private string $questionText;
+    private string $optionsJson;
+    private int $correctAnswer;
+    private ?string $tags;
+    private string $difficulty;
+    private int $createdBy;
+    private ?string $createdAt;
+    private ?string $updatedAt;
 
-    public function getForTeacher($teacherId): array
-    {
-        $sql = "SELECT * FROM {$this->table} WHERE created_by = ? ORDER BY created_at DESC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([(int) $teacherId]);
-        return $this->decodeOptionsRows($stmt->fetchAll());
+    public function __construct(
+        ?int $id = null,
+        ?string $title = null,
+        string $questionText = '',
+        string $optionsJson = '[]',
+        int $correctAnswer = 0,
+        ?string $tags = null,
+        string $difficulty = 'beginner',
+        int $createdBy = 0,
+        ?string $createdAt = null,
+        ?string $updatedAt = null
+    ) {
+        $this->id = $id;
+        $this->title = $title;
+        $this->questionText = $questionText;
+        $this->optionsJson = $optionsJson;
+        $this->correctAnswer = $correctAnswer;
+        $this->tags = $tags;
+        $this->difficulty = $difficulty;
+        $this->createdBy = $createdBy;
+        $this->createdAt = $createdAt;
+        $this->updatedAt = $updatedAt;
     }
 
-    public function getAllForAdmin(): array
-    {
-        $sql = "SELECT qb.*, u.name AS author_name
-                FROM {$this->table} qb
-                JOIN users u ON u.id = qb.created_by
-                ORDER BY qb.created_at DESC";
-        $stmt = $this->db->query($sql);
-        return $this->decodeOptionsRows($stmt ? $stmt->fetchAll() : []);
-    }
+    public function getId(): ?int { return $this->id; }
+    public function setId(?int $id): void { $this->id = $id; }
 
-    public function getAllReadable(): array
-    {
-        return $this->getAllForAdmin();
-    }
+    public function getTitle(): ?string { return $this->title; }
+    public function setTitle(?string $title): void { $this->title = $title; }
 
-    private function decodeOptionsRows(array $rows): array
-    {
-        foreach ($rows as &$r) {
-            $d = json_decode($r['options_json'] ?? '[]', true);
-            $r['options'] = is_array($d) ? $d : [];
-        }
-        unset($r);
-        return $rows;
-    }
+    public function getQuestionText(): string { return $this->questionText; }
+    public function setQuestionText(string $questionText): void { $this->questionText = $questionText; }
 
-    public function findOwned($id, $userId)
-    {
-        $sql = "SELECT * FROM {$this->table} WHERE id = ? AND created_by = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([(int) $id, (int) $userId]);
-        $row = $stmt->fetch();
-        if ($row) {
-            $d = json_decode($row['options_json'] ?? '[]', true);
-            $row['options'] = is_array($d) ? $d : [];
-        }
-        return $row;
-    }
+    public function getOptionsJson(): string { return $this->optionsJson; }
+    public function setOptionsJson(string $optionsJson): void { $this->optionsJson = $optionsJson; }
 
-    public function findByIdDecoded($id)
-    {
-        $row = $this->findById((int) $id);
-        if ($row) {
-            $d = json_decode($row['options_json'] ?? '[]', true);
-            $row['options'] = is_array($d) ? $d : [];
-        }
-        return $row;
-    }
+    public function getCorrectAnswer(): int { return $this->correctAnswer; }
+    public function setCorrectAnswer(int $correctAnswer): void { $this->correctAnswer = $correctAnswer; }
 
-    public function appendIdsToQuizQuestions(array $baseQuestions, array $bankIds, ?int $restrictToUserId): array
-    {
-        $out = $baseQuestions;
-        foreach ($bankIds as $bid) {
-            $id = (int) $bid;
-            if ($id <= 0) {
-                continue;
-            }
-            $row = $this->findByIdDecoded($id);
-            if (!$row) {
-                continue;
-            }
-            if ($restrictToUserId !== null && (int) ($row['created_by'] ?? 0) !== $restrictToUserId) {
-                continue;
-            }
-            $opts = $row['options'] ?? [];
-            if (count($opts) < 2) {
-                continue;
-            }
-            $ca = (int) ($row['correct_answer'] ?? 0);
-            if ($ca < 0 || $ca >= count($opts)) {
-                $ca = 0;
-            }
-            $out[] = [
-                'question_bank_id' => $id,
-                'question' => trim((string) ($row['question_text'] ?? '')),
-                'options' => array_values($opts),
-                'correctAnswer' => $ca,
-            ];
-        }
-        return $out;
-    }
+    public function getTags(): ?string { return $this->tags; }
+    public function setTags(?string $tags): void { $this->tags = $tags; }
 
-    public function create($data)
-    {
-        $sql = "INSERT INTO {$this->table}
-            (title, question_text, options_json, correct_answer, tags, difficulty, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $this->db->prepare($sql);
-        $opts = json_encode($data['options'] ?? [], JSON_UNESCAPED_UNICODE);
-        return $stmt->execute([
-            $data['title'] ?? null,
-            $data['question_text'] ?? '',
-            $opts,
-            (int) ($data['correct_answer'] ?? 0),
-            $data['tags'] ?? null,
-            $data['difficulty'] ?? 'beginner',
-            (int) ($data['created_by'] ?? 0),
-        ]) ? (int) $this->db->lastInsertId() : false;
-    }
+    public function getDifficulty(): string { return $this->difficulty; }
+    public function setDifficulty(string $difficulty): void { $this->difficulty = $difficulty; }
 
-    public function update($id, $data): bool
-    {
-        $sql = "UPDATE {$this->table} SET title = ?, question_text = ?, options_json = ?, correct_answer = ?, tags = ?, difficulty = ?
-                WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        $opts = json_encode($data['options'] ?? [], JSON_UNESCAPED_UNICODE);
-        return $stmt->execute([
-            $data['title'] ?? null,
-            $data['question_text'] ?? '',
-            $opts,
-            (int) ($data['correct_answer'] ?? 0),
-            $data['tags'] ?? null,
-            $data['difficulty'] ?? 'beginner',
-            (int) $id,
-        ]);
-    }
+    public function getCreatedBy(): int { return $this->createdBy; }
+    public function setCreatedBy(int $createdBy): void { $this->createdBy = $createdBy; }
+
+    public function getCreatedAt(): ?string { return $this->createdAt; }
+    public function setCreatedAt(?string $createdAt): void { $this->createdAt = $createdAt; }
+
+    public function getUpdatedAt(): ?string { return $this->updatedAt; }
+    public function setUpdatedAt(?string $updatedAt): void { $this->updatedAt = $updatedAt; }
 }
 

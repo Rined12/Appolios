@@ -10,8 +10,6 @@ require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
 require_once __DIR__ . '/../Model/Chapter.php';
-require_once __DIR__ . '/../Model/Quiz.php';
-require_once __DIR__ . '/../Model/QuestionBank.php';
 require_once __DIR__ . '/QuizQuestionValidation.php';
 
 class TeacherController extends BaseController {
@@ -426,10 +424,10 @@ class TeacherController extends BaseController {
 
     public function quiz() {
         $this->requireTeacher();
-        $quizModel = $this->model('Quiz');
+        $quizService = $this->service('QuizService');
         $this->view('FrontOffice/teacher/quizzes', [
             'title' => 'Quiz - ' . APP_NAME,
-            'quizzes' => $quizModel->getAllForTeacher((int) $_SESSION['user_id']),
+            'quizzes' => $quizService->getAllForTeacher((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -439,13 +437,13 @@ class TeacherController extends BaseController {
 
         $chapterModel = $this->model('Chapter');
         $chapters = $chapterModel->getAllForTeacher((int) $_SESSION['user_id']);
-        $qb = $this->model('QuestionBank');
+        $quizService = $this->service('QuizService');
 
         $this->view('FrontOffice/teacher/quiz_form', [
             'title' => 'Nouveau quiz - ' . APP_NAME,
             'quiz' => null,
             'chapters' => $chapters,
-            'questionBank' => $qb->getForTeacher((int) $_SESSION['user_id']),
+            'questionBank' => $quizService->getQuestionBankForTeacher((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -466,8 +464,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $quizModel = $this->model('Quiz');
-        $qbModel = $this->model('QuestionBank');
+        $quizService = $this->service('QuizService');
 
         $meta = QuizQuestionValidation::validateQuizMeta($_POST);
         if (!empty($meta['errors'])) {
@@ -477,8 +474,8 @@ class TeacherController extends BaseController {
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
-        $questions = $qbModel->appendIdsToQuizQuestions(
-            Quiz::normalizeQuestionsFromPost($_POST),
+        $questions = $quizService->appendBankQuestions(
+            $quizService->normalizeQuestionsFromPost($_POST),
             $bankIds,
             (int) $_SESSION['user_id']
         );
@@ -496,15 +493,17 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $createdId = $quizModel->create([
-            'chapter_id' => $chapterId,
-            'title' => $this->sanitize($meta['title']),
-            'difficulty' => $meta['difficulty'],
-            'tags' => $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
-            'time_limit_sec' => $meta['time_limit_sec'],
-            'questions' => $questions,
-            'created_by' => (int) $_SESSION['user_id'],
-        ]);
+        $createdId = $quizService->createTeacherQuiz(
+            (int) $_SESSION['user_id'],
+            $chapterId,
+            [
+                'title' => $this->sanitize($meta['title']),
+                'difficulty' => $meta['difficulty'],
+                'tags' => $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
+                'time_limit_sec' => $meta['time_limit_sec'],
+            ],
+            $questions
+        );
 
         if ($createdId === false) {
             $this->setFlash('error', 'Impossible d’enregistrer le quiz (vérifiez la base de données).');
@@ -519,8 +518,8 @@ class TeacherController extends BaseController {
     public function editQuiz($id) {
         $this->requireTeacher();
 
-        $quizModel = $this->model('Quiz');
-        $quiz = $quizModel->findWithChapterCourse((int) $id);
+        $quizService = $this->service('QuizService');
+        $quiz = $quizService->findWithChapterCourse((int) $id);
         if (!$quiz || (int) ($quiz['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
@@ -529,13 +528,12 @@ class TeacherController extends BaseController {
 
         $chapterModel = $this->model('Chapter');
         $chapters = $chapterModel->getAllForTeacher((int) $_SESSION['user_id']);
-        $qb = $this->model('QuestionBank');
 
         $this->view('FrontOffice/teacher/quiz_form', [
             'title' => 'Modifier le quiz - ' . APP_NAME,
             'quiz' => $quiz,
             'chapters' => $chapters,
-            'questionBank' => $qb->getForTeacher((int) $_SESSION['user_id']),
+            'questionBank' => $quizService->getQuestionBankForTeacher((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -547,8 +545,8 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $quizModel = $this->model('Quiz');
-        $existing = $quizModel->findWithChapterCourse((int) $id);
+        $quizService = $this->service('QuizService');
+        $existing = $quizService->findWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
@@ -564,7 +562,6 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $qbModel = $this->model('QuestionBank');
         $meta = QuizQuestionValidation::validateQuizMeta($_POST);
         if (!empty($meta['errors'])) {
             $this->setFlash('error', $meta['errors'][0]);
@@ -573,8 +570,8 @@ class TeacherController extends BaseController {
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
-        $questions = $qbModel->appendIdsToQuizQuestions(
-            Quiz::normalizeQuestionsFromPost($_POST),
+        $questions = $quizService->appendBankQuestions(
+            $quizService->normalizeQuestionsFromPost($_POST),
             $bankIds,
             (int) $_SESSION['user_id']
         );
@@ -592,7 +589,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $updated = $quizModel->update((int) $id, [
+        $updated = $quizService->updateQuiz((int) $id, [
             'chapter_id' => $chapterId,
             'title' => $this->sanitize($meta['title']),
             'difficulty' => $meta['difficulty'],
@@ -613,24 +610,24 @@ class TeacherController extends BaseController {
 
     public function deleteQuiz($id) {
         $this->requireTeacher();
-        $quizModel = $this->model('Quiz');
-        $existing = $quizModel->findWithChapterCourse((int) $id);
+        $quizService = $this->service('QuizService');
+        $existing = $quizService->findWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
             return;
         }
-        $quizModel->delete((int) $id);
+        $quizService->deleteQuiz((int) $id);
         $this->setFlash('success', 'Quiz supprimé.');
         $this->redirect('teacher/quiz');
     }
 
     public function questions() {
         $this->requireTeacher();
-        $qb = $this->model('QuestionBank');
+        $quizService = $this->service('QuizService');
         $this->view('FrontOffice/teacher/questions_bank', [
             'title' => 'Banque de questions - ' . APP_NAME,
-            'questions' => $qb->getForTeacher((int) $_SESSION['user_id']),
+            'questions' => $quizService->getQuestionBankForTeacher((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -666,8 +663,8 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $qb = $this->model('QuestionBank');
-        $qb->create([
+        $quizService = $this->service('QuizService');
+        $quizService->createQuestion([
             'title' => $title !== '' ? $title : null,
             'question_text' => $questionText,
             'options' => $opts,
@@ -683,8 +680,8 @@ class TeacherController extends BaseController {
 
     public function editQuestion($id) {
         $this->requireTeacher();
-        $qb = $this->model('QuestionBank');
-        $row = $qb->findOwned((int) $id, (int) $_SESSION['user_id']);
+        $quizService = $this->service('QuizService');
+        $row = $quizService->findQuestionOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$row) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
@@ -704,8 +701,8 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $qb = $this->model('QuestionBank');
-        $existing = $qb->findOwned((int) $id, (int) $_SESSION['user_id']);
+        $quizService = $this->service('QuizService');
+        $existing = $quizService->findQuestionOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
@@ -727,7 +724,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $qb->update((int) $id, [
+        $quizService->updateQuestion((int) $id, [
             'title' => $title !== '' ? $title : null,
             'question_text' => $questionText,
             'options' => $opts,
@@ -742,14 +739,14 @@ class TeacherController extends BaseController {
 
     public function deleteQuestion($id) {
         $this->requireTeacher();
-        $qb = $this->model('QuestionBank');
-        $existing = $qb->findOwned((int) $id, (int) $_SESSION['user_id']);
+        $quizService = $this->service('QuizService');
+        $existing = $quizService->findQuestionOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
             return;
         }
-        $qb->delete((int) $id);
+        $quizService->deleteQuestion((int) $id);
         $this->setFlash('success', 'Question supprimée.');
         $this->redirect('teacher/questions');
     }

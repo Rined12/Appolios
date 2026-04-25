@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS quizzes (
     difficulty ENUM('beginner','intermediate','advanced') DEFAULT 'beginner',
     tags VARCHAR(500) DEFAULT NULL,
     time_limit_sec INT DEFAULT NULL,
+    status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved',
     questions_json LONGTEXT NOT NULL,
     created_by INT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
