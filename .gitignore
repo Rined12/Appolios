@@ -1,0 +1,14 @@
+# Node (Socket.IO realtime service)
+**/node_modules/
+
+# Runtime uploads (keep folders locally; do not commit user files)
+uploads/cvs/
+uploads/groupes/
+uploads/chat/
+uploads/**/*.pdf
+
+# OS / IDE
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
