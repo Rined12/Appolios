@@ -149,6 +149,40 @@ if (!empty($enrollments)) {
                                 <?php endif; ?>
                             </div>
                         </div>
+
+                        <!-- My Upcoming Events -->
+                        <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden; padding: 2rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 1.3rem; color: #1e293b; font-weight: 800;">My Upcoming Events</h3>
+                                    <p style="margin: 0.2rem 0 0; font-size: 0.9rem; color: #64748b;">Events you are participating in.</p>
+                                </div>
+                                <a href="<?= APP_ENTRY ?>?url=student/my-events" style="color: #548CA8; text-decoration: none; font-size: 0.9rem; font-weight: 600; padding: 6px 12px; border-radius: 6px; background: #e9f1fa; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">View All</a>
+                            </div>
+                            
+                            <?php if (!empty($participations)): ?>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem;">
+                                    <?php foreach (array_slice($participations, 0, 2) as $p): ?>
+                                        <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                                <div style="width: 48px; height: 48px; background: #f0fdf4; color: #16a34a; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                                </div>
+                                                <span style="font-size: 0.7rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; background: <?= $p['p_status']==='approved'?'#dcfce7':'#fef9c3' ?>; color: <?= $p['p_status']==='approved'?'#166534':'#854d0e' ?>; text-transform: uppercase;">
+                                                    <?= htmlspecialchars($p['p_status']) ?>
+                                                </span>
+                                            </div>
+                                            <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($p['titre'] ?: $p['title']) ?></h4>
+                                            <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #64748b;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> <?= htmlspecialchars($p['lieu'] ?: 'TBA') ?></p>
+                                            
+                                            <a href="<?= APP_ENTRY ?>?url=student/evenement/<?= (int) $p['id'] ?>" style="display: block; text-align: center; background: #f8fafc; color: #475569; text-decoration: none; padding: 8px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; transition: all 0.2s;" onmouseover="this.style.background='#548CA8'; this.style.color='white'" onmouseout="this.style.background='#f8fafc'; this.style.color='#475569'">Event Info</a>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <p style="color: #64748b; font-size: 0.9rem;">You haven't joined any events yet.</p>
+                            <?php endif; ?>
+                        </div>
                     </div>
                     
                     <!-- SIDE COLUMN -->

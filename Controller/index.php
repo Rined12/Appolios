@@ -64,7 +64,7 @@ if (!empty($segments)) {
             'logout' => 'logout',
             'authenticate' => 'authenticate',
         ][$first];
-    } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home'], true)) {
+    } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home', 'event', 'ressource'], true)) {
         $controller = ucfirst($first) . 'Controller';
         $action = $second !== '' ? toCamelCaseAction($second) : ($first === 'auth' ? 'login' : 'index');
         $params = array_slice($segments, 2);

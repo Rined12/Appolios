@@ -156,6 +156,43 @@ $plansCount = count($plans ?? []);
                         </div>
                     </article>
                 </div>
+
+                <!-- Participation Action -->
+                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #eef2f6;">
+                    <?php if (!$participation): ?>
+                        <form method="POST" action="<?= APP_ENTRY ?>?url=student/participate/<?= (int)$evenement['id'] ?>">
+                            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 15px; font-size: 1.1rem; background: linear-gradient(135deg, #548CA8, #2B4865); border: none;">
+                                ✦ Participer à cet événement
+                            </button>
+                        </form>
+                    <?php else: ?>
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0;">
+                            <div>
+                                <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 600;">Statut de participation</p>
+                                <h4 style="margin: 5px 0 0 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                    <?php 
+                                        $pStatus = $participation['details'] ?? 'pending';
+                                        if ($pStatus === 'approved'): 
+                                    ?>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        <span style="color: #166534;">Approuvée</span>
+                                    <?php elseif ($pStatus === 'rejected'): ?>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                        <span style="color: #991b1b;">Refusée</span>
+                                    <?php else: ?>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                        <span style="color: #854d0e;">En attente d'approbation</span>
+                                    <?php endif; ?>
+                                </h4>
+                            </div>
+                            <?php if ($pStatus === 'pending'): ?>
+                                <form method="POST" action="<?= APP_ENTRY ?>?url=student/cancel-participation/<?= (int)$evenement['id'] ?>">
+                                    <button type="submit" class="btn btn-outline" style="color: #ef4444; border-color: #fecaca;" onclick="return confirm('Annuler votre demande ?')">Annuler</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
             </section>
 
             <section class="student-resource-columns">

@@ -44,8 +44,8 @@
                                     
                                     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                                         <a href="<?= APP_ENTRY ?>?url=admin/dashboard" style="background: #fff; border: 1.5px solid #e2e8f0; color: #64748b; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.borderColor='#548CA8'; this.style.color='#548CA8'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'">Back to Dashboard</a>
-                                        <a href="<?= APP_ENTRY ?>?url=admin/evenement-requests" style="background: #e9f1fa; color: #548CA8; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">Teacher Requests</a>
-                                        <a href="<?= APP_ENTRY ?>?url=admin/add-evenement" style="background: linear-gradient(135deg, #E19864 0%, #d9804b 100%); color: #fff; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 15px rgba(225, 152, 100, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(225, 152, 100, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(225, 152, 100, 0.3)'">Add Event</a>
+                                        <a href="<?= APP_ENTRY ?>?url=event/evenement-requests" style="background: #e9f1fa; color: #548CA8; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">Teacher Requests</a>
+                                        <a href="<?= APP_ENTRY ?>?url=event/add-evenement" style="background: linear-gradient(135deg, #E19864 0%, #d9804b 100%); color: #fff; padding: 12px 24px; border-radius: 10px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 15px rgba(225, 152, 100, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(225, 152, 100, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(225, 152, 100, 0.3)'">Add Event</a>
                                     </div>
                                 </div>
                             </div>
@@ -197,7 +197,7 @@
                                                 }
                                                 $descFull = (string) ($evenement['description'] ?? '');
                                                 ?>
-                                                <tr style="border-bottom: 1px solid #eef2f6; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                                                <tr style="border-bottom: 1px solid #eef2f6; transition: background 0.2s; cursor: pointer;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'" onclick="showParticipantsListModal(<?= (int) $evenement['id'] ?>, <?= isset($_SESSION['user_id']) && $evenement['created_by'] == $_SESSION['user_id'] ? 'true' : 'false' ?>)">
                                                     <td style="padding: 1.2rem 1rem; color: #64748b; font-size: 0.9rem; font-weight: 500;">#<?= htmlspecialchars((string) $evenement['id']) ?></td>
                                                     <td style="padding: 1.2rem 1rem; color: #1e293b; font-weight: 700; font-size: 0.95rem;"><?= htmlspecialchars($evenement['titre'] ?: $evenement['title']) ?></td>
                                                     <td style="padding: 1.2rem 1rem; color: #64748b; font-size: 0.9rem; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?= htmlspecialchars($descFull) ?>">
@@ -225,7 +225,7 @@
                                                         </span>
                                                     </td>
                                                     <td style="padding: 1.2rem 1rem;">
-                                                        <a href="<?= APP_ENTRY ?>?url=admin/evenement-ressources&evenement_id=<?= (int) $evenement['id'] ?>" style="background: #e9f1fa; color: #548CA8; text-decoration: none; padding: 6px 14px; border-radius: 50px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">
+                                                        <a href="<?= APP_ENTRY ?>?url=ressource/evenement-ressources&evenement_id=<?= (int) $evenement['id'] ?>" onclick="event.stopPropagation();" style="background: #e9f1fa; color: #548CA8; text-decoration: none; padding: 6px 14px; border-radius: 50px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">
                                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                                                             <?= (int) ($evenement['resource_count'] ?? 0) ?> Items
                                                         </a>
@@ -247,15 +247,15 @@
                                                     </td>
                                                     <td style="padding: 1.2rem 1rem;">
                                                         <div style="display: flex; gap: 8px;">
-                                                            <a href="<?= APP_ENTRY ?>?url=admin/edit-evenement/<?= (int) $evenement['id'] ?>" style="background: #f8fafc; border: 1.5px solid #e2e8f0; color: #64748b; text-decoration: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.borderColor='#548CA8'; this.style.color='#548CA8'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'" title="Edit">
+                                                            <a href="<?= APP_ENTRY ?>?url=event/edit-evenement/<?= (int) $evenement['id'] ?>" onclick="event.stopPropagation();" style="background: #f8fafc; border: 1.5px solid #e2e8f0; color: #64748b; text-decoration: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.borderColor='#548CA8'; this.style.color='#548CA8'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'" title="Edit">
                                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                                             </a>
                                                             <?php if (isset($_SESSION['user_id']) && $evenement['created_by'] == $_SESSION['user_id']): ?>
-                                                            <a href="<?= APP_ENTRY ?>?url=admin/delete-evenement/<?= (int) $evenement['id'] ?>" onclick="return confirm('Delete this evenement?')" style="background: #fef2f2; border: 1.5px solid #fecaca; color: #ef4444; text-decoration: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'" title="Delete">
+                                                            <a href="<?= APP_ENTRY ?>?url=event/delete-evenement/<?= (int) $evenement['id'] ?>" onclick="event.stopPropagation(); return confirm('Delete this evenement?')" style="background: #fef2f2; border: 1.5px solid #fecaca; color: #ef4444; text-decoration: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'" title="Delete">
                                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                                                             </a>
                                                             <?php else: ?>
-                                                            <div style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: #f1f5f9; color: #cbd5e1; border: 1.5px solid #e2e8f0; cursor: not-allowed;" title="Only the creator can delete this event">
+                                                            <div onclick="event.stopPropagation();" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: #f1f5f9; color: #cbd5e1; border: 1.5px solid #e2e8f0; cursor: not-allowed;" title="Only the creator can delete this event">
                                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                                                             </div>
                                                             <?php endif; ?>
@@ -268,7 +268,7 @@
                                                 <td colspan="11" style="text-align: center; padding: 4rem; color: #64748b; background: #f8fafc;">
                                                     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                                                     <p style="margin: 0 0 1rem 0; font-size: 1.2rem; color: #1e293b; font-weight: 600;">No events found</p>
-                                                    <a href="<?= APP_ENTRY ?>?url=admin/add-evenement" style="background: linear-gradient(135deg, #E19864 0%, #d9804b 100%); color: #fff; padding: 10px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 10px rgba(225, 152, 100, 0.3); display: inline-block;">Create your first event</a>
+                                                    <a href="<?= APP_ENTRY ?>?url=event/add-evenement" style="background: linear-gradient(135deg, #E19864 0%, #d9804b 100%); color: #fff; padding: 10px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 10px rgba(225, 152, 100, 0.3); display: inline-block;">Create your first event</a>
                                                 </td>
                                             </tr>
                                         <?php endif; ?>
@@ -344,7 +344,7 @@
         // Header Click Sort
         if (headers.length > 0 && tbody) {
             headers.forEach((header, index) => {
-                if (header.textContent.trim() === 'Actions' || header.textContent.trim() === 'Resource') return; // Skip non-sortable
+                if (header.textContent.trim() === 'Actions') return; // Skip non-sortable
                 
                 header.style.cursor = 'pointer';
                 header.title = 'Click to sort';
@@ -378,7 +378,231 @@
     });
 </script>
 
+<!-- Participants List Modal -->
+<div id="participantsListModal" class="neo-modal-overlay">
+    <div class="neo-modal-card" style="max-width: 600px;">
+        <button class="neo-modal-close" onclick="closeParticipantsListModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 1.5rem;">
+            <div style="background: #eff6ff; width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #3b82f6; flex-shrink: 0;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+            <div>
+                <h3 style="margin: 0 0 5px 0; color: #0f172a; font-size: 1.3rem; font-weight: 800;">Event Participants</h3>
+                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">View the list of all participants for this event.</p>
+            </div>
+        </div>
+
+        <div style="max-height: 400px; overflow-y: auto; margin-bottom: 1.5rem; padding-right: 5px; border: 1px solid #eef2f6; border-radius: 12px;">
+            <table id="modalParticipantsTable" style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="background: #f8fafc; position: sticky; top: 0;">
+                        <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0;">User</th>
+                        <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0;">Date Requested</th>
+                        <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0;">Status</th>
+                        <th style="padding: 1rem; color: #475569; font-weight: 600; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+            <div id="noParticipantsMsg" style="display: none; padding: 2rem; text-align: center; color: #64748b;">No participants found for this event.</div>
+        </div>
+
+        <button onclick="closeParticipantsListModal()" style="width: 100%; background: #548CA8; border: none; color: white; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#355C7D'" onmouseout="this.style.background='#548CA8'">Close</button>
+    </div>
+</div>
+
+<!-- Custom Reject Modal -->
+<div id="rejectParticipantModal" class="neo-modal-overlay">
+    <div class="neo-modal-card" style="max-width: 450px;">
+        <button class="neo-modal-close" onclick="closeRejectParticipantModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 1.5rem;">
+            <div style="background: #fef2f2; width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #ef4444; flex-shrink: 0;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+            </div>
+            <div>
+                <h3 style="margin: 0 0 5px 0; color: #0f172a; font-size: 1.25rem; font-weight: 800;">Reject Participant</h3>
+                <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Please provide a reason for rejecting this student (optional).</p>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <textarea id="modalRejectReasonInput" placeholder="Enter reason here..." style="width: 100%; min-height: 100px; padding: 12px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; font-family: inherit; resize: vertical; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#ef4444'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <button onclick="closeRejectParticipantModal()" style="flex: 1; background: #f8fafc; border: 1.5px solid #e2e8f0; color: #64748b; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">Cancel</button>
+            <button onclick="submitRejectParticipant()" style="flex: 1; background: #ef4444; border: none; color: white; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">Reject</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const participationsByEvent = <?= json_encode($participationsByEvent ?? []) ?>;
+
+    function showParticipantsListModal(eventId, isAdminEvent) {
+        const tbody = document.querySelector('#modalParticipantsTable tbody');
+        const noMsg = document.getElementById('noParticipantsMsg');
+        tbody.innerHTML = '';
+        
+        const participants = participationsByEvent[eventId] || [];
+        
+        if (participants.length === 0) {
+            document.getElementById('modalParticipantsTable').style.display = 'none';
+            noMsg.style.display = 'block';
+        } else {
+            document.getElementById('modalParticipantsTable').style.display = 'table';
+            noMsg.style.display = 'none';
+            
+            participants.forEach(p => {
+                let statusBg = '#fff7ed'; let statusColor = '#f97316';
+                let currentStatus = p.status || 'pending';
+                if (currentStatus === 'approved') {
+                    statusBg = '#f0fdf4'; statusColor = '#22c55e';
+                } else if (currentStatus === 'rejected') {
+                    statusBg = '#fef2f2'; statusColor = '#ef4444';
+                }
+                
+                const tr = document.createElement('tr');
+                tr.style.borderBottom = '1px solid #eef2f6';
+                tr.innerHTML = `
+                    <td style="padding: 1rem; color: #1e293b; font-weight: 600; font-size: 0.95rem;">
+                        ${escapeHtml(p.student_name_full || p.student_name || 'Unknown')}
+                    </td>
+                    <td style="padding: 1rem; color: #64748b; font-size: 0.9rem;">
+                        ${new Date(p.created_at).toLocaleDateString()}
+                    </td>
+                    <td style="padding: 1rem;">
+                        <span style="background: ${statusBg}; color: ${statusColor}; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
+                            ${escapeHtml(currentStatus)}
+                        </span>
+                    </td>
+                    <td style="padding: 1rem; text-align: right;">
+                        ${(currentStatus === 'pending' && isAdminEvent) ? `
+                            <div style="display: flex; gap: 5px; justify-content: flex-end;">
+                                <form method="POST" action="<?= APP_ENTRY ?>?url=event/approve-participation/${p.id}" style="margin:0;">
+                                    <input type="hidden" name="from_evenement_list" value="1">
+                                    <button type="submit" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:4px 8px;border-radius:6px;font-weight:600;font-size:0.75rem;cursor:pointer;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">&#10003; Approve</button>
+                                </form>
+                                <form id="reject-form-${p.id}" method="POST" action="<?= APP_ENTRY ?>?url=event/reject-participation/${p.id}" style="margin:0;">
+                                    <input type="hidden" name="reason" id="reject-reason-${p.id}" value="">
+                                    <input type="hidden" name="from_evenement_list" value="1">
+                                    <button type="button" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:4px 8px;border-radius:6px;font-weight:600;font-size:0.75rem;cursor:pointer;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'" onclick="promptRejectReason(${p.id})">&#10005; Reject</button>
+                                </form>
+                            </div>
+                        ` : `
+                            <span style="color: #cbd5e1; font-size: 0.8rem;">-</span>
+                        `}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        document.getElementById('participantsListModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    let currentRejectId = null;
+
+    function promptRejectReason(id) {
+        currentRejectId = id;
+        document.getElementById('modalRejectReasonInput').value = '';
+        document.getElementById('rejectParticipantModal').classList.add('active');
+    }
+
+    function closeRejectParticipantModal() {
+        currentRejectId = null;
+        document.getElementById('rejectParticipantModal').classList.remove('active');
+    }
+
+    function submitRejectParticipant() {
+        if (currentRejectId) {
+            const reason = document.getElementById('modalRejectReasonInput').value;
+            document.getElementById('reject-reason-' + currentRejectId).value = reason;
+            document.getElementById('reject-form-' + currentRejectId).submit();
+        }
+    }
+
+    function closeParticipantsListModal() {
+        document.getElementById('participantsListModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+
+    document.getElementById('participantsListModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeParticipantsListModal();
+        }
+    });
+
+    document.getElementById('rejectParticipantModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeRejectParticipantModal();
+        }
+    });
+
+    function escapeHtml(unsafe) {
+        return (unsafe || '').toString()
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+</script>
+
 <style>
+    /* Rejection Modal Styles */
+    .neo-modal-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 9999;
+        opacity: 0; visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    .neo-modal-overlay.active {
+        opacity: 1; visibility: visible;
+    }
+    .neo-modal-card {
+        background: #ffffff;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 500px;
+        padding: 2rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        position: relative;
+        transform: translateY(20px) scale(0.95);
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .neo-modal-overlay.active .neo-modal-card {
+        transform: translateY(0) scale(1);
+    }
+    .neo-modal-close {
+        position: absolute;
+        top: 1.5rem; right: 1.5rem;
+        background: #f1f5f9; border: none;
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: #64748b; cursor: pointer;
+        transition: all 0.2s;
+    }
+    .neo-modal-close:hover {
+        background: #e2e8f0; color: #0f172a;
+        transform: rotate(90deg);
+    }
+
     /* Styling the scrollbar for the table */
     .table-responsive::-webkit-scrollbar {
         height: 8px;

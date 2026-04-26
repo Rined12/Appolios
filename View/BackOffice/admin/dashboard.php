@@ -105,7 +105,7 @@
                         <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden;">
                             <div style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
                                 <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; font-weight: 700;">Recent Evenements</h3>
-                                <a href="<?= APP_ENTRY ?>?url=admin/evenements" style="color: #548CA8; text-decoration: none; font-size: 0.9rem; font-weight: 600; padding: 6px 12px; border-radius: 6px; background: #e9f1fa; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">View All</a>
+                                <a href="<?= APP_ENTRY ?>?url=event/evenements" style="color: #548CA8; text-decoration: none; font-size: 0.9rem; font-weight: 600; padding: 6px 12px; border-radius: 6px; background: #e9f1fa; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">View All</a>
                             </div>
                             <div style="overflow-x: auto;">
                                 <table style="width: 100%; border-collapse: collapse; text-align: left;">
@@ -127,7 +127,7 @@
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
-                                                <td colspan="3" style="text-align: center; padding: 2.5rem; color: #94a3b8;">No events yet. <a href="<?= APP_ENTRY ?>?url=admin/add-evenement" style="color: #548CA8; text-decoration: underline;">Create your first evenement</a></td>
+                                                <td colspan="3" style="text-align: center; padding: 2.5rem; color: #94a3b8;">No events yet. <a href="<?= APP_ENTRY ?>?url=event/add-evenement" style="color: #548CA8; text-decoration: underline;">Create your first evenement</a></td>
                                             </tr>
                                         <?php endif; ?>
                                     </tbody>
@@ -169,6 +169,57 @@
                             </div>
                         </div>
 
+                        <!-- Event Statistics Table -->
+                        <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden;">
+                            <div style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; font-weight: 700;">Event Statistics (Participants)</h3>
+                                <a href="<?= APP_ENTRY ?>?url=event/evenements" style="color: #548CA8; text-decoration: none; font-size: 0.9rem; font-weight: 600; padding: 6px 12px; border-radius: 6px; background: #e9f1fa; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">View All Events</a>
+                            </div>
+                            <div style="overflow-x: auto;">
+                                <?php if (!empty($evenementsStats)): ?>
+                                    <?php
+                                    $chartLabelsAdmin = [];
+                                    $chartDataAdmin = [];
+                                    foreach (array_slice($evenementsStats, 0, 10) as $stat) {
+                                        $chartLabelsAdmin[] = (strlen($stat['title']) > 20) ? substr($stat['title'], 0, 20) . '...' : $stat['title'];
+                                        $chartDataAdmin[] = (int)$stat['participant_count'];
+                                    }
+                                    ?>
+                                    <div style="height: 300px; margin: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 12px;">
+                                        <canvas id="adminEventChart"></canvas>
+                                    </div>
+                                <?php endif; ?>
+                                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                                    <thead>
+                                        <tr style="background: #f8fafc;">
+                                            <th style="padding: 1rem 2rem; font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0;">Event Title</th>
+                                            <th style="padding: 1rem 2rem; font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0;">Date</th>
+                                            <th style="padding: 1rem 2rem; font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; text-align: center;">Participants</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($evenementsStats)): ?>
+                                            <?php foreach (array_slice($evenementsStats, 0, 5) as $stat): ?>
+                                                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                                                    <td style="padding: 1.2rem 2rem; font-weight: 600; color: #334155;"><?= htmlspecialchars($stat['title']) ?></td>
+                                                    <td style="padding: 1.2rem 2rem; color: #64748b; font-size: 0.95rem;"><?= date('M d, Y', strtotime($stat['event_date'])) ?></td>
+                                                    <td style="padding: 1.2rem 2rem; text-align: center;">
+                                                        <span style="background: #f0fdf4; color: #22c55e; padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.9rem;">
+                                                            <?= (int)$stat['participant_count'] ?> <svg style="display:inline; vertical-align:middle; margin-left:4px;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr>
+                                                <td colspan="3" style="text-align: center; padding: 2.5rem; color: #94a3b8;">No event statistics available yet.</td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
 
                     <!-- RIGHT COLUMN -->
@@ -181,7 +232,7 @@
                             </div>
                             <h3 style="margin: 0 0 0.8rem 0; font-size: 1.4rem; color: #1e293b; font-weight: 800;">Module Evenement</h3>
                             <p style="margin: 0 0 1.5rem 0; color: #64748b; line-height: 1.6; font-size: 0.95rem;">Manage upcoming events, schedule dates, centralize event info, and review teacher proposals.</p>
-                            <a href="<?= APP_ENTRY ?>?url=admin/evenements" style="display: inline-block; width: 100%; background: #548CA8; color: white; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: 700; transition: all 0.2s; box-shadow: 0 4px 10px rgba(84, 140, 168, 0.2);" onmouseover="this.style.background='#355C7D'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(84, 140, 168, 0.3)'" onmouseout="this.style.background='#548CA8'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 10px rgba(84, 140, 168, 0.2)'">Open Module</a>
+                            <a href="<?= APP_ENTRY ?>?url=event/evenements" style="display: inline-block; width: 100%; background: #548CA8; color: white; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: 700; transition: all 0.2s; box-shadow: 0 4px 10px rgba(84, 140, 168, 0.2);" onmouseover="this.style.background='#355C7D'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(84, 140, 168, 0.3)'" onmouseout="this.style.background='#548CA8'; this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 10px rgba(84, 140, 168, 0.2)'">Open Module</a>
                         </div>
 
                         <!-- System Status -->
@@ -265,3 +316,40 @@
         }
     }
 </style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById('adminEventChart');
+    if (ctx) {
+        new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: <?= json_encode($chartLabelsAdmin ?? []) ?>,
+                datasets: [{
+                    label: 'Participants',
+                    data: <?= json_encode($chartDataAdmin ?? []) ?>,
+                    backgroundColor: 'rgba(84, 140, 168, 0.7)',
+                    borderColor: 'rgba(84, 140, 168, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    hoverBackgroundColor: 'rgba(53, 92, 125, 0.9)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+});
+</script>

@@ -58,6 +58,15 @@ $studentSidebarActive = $studentSidebarActive ?? '';
                 <span>My Courses</span>
             </a>
 
+            <a href="<?= APP_ENTRY ?>?url=student/my-events" class="admin-side-link <?= $studentSidebarActive === 'my-events' ? 'active' : '' ?>">
+                <span class="admin-side-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                    </svg>
+                </span>
+                <span>My Events</span>
+            </a>
+
             <a href="<?= APP_ENTRY ?>?url=student/profile" class="admin-side-link <?= $studentSidebarActive === 'profile' ? 'active' : '' ?>">
                 <span class="admin-side-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

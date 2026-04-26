@@ -20,7 +20,7 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             <span>Espace</span>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=admin/evenements" class="admin-side-link <?= $adminSidebarActive === 'evenements' ? 'active' : '' ?>">
+        <a href="<?= APP_ENTRY ?>?url=event/evenements" class="admin-side-link <?= $adminSidebarActive === 'evenements' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M8 2v4"></path>
@@ -50,7 +50,7 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             <?php endif; ?>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=admin/add-evenement" class="admin-side-link <?= $adminSidebarActive === 'add-evenement' ? 'active' : '' ?>">
+        <a href="<?= APP_ENTRY ?>?url=event/add-evenement" class="admin-side-link <?= $adminSidebarActive === 'add-evenement' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>

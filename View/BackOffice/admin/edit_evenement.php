@@ -29,15 +29,6 @@ $form = [
 
             <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
                 
-                <!-- Back Button -->
-                <div style="margin-bottom: 20px;">
-                    <a href="javascript:history.back()" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; background: #6c757d;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="transform: rotate(180deg);">
-                            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
-                        </svg>
-                        Back
-                    </a>
-                </div>
                 <section class="neo-auth-wrap" style="background: transparent; font-family: 'Inter', sans-serif;">
                     
                     <div class="neo-glass-card" style="width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(43, 72, 101, 0.08); border: 1px solid rgba(233, 241, 250, 0.8); overflow: hidden; display: flex; flex-direction: column;">
@@ -48,7 +39,7 @@ $form = [
                             <div style="position: absolute; bottom: -50px; right: 10%; width: 300px; height: 300px; background: #fef2f2; border-radius: 50%; z-index: 0; opacity: 0.4;"></div>
                             
                             <div style="position: relative; z-index: 2;">
-                                <a href="<?= APP_ENTRY ?>?url=admin/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; color: #548CA8; font-weight: 700; text-decoration: none; margin-bottom: 2rem; transition: color 0.2s;" onmouseover="this.style.color='#355C7D'" onmouseout="this.style.color='#548CA8'">
+                                <a href="<?= APP_ENTRY ?>?url=event/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; color: #548CA8; font-weight: 700; text-decoration: none; margin-bottom: 2rem; transition: color 0.2s;" onmouseover="this.style.color='#355C7D'" onmouseout="this.style.color='#548CA8'">
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                                     Back to Evenements
                                 </a>
@@ -64,7 +55,7 @@ $form = [
 
                         <!-- Content Area: Form -->
                         <div style="padding: 3rem; background: #ffffff;">
-                            <form action="<?= APP_ENTRY ?>?url=admin/update-evenement/<?= (int) ($evenement['id'] ?? 0) ?>" method="POST" class="neo-form-grid" novalidate>
+                            <form action="<?= APP_ENTRY ?>?url=event/update-evenement/<?= (int) ($evenement['id'] ?? 0) ?>" method="POST" class="neo-form-grid" novalidate>
                                 
                                 <div class="neo-form-group col-span-2">
                                     <label for="title">Titre *</label>

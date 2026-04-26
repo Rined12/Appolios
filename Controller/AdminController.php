@@ -8,10 +8,48 @@ require_once __DIR__ . '/../Controller/BaseController.php';
 require_once __DIR__ . '/../Model/User.php';
 require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Enrollment.php';
-require_once __DIR__ . '/../Model/Evenement.php';
-require_once __DIR__ . '/../Model/EvenementRessource.php';
+
 
 class AdminController extends BaseController {
+
+    private function getDb(): PDO {
+        static $pdo = null;
+        if ($pdo === null) {
+            $pdo = new PDO(
+                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET,
+                DB_USER, DB_PASS,
+                [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+        }
+        return $pdo;
+    }
+
+    private function countEvenements(): int {
+        return (int) $this->getDb()->query("SELECT COUNT(*) FROM evenements")->fetchColumn();
+    }
+
+    private function getRecentEvenements(int $limit = 3): array {
+        $st = $this->getDb()->prepare(
+            "SELECT * FROM evenements
+             ORDER BY COALESCE(CONCAT(date_debut,' ',heure_debut), event_date) ASC
+             LIMIT ?"
+        );
+        $st->bindValue(1, $limit, PDO::PARAM_INT);
+        $st->execute();
+        return $st->fetchAll();
+    }
+
+    private function getEvenementsStats(): array {
+        $st = $this->getDb()->query(
+            "SELECT e.id, e.title, e.titre, e.event_date, e.location,
+                    SUM(CASE WHEN r.type = 'participation' AND r.details = 'approved' THEN 1 ELSE 0 END) as participant_count
+             FROM evenements e
+             LEFT JOIN evenement_ressources r ON r.evenement_id = e.id
+             GROUP BY e.id
+             ORDER BY e.created_at DESC"
+        );
+        return $st->fetchAll();
+    }
 
     /**
      * Admin dashboard
@@ -24,25 +62,25 @@ class AdminController extends BaseController {
             return;
         }
 
-        $userModel = $this->model('User');
-        $courseModel = $this->model('Course');
+        $userModel       = $this->model('User');
+        $courseModel     = $this->model('Course');
         $enrollmentModel = $this->model('Enrollment');
-        $evenementModel = $this->model('Evenement');
         $teacherAppModel = $this->model('TeacherApplication');
 
         $data = [
-            'title' => 'Admin Dashboard - APPOLIOS',
-            'description' => 'Administrator control panel',
-            'totalUsers' => $userModel->count(),
-            'totalStudents' => $userModel->countStudents(),
-            'totalCourses' => $courseModel->count(),
-            'totalEnrollments' => $enrollmentModel->countAll(),
-            'totalEvenements' => $evenementModel->count(),
-            'recentCourses' => $courseModel->getAllWithCreator(),
-            'recentEvenements' => $evenementModel->getRecent(3),
-            'recentUsers' => $userModel->getStudents(),
-            'pendingTeacherApps' => $teacherAppModel->countPending(),
-            'flash' => $this->getFlash()
+            'title'             => 'Admin Dashboard - APPOLIOS',
+            'description'       => 'Administrator control panel',
+            'totalUsers'        => $userModel->count(),
+            'totalStudents'     => $userModel->countStudents(),
+            'totalCourses'      => $courseModel->count(),
+            'totalEnrollments'  => $enrollmentModel->countAll(),
+            'totalEvenements'   => $this->countEvenements(),
+            'recentCourses'     => $courseModel->getAllWithCreator(),
+            'recentEvenements'  => $this->getRecentEvenements(3),
+            'evenementsStats'   => $this->getEvenementsStats(),
+            'recentUsers'       => $userModel->getStudents(),
+            'pendingTeacherApps'=> $teacherAppModel->countPending(),
+            'flash'             => $this->getFlash()
         ];
 
         $this->view('BackOffice/admin/dashboard', $data);
@@ -888,632 +926,6 @@ class AdminController extends BaseController {
             $this->setFlash('error', 'Failed to create teacher account. Please try again.');
             $this->redirect('admin/add-teacher');
         }
-    }
-
-    /**
-     * Manage evenements page
-     */
-    public function evenements() {
-        if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
-            $this->redirect('admin/login');
-            return;
-        }
-
-        $evenementModel = $this->model('Evenement');
-
-        $data = [
-            'title' => 'Manage Evenements - APPOLIOS',
-            'description' => 'Evenement management panel',
-            'evenements' => $evenementModel->findAllUpcoming(),
-            'flash' => $this->getFlash()
-        ];
-
-        $this->view('BackOffice/admin/evenements', $data);
-    }
-
-    /**
-     * Add evenement page
-     */
-    public function addEvenement() {
-        if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
-            $this->redirect('admin/login');
-            return;
-        }
-
-        $data = [
-            'title' => 'Add Evenement - APPOLIOS',
-            'description' => 'Create a new evenement',
-            'flash' => $this->getFlash()
-        ];
-
-        $this->view('BackOffice/admin/add_evenement', $data);
-    }
-
-    /**
-     * Store new evenement
-     */
-    public function storeEvenement() {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        $title = $this->sanitize($_POST['title'] ?? '');
-        $description = $this->sanitize($_POST['description'] ?? '');
-        $dateDebut = $this->sanitize($_POST['date_debut'] ?? '');
-        $dateFin = $this->sanitize($_POST['date_fin'] ?? '');
-        $heureDebut = $this->sanitize($_POST['heure_debut'] ?? '');
-        $heureFin = $this->sanitize($_POST['heure_fin'] ?? '');
-        $lieu = $this->sanitize($_POST['lieu'] ?? '');
-        $capaciteMax = (int) ($_POST['capacite_max'] ?? 0);
-        $type = $this->sanitize($_POST['type'] ?? 'general');
-        $statut = $this->sanitize($_POST['statut'] ?? 'planifie');
-
-        $errors = [];
-
-        if (empty($title)) {
-            $errors['title'] = 'Event title is required';
-        }
-
-        if (empty($description)) {
-            $errors['description'] = 'Event description is required';
-        }
-
-        if (empty($dateDebut) || strtotime($dateDebut) === false) {
-            $errors['date_debut'] = 'Valid start date is required';
-        }
-
-        $minDate = date('Y-m-d', strtotime('+1 day'));
-        if (!empty($dateDebut) && strtotime($dateDebut) !== false && $dateDebut < $minDate) {
-            $errors['date_debut'] = 'Start date must be at least tomorrow';
-        }
-
-        if (empty($heureDebut)) {
-            $errors['heure_debut'] = 'Start time is required';
-        }
-
-        if (!empty($dateFin) && strtotime($dateFin) !== false && !empty($dateDebut) && strtotime($dateFin) < strtotime($dateDebut)) {
-            $errors['date_fin'] = 'End date cannot be before start date';
-        }
-
-        if ($capaciteMax < 0) {
-            $errors['capacite_max'] = 'Capacity must be a positive number';
-        }
-
-        if (!empty($errors)) {
-            $this->setErrors($errors);
-            $_SESSION['old'] = $_POST;
-            $this->redirect('admin/add-evenement');
-            return;
-        }
-
-        $eventDate = $dateDebut . ' ' . (!empty($heureDebut) ? $heureDebut : '00:00') . ':00';
-
-        $evenementModel = $this->model('Evenement');
-        $result = $evenementModel->create([
-            'title' => $title,
-            'titre' => $title,
-            'description' => $description,
-            'date_debut' => $dateDebut,
-            'date_fin' => !empty($dateFin) ? $dateFin : null,
-            'heure_debut' => !empty($heureDebut) ? $heureDebut : null,
-            'heure_fin' => !empty($heureFin) ? $heureFin : null,
-            'lieu' => $lieu,
-            'capacite_max' => $capaciteMax > 0 ? $capaciteMax : null,
-            'type' => $type,
-            'statut' => $statut,
-            'location' => $lieu,
-            'event_date' => $eventDate,
-            'created_by' => $_SESSION['user_id']
-        ]);
-
-        if ($result) {
-            $this->setFlash('success', 'Evenement created successfully!');
-            if (isset($_POST['action']) && $_POST['action'] === 'save_and_resources') {
-                $this->redirect('admin/evenement-ressources&evenement_id=' . $result);
-            } else {
-                $this->redirect('admin/evenements');
-            }
-        } else {
-            $this->setFlash('error', 'Failed to create evenement. Please try again.');
-            $this->redirect('admin/add-evenement');
-        }
-    }
-
-    /**
-     * Edit evenement page
-     */
-    public function editEvenement($id) {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        $evenementModel = $this->model('Evenement');
-        $evenement = $evenementModel->findById($id);
-
-        if (!$evenement) {
-            $this->setFlash('error', 'Evenement not found.');
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        $data = [
-            'title' => 'Edit Evenement - APPOLIOS',
-            'description' => 'Update evenement details',
-            'evenement' => $evenement,
-            'flash' => $this->getFlash()
-        ];
-
-        $this->view('BackOffice/admin/edit_evenement', $data);
-    }
-
-    /**
-     * Update evenement
-     */
-    public function updateEvenement($id) {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        $title = $this->sanitize($_POST['title'] ?? '');
-        $description = $this->sanitize($_POST['description'] ?? '');
-        $dateDebut = $this->sanitize($_POST['date_debut'] ?? '');
-        $dateFin = $this->sanitize($_POST['date_fin'] ?? '');
-        $heureDebut = $this->sanitize($_POST['heure_debut'] ?? '');
-        $heureFin = $this->sanitize($_POST['heure_fin'] ?? '');
-        $lieu = $this->sanitize($_POST['lieu'] ?? '');
-        $capaciteMax = (int) ($_POST['capacite_max'] ?? 0);
-        $type = $this->sanitize($_POST['type'] ?? 'general');
-        $statut = $this->sanitize($_POST['statut'] ?? 'planifie');
-
-        $errors = [];
-
-        if (empty($title)) {
-            $errors['title'] = 'Event title is required';
-        }
-
-        if (empty($description)) {
-            $errors['description'] = 'Event description is required';
-        }
-
-        if (empty($dateDebut) || strtotime($dateDebut) === false) {
-            $errors['date_debut'] = 'Valid start date is required';
-        }
-
-        $minDate = date('Y-m-d', strtotime('+1 day'));
-        if (!empty($dateDebut) && strtotime($dateDebut) !== false && $dateDebut < $minDate) {
-            $errors['date_debut'] = 'Start date must be at least tomorrow';
-        }
-
-        if (empty($heureDebut)) {
-            $errors['heure_debut'] = 'Start time is required';
-        }
-
-        if (!empty($dateFin) && strtotime($dateFin) !== false && !empty($dateDebut) && strtotime($dateFin) < strtotime($dateDebut)) {
-            $errors['date_fin'] = 'End date cannot be before start date';
-        }
-
-        if ($capaciteMax < 0) {
-            $errors['capacite_max'] = 'Capacity must be a positive number';
-        }
-
-        if (!empty($errors)) {
-            $this->setErrors($errors);
-            $_SESSION['old'] = $_POST;
-            $this->redirect('admin/edit-evenement/' . (int) $id);
-            return;
-        }
-
-        $eventDate = $dateDebut . ' ' . (!empty($heureDebut) ? $heureDebut : '00:00') . ':00';
-
-        $evenementModel = $this->model('Evenement');
-        $result = $evenementModel->update($id, [
-            'title' => $title,
-            'titre' => $title,
-            'description' => $description,
-            'date_debut' => $dateDebut,
-            'date_fin' => !empty($dateFin) ? $dateFin : null,
-            'heure_debut' => !empty($heureDebut) ? $heureDebut : null,
-            'heure_fin' => !empty($heureFin) ? $heureFin : null,
-            'lieu' => $lieu,
-            'capacite_max' => $capaciteMax > 0 ? $capaciteMax : null,
-            'type' => $type,
-            'statut' => $statut,
-            'location' => $lieu,
-            'event_date' => $eventDate
-        ]);
-
-        if ($result) {
-            $this->setFlash('success', 'Evenement updated successfully!');
-            $this->redirect('admin/evenements');
-        } else {
-            $this->setFlash('error', 'Failed to update evenement. Please try again.');
-            $this->redirect('admin/edit-evenement/' . (int) $id);
-        }
-    }
-
-    /**
-     * Delete evenement
-     */
-    public function deleteEvenement($id) {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        $evenementModel = $this->model('Evenement');
-        $evenement = $evenementModel->findById($id);
-
-        if (!$evenement) {
-            $this->setFlash('error', 'Evenement not found.');
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        if ($evenement['created_by'] != $_SESSION['user_id']) {
-            $this->setFlash('error', 'You can only delete events that you have created.');
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        $result = $evenementModel->delete($id);
-
-        if ($result) {
-            $this->setFlash('success', 'Evenement deleted successfully!');
-        } else {
-            $this->setFlash('error', 'Failed to delete evenement.');
-        }
-
-        $this->redirect('admin/evenements');
-    }
-
-    /**
-     * Evenement resources workspace page
-     */
-    public function evenementRessources() {
-        if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
-            $this->redirect('admin/login');
-            return;
-        }
-
-        $ressourceModel = $this->model('EvenementRessource');
-        $evenementModel = $this->model('Evenement');
-        $selectedEvenementId = (int) ($_GET['evenement_id'] ?? 0);
-
-        if ($selectedEvenementId <= 0) {
-            $this->setFlash('error', 'Please choose an evenement first.');
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        $selectedEvenement = $evenementModel->findById($selectedEvenementId);
-        if (!$selectedEvenement) {
-            $this->setFlash('error', 'Selected evenement was not found.');
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        $editId = (int) ($_GET['edit_id'] ?? 0);
-        $editResource = null;
-        if ($editId > 0) {
-            $candidate = $ressourceModel->findById($editId);
-            if ($candidate && (int) $candidate['evenement_id'] === $selectedEvenementId) {
-                $editResource = $candidate;
-            }
-        }
-
-        $rules = $ressourceModel->getByTypeAndEvenement('rule', $selectedEvenementId);
-        $materials = $ressourceModel->getByTypeAndEvenement('materiel', $selectedEvenementId);
-        $plans = $ressourceModel->getByTypeAndEvenement('plan', $selectedEvenementId);
-
-        $data = [
-            'title' => 'Evenement Resources - APPOLIOS',
-            'description' => 'Manage evenement rules, materiel, and day plans',
-            'selectedEvenementId' => $selectedEvenementId,
-            'selectedEvenement' => $selectedEvenement,
-            'editResource' => $editResource,
-            'rules' => $rules,
-            'materials' => $materials,
-            'plans' => $plans,
-            'flash' => $this->getFlash()
-        ];
-
-        $this->view('BackOffice/admin/evenement_ressources', $data);
-    }
-
-    /**
-     * Store one evenement resource item
-     */
-    public function storeEvenementRessource() {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('admin/evenement-ressources');
-            return;
-        }
-
-        $type = $this->sanitize($_POST['type'] ?? '');
-        $title = $this->sanitize($_POST['title'] ?? '');
-        $details = $this->sanitize($_POST['details'] ?? '');
-        $evenementId = (int) ($_POST['evenement_id'] ?? 0);
-        $isAjax = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
-            || (isset($_POST['batch_mode']) && $_POST['batch_mode'] === '1');
-
-        $errors = [];
-
-        if (!in_array($type, ['rule', 'materiel', 'plan'], true)) {
-            $errors[] = 'Invalid resource type.';
-        }
-
-        if (empty($title)) {
-            $errors[] = 'Title is required.';
-        }
-
-        if ($evenementId <= 0) {
-            $errors[] = 'Please select an evenement.';
-        } else {
-            $evenementModel = $this->model('Evenement');
-            if (!$evenementModel->findById($evenementId)) {
-                $errors[] = 'Selected evenement was not found.';
-            }
-        }
-
-        if (!empty($errors)) {
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success' => false,
-                    'message' => implode(' ', $errors)
-                ]);
-                exit();
-            }
-
-            $_SESSION['errors'] = $errors;
-            $_SESSION['old'] = $_POST;
-            $this->redirect('admin/evenement-ressources&evenement_id=' . $evenementId);
-            return;
-        }
-
-        $ressourceModel = $this->model('EvenementRessource');
-        $createdId = $ressourceModel->create([
-            'evenement_id' => $evenementId,
-            'type' => $type,
-            'title' => $title,
-            'details' => $details,
-            'created_by' => $_SESSION['user_id']
-        ]);
-
-        $isVerifiedInRightList = false;
-        if ($createdId) {
-            $isVerifiedInRightList = $ressourceModel->existsInListScope($createdId, $evenementId, $type);
-        }
-
-        if ($createdId && $isVerifiedInRightList) {
-            $labels = [
-                'rule' => 'Rule',
-                'materiel' => 'Materiel',
-                'plan' => 'Plan'
-            ];
-
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success' => true,
-                    'message' => $labels[$type] . ' saved and verified in list successfully.',
-                    'verified_in_right_list' => true,
-                    'resource_id' => (int) $createdId
-                ]);
-                exit();
-            }
-
-            $this->setFlash('success', $labels[$type] . ' added and verified in list successfully.');
-        } else {
-            if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Save verification failed. Check the right list and try again.',
-                    'verified_in_right_list' => false
-                ]);
-                exit();
-            }
-
-            $this->setFlash('error', 'Save verification failed. Check the right list and try again.');
-        }
-
-        $this->redirect('admin/evenement-ressources&evenement_id=' . $evenementId);
-    }
-
-    /**
-     * Update one evenement resource item.
-     */
-    public function updateEvenementRessource($id) {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        $evenementId = (int) ($_POST['evenement_id'] ?? 0);
-        $title = $this->sanitize($_POST['title'] ?? '');
-        $details = $this->sanitize($_POST['details'] ?? '');
-
-        if ($evenementId <= 0 || empty($title)) {
-            $this->setFlash('error', 'Please provide valid data before saving.');
-            $this->redirect('admin/evenement-ressources&evenement_id=' . $evenementId . '&edit_id=' . (int) $id);
-            return;
-        }
-
-        $ressourceModel = $this->model('EvenementRessource');
-        $resource = $ressourceModel->findById($id);
-
-        if (!$resource || (int) $resource['evenement_id'] !== $evenementId) {
-            $this->setFlash('error', 'Resource not found for this evenement.');
-            $this->redirect('admin/evenement-ressources&evenement_id=' . $evenementId);
-            return;
-        }
-
-        $result = $ressourceModel->update($id, [
-            'title' => $title,
-            'details' => $details,
-            'evenement_id' => $evenementId
-        ]);
-
-        if ($result) {
-            $this->setFlash('success', 'Ressource updated successfully.');
-        } else {
-            $this->setFlash('error', 'Failed to update ressource.');
-        }
-
-        $this->redirect('admin/evenement-ressources&evenement_id=' . $evenementId);
-    }
-
-    /**
-     * Delete one evenement resource item.
-     */
-    public function deleteEvenementRessource($id) {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        $evenementId = (int) ($_POST['evenement_id'] ?? 0);
-        if ($evenementId <= 0) {
-            $this->setFlash('error', 'Invalid evenement context.');
-            $this->redirect('admin/evenements');
-            return;
-        }
-
-        $ressourceModel = $this->model('EvenementRessource');
-        $result = $ressourceModel->deleteByEvenement($id, $evenementId);
-
-        if ($result) {
-            $this->setFlash('success', 'Ressource deleted successfully.');
-        } else {
-            $this->setFlash('error', 'Failed to delete ressource.');
-        }
-
-        $this->redirect('admin/evenement-ressources&evenement_id=' . $evenementId);
-    }
-
-    /**
-     * List teacher evenement requests awaiting admin review.
-     */
-    public function evenementRequests() {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        $evenementModel = $this->model('Evenement');
-        $data = [
-            'title' => 'Evenement Requests - APPOLIOS',
-            'description' => 'Review pending evenement requests from teachers',
-            'requests' => $evenementModel->getPendingTeacherRequests(),
-            'rejectedRequests' => $evenementModel->getRejectedTeacherRequests(),
-            'flash' => $this->getFlash()
-        ];
-
-        $this->view('BackOffice/admin/evenement_requests', $data);
-    }
-
-    /**
-     * Approve teacher evenement request.
-     */
-    public function approveEvenement($id) {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('admin/evenement-requests');
-            return;
-        }
-
-        $evenementModel = $this->model('Evenement');
-        $event = $evenementModel->findById((int) $id);
-        if (!$event) {
-            $this->setFlash('error', 'Evenement request not found.');
-            $this->redirect('admin/evenement-requests');
-            return;
-        }
-
-        $result = $evenementModel->updateApprovalStatus((int) $id, 'approved', (int) $_SESSION['user_id']);
-        if ($result) {
-            $this->setFlash('success', 'Evenement request approved successfully.');
-        } else {
-            $this->setFlash('error', 'Failed to approve evenement request.');
-        }
-
-        $this->redirect('admin/evenement-requests');
-    }
-
-    /**
-     * Reject teacher evenement request.
-     */
-    public function rejectEvenement($id) {
-        if (!$this->isAdmin()) {
-            $this->redirect('admin/login');
-            return;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('admin/evenement-requests');
-            return;
-        }
-
-        $reason = $this->sanitize($_POST['rejection_reason'] ?? '');
-        
-        if (empty($reason)) {
-            $this->setErrors(['rejection_reason_' . $id => 'Veuillez renseigner ce champ.']);
-            $this->redirect('admin/evenement-requests');
-            return;
-        }
-
-        $evenementModel = $this->model('Evenement');
-        $event = $evenementModel->findById((int) $id);
-        if (!$event) {
-            $this->setFlash('error', 'Evenement request not found.');
-            $this->redirect('admin/evenement-requests');
-            return;
-        }
-
-        $result = $evenementModel->updateApprovalStatus((int) $id, 'rejected', (int) $_SESSION['user_id'], $reason ?: null);
-        if ($result) {
-            $this->setFlash('success', 'Evenement request rejected.');
-        } else {
-            $this->setFlash('error', 'Failed to reject evenement request.');
-        }
-
-        $this->redirect('admin/evenement-requests');
     }
 
     /**

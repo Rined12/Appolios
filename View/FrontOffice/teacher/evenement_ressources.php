@@ -24,30 +24,36 @@ $teacherSidebarActive = 'evenements';
                     <div class="neo-glass-card" style="width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(43, 72, 101, 0.08); border: 1px solid rgba(233, 241, 250, 0.8); overflow: hidden; display: flex; flex-direction: column;">
                         
                         <!-- Header Area -->
-                        <div style="padding: 3.5rem; background: #fcfcfc; position: relative; overflow: hidden; border-bottom: 1px solid #eef2f6;">
+                        <div style="padding: 3rem 3.5rem; background: #fcfcfc; position: relative; overflow: hidden; border-bottom: 1px solid #eef2f6;">
                             <!-- Decorative blobs -->
                             <div style="position: absolute; top: -50px; left: -50px; width: 200px; height: 200px; background: #e9f1fa; border-radius: 50%; z-index: 0; opacity: 0.7;"></div>
                             <div style="position: absolute; bottom: -50px; right: 10%; width: 300px; height: 300px; background: #fff7ed; border-radius: 50%; z-index: 0; opacity: 0.4;"></div>
-                            
-                            <div style="position: relative; z-index: 2;">
-                                <!-- Back Link -->
-                                <a href="<?= APP_ENTRY ?>?url=teacher/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; color: #E19864; font-weight: 700; text-decoration: none; margin-bottom: 2rem; transition: color 0.2s;" onmouseover="this.style.color='#c88251'" onmouseout="this.style.color='#E19864'">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                                    Back to My Evenements
-                                </a>
 
-                                <h2 style="font-size: 2.8rem; font-weight: 800; color: #2B4865; line-height: 1.15; margin: 0 0 0.5rem 0; letter-spacing: -0.02em;">
-                                    Ressources <span style="color: #E19864;">Evenement</span>
-                                </h2>
-                                <p style="color: #64748b; font-size: 1.1rem; line-height: 1.6; margin: 0 0 1.5rem 0; max-width: 90%;">
-                                    Manage rules, materiel, and day plans for your evenement proposal.
-                                </p>
-                                <div style="display: inline-flex; background: #fff; border: 1px solid #eef2f6; padding: 8px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
-                                    <span style="color: #94a3b8; margin-right: 8px;">Evenement:</span>
-                                    <strong style="color: #2B4865; font-size: 1.05rem;"><?= htmlspecialchars($selectedEvenementTitle) ?></strong>
+                            <div style="position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; flex-wrap: wrap;">
+
+                                <!-- LEFT: Back / Title / Badge -->
+                                <div>
+                                    <a href="<?= APP_ENTRY ?>?url=teacher/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 1rem; color: #E19864; font-weight: 700; text-decoration: none; margin-bottom: 1.5rem; transition: color 0.2s;" onmouseover="this.style.color='#c88251'" onmouseout="this.style.color='#E19864'">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                        Back to My Evenements
+                                    </a>
+
+                                    <h2 style="font-size: 2.8rem; font-weight: 800; color: #2B4865; line-height: 1.15; margin: 0 0 0.4rem 0; letter-spacing: -0.02em;">
+                                        Ressources <span style="color: #E19864;">Evenement</span>
+                                    </h2>
+                                    <p style="color: #64748b; font-size: 1rem; line-height: 1.6; margin: 0 0 1.2rem 0;">
+                                        Manage rules, materiel, and day plans for your evenement proposal.
+                                    </p>
+                                    <div style="display: inline-flex; background: #fff; border: 1px solid #eef2f6; padding: 7px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); align-items: center; gap: 6px;">
+                                        <span style="color: #94a3b8; font-size: 0.9rem;">Evenement:</span>
+                                        <strong style="color: #2B4865; font-size: 1rem;"><?= htmlspecialchars($selectedEvenementTitle) ?></strong>
+                                    </div>
                                 </div>
+
+                                <!-- RIGHT: Participation button removed -->
                             </div>
                         </div>
+                    </div>
 
                         <!-- Content Area: Forms and Lists -->
                         <div class="ressource-content-grid" style="padding: 2rem; background: #ffffff; display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem; align-items: start;">
