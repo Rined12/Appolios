@@ -1,16 +1,13 @@
 <?php
 /**
  * APPOLIOS User Model
- * Handles user-related database operations
+ * Entity class with attributes, constructor, getters and setters only
+ * Database operations moved to Controller
  */
 
-require_once __DIR__ . '/../Model/BaseModel.php';
-
-class User extends BaseModel {
-    protected string $table = 'users';
-
+class User {
     // ==========================================
-    // ENCAPSULATION: Private Properties
+    // ATTRIBUTS (Private Properties)
     // ==========================================
     private ?int $id;
     private ?string $name;
@@ -18,9 +15,14 @@ class User extends BaseModel {
     private ?string $password;
     private ?string $role;
     private ?string $created_at;
+    private ?string $avatar;
+    private ?string $face_descriptor;
+    private ?string $reset_token;
+    private ?string $reset_token_expiry;
+    private ?int $is_blocked;
 
     // ==========================================
-    // CONSTRUCTOR
+    // CONSTRUCTEUR
     // ==========================================
     public function __construct(
         ?int $id = null,
@@ -28,16 +30,24 @@ class User extends BaseModel {
         ?string $email = null,
         ?string $password = null,
         ?string $role = null,
-        ?string $created_at = null
+        ?string $created_at = null,
+        ?string $avatar = null,
+        ?string $face_descriptor = null,
+        ?string $reset_token = null,
+        ?string $reset_token_expiry = null,
+        ?int $is_blocked = null
     ) {
-        parent::__construct();
-        
         $this->id = $id;
         $this->name = $name;
         $this->email = $email;
         $this->password = $password;
         $this->role = $role;
         $this->created_at = $created_at;
+        $this->avatar = $avatar;
+        $this->face_descriptor = $face_descriptor;
+        $this->reset_token = $reset_token;
+        $this->reset_token_expiry = $reset_token_expiry;
+        $this->is_blocked = $is_blocked;
     }
 
     // ==========================================
@@ -61,163 +71,18 @@ class User extends BaseModel {
     public function getCreatedAt(): ?string { return $this->created_at; }
     public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
 
-    /**
-     * Create a new user
-     * @param array $data
-     * @return int|false - User ID or false on failure
-     */
-    public function create($data) {
-        $sql = "INSERT INTO {$this->table} (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
+    public function getAvatar(): ?string { return $this->avatar; }
+    public function setAvatar(?string $avatar): self { $this->avatar = $avatar; return $this; }
 
-        try {
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([
-                $data['name'],
-                $data['email'],
-                password_hash($data['password'], PASSWORD_DEFAULT, ['cost' => HASH_COST]),
-                $data['role'] ?? 'student'
-            ]);
+    public function getFaceDescriptor(): ?string { return $this->face_descriptor; }
+    public function setFaceDescriptor(?string $face_descriptor): self { $this->face_descriptor = $face_descriptor; return $this; }
 
-            return $this->db->lastInsertId();
-        } catch (PDOException $e) {
-            return false;
-        }
-    }
+    public function getResetToken(): ?string { return $this->reset_token; }
+    public function setResetToken(?string $reset_token): self { $this->reset_token = $reset_token; return $this; }
 
-    /**
-     * Find user by email
-     * @param string $email
-     * @return array|null
-     */
-    public function findByEmail($email) {
-        $sql = "SELECT * FROM {$this->table} WHERE email = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$email]);
-        return $stmt->fetch();
-    }
+    public function getResetTokenExpiry(): ?string { return $this->reset_token_expiry; }
+    public function setResetTokenExpiry(?string $reset_token_expiry): self { $this->reset_token_expiry = $reset_token_expiry; return $this; }
 
-    /**
-     * Authenticate user
-     * @param string $email
-     * @param string $password
-     * @return array|false - User data or false
-     */
-    public function authenticate($email, $password) {
-        $user = $this->findByEmail($email);
-
-        if ($user && password_verify($password, $user['password'])) {
-            return $user;
-        }
-
-        return false;
-    }
-
-    /**
-     * Update user
-     * @param int $id
-     * @param array $data
-     * @return bool
-     */
-    public function update($id, $data) {
-        $fields = [];
-        $values = [];
-
-        foreach ($data as $key => $value) {
-            $fields[] = "{$key} = ?";
-            $values[] = $value;
-        }
-
-        $values[] = $id;
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = ?";
-
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute($values);
-    }
-
-    /**
-     * Get all students
-     * @return array
-     */
-    public function getStudents() {
-        $sql = "SELECT * FROM {$this->table} WHERE role = 'student'";
-        $stmt = $this->db->query($sql);
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * Count students
-     * @return int
-     */
-    public function countStudents() {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE role = 'student'";
-        $stmt = $this->db->query($sql);
-        $result = $stmt->fetch();
-        return $result['count'];
-    }
-
-    /**
-     * Check if email exists
-     * @param string $email
-     * @return bool
-     */
-    public function emailExists($email) {
-        return $this->findByEmail($email) !== false;
-    }
-
-    /**
-     * Get all teachers
-     * @return array
-     */
-    public function getTeachers() {
-        $sql = "SELECT * FROM {$this->table} WHERE role = 'teacher' ORDER BY created_at DESC";
-        $stmt = $this->db->query($sql);
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * Find user by ID
-     * @param int $id
-     * @return array|null
-     */
-    public function findById($id) {
-        $sql = "SELECT * FROM {$this->table} WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        return $stmt->fetch();
-    }
-
-    /**
-     * Block a user
-     * @param int $id
-     * @return bool
-     */
-    public function block($id) {
-        $sql = "UPDATE {$this->table} SET is_blocked = 1 WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$id]);
-    }
-
-    /**
-     * Unblock a user
-     * @param int $id
-     * @return bool
-     */
-    public function unblock($id) {
-        $sql = "UPDATE {$this->table} SET is_blocked = 0 WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$id]);
-    }
-
-    /**
-     * Check if user is blocked
-     * @param int $id
-     * @return bool
-     */
-    public function isBlocked($id) {
-        $sql = "SELECT is_blocked FROM {$this->table} WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        $result = $stmt->fetch();
-        return $result && $result['is_blocked'] == 1;
-    }
+    public function getIsBlocked(): ?int { return $this->is_blocked; }
+    public function setIsBlocked(?int $is_blocked): self { $this->is_blocked = $is_blocked; return $this; }
 }

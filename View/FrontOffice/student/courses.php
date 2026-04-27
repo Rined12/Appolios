@@ -2,10 +2,16 @@
 /**
  * APPOLIOS - Student Browse All Courses
  */
+
+$studentSidebarActive = 'courses';
 ?>
 
 <div class="dashboard student-courses-page">
-    <div class="container">
+    <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
+        <div class="admin-layout">
+            <?php require __DIR__ . '/partials/sidebar.php'; ?>
+
+            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
         <section class="student-courses-hero">
             <div class="student-courses-hero-copy">
                 <span class="student-courses-kicker">eLearning Platform</span>
@@ -107,5 +113,7 @@
                 <p>Check back later for new courses!</p>
             </div>
         <?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>

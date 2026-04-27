@@ -8,12 +8,14 @@ $studentSidebarActive = $studentSidebarActive ?? '';
 
 <aside class="admin-sidebar student-space-sidebar">
     <div class="student-sidebar-panel">
-        <a class="student-sidebar-brand" href="<?= APP_ENTRY ?>?url=student/dashboard" style="display: flex; align-items: center;">
-            <img src="<?= APP_URL ?>/View/assets/images/logo.svg" alt="Appolios" style="height: 35px; width: auto;">
+        <a class="student-sidebar-brand" href="<?= APP_ENTRY ?>?url=student/dashboard">
+            <span class="student-sidebar-brand-mark" aria-hidden="true">a</span>
+            <span class="student-sidebar-brand-text">Appolios</span>
         </a>
 
         <nav class="admin-sidebar-nav student-sidebar-nav" aria-label="Front Office Navigation">
-            <a href="<?= APP_ENTRY ?>?url=student/dashboard" class="admin-side-link <?= $studentSidebarActive === 'dashboard' ? 'active' : '' ?>">
+            <a href="<?= APP_ENTRY ?>?url=student/dashboard"
+                class="admin-side-link <?= $studentSidebarActive === 'dashboard' ? 'active' : '' ?>">
                 <span class="admin-side-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 10.5L12 3l9 7.5"></path>
@@ -25,7 +27,8 @@ $studentSidebarActive = $studentSidebarActive ?? '';
 
             <p class="student-sidebar-section">Pages</p>
 
-            <a href="<?= APP_ENTRY ?>?url=student/courses" class="admin-side-link <?= $studentSidebarActive === 'courses' ? 'active' : '' ?>">
+            <a href="<?= APP_ENTRY ?>?url=student/courses"
+                class="admin-side-link <?= $studentSidebarActive === 'courses' ? 'active' : '' ?>">
                 <span class="admin-side-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M4 6h16v12H4z"></path>
@@ -36,7 +39,8 @@ $studentSidebarActive = $studentSidebarActive ?? '';
                 <span>Courses</span>
             </a>
 
-            <a href="<?= APP_ENTRY ?>?url=student/evenements" class="admin-side-link <?= $studentSidebarActive === 'evenements' ? 'active' : '' ?>">
+            <a href="<?= APP_ENTRY ?>?url=student/evenements"
+                class="admin-side-link <?= $studentSidebarActive === 'evenements' ? 'active' : '' ?>">
                 <span class="admin-side-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M8 2v4"></path>
@@ -48,7 +52,8 @@ $studentSidebarActive = $studentSidebarActive ?? '';
                 <span>Events</span>
             </a>
 
-            <a href="<?= APP_ENTRY ?>?url=student/my-courses" class="admin-side-link <?= $studentSidebarActive === 'my-courses' ? 'active' : '' ?>">
+            <a href="<?= APP_ENTRY ?>?url=student/my-courses"
+                class="admin-side-link <?= $studentSidebarActive === 'my-courses' ? 'active' : '' ?>">
                 <span class="admin-side-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h7v12H3z"></path>
@@ -58,7 +63,8 @@ $studentSidebarActive = $studentSidebarActive ?? '';
                 <span>My Courses</span>
             </a>
 
-            <a href="<?= APP_ENTRY ?>?url=student/profile" class="admin-side-link <?= $studentSidebarActive === 'profile' ? 'active' : '' ?>">
+            <a href="<?= APP_ENTRY ?>?url=student/profile"
+                class="admin-side-link <?= $studentSidebarActive === 'profile' ? 'active' : '' ?>">
                 <span class="admin-side-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="8" r="4"></circle>

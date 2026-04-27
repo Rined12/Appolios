@@ -55,15 +55,43 @@ if (!empty($segments)) {
     if (in_array($first, ['login', 'register', 'signup', 'logout', 'authenticate', 'admin'], true) && strtolower($second) === 'login') {
         $controller = 'AuthController';
         $action = 'login';
+    } elseif ($first === 'auth' && $second === 'face-login-admin') {
+        $controller = 'AuthController';
+        $action = 'faceLoginAdmin';
+    } elseif ($first === 'auth' && $second === 'save-face-descriptor') {
+        $controller = 'AuthController';
+        $action = 'saveFaceDescriptor';
+    } elseif ($first === 'auth' && $second === 'check-face-unique') {
+        $controller = 'AuthController';
+        $action = 'checkFaceUnique';
+    } elseif ($first === 'auth' && $second === 'face-login') {
+        $controller = 'AuthController';
+        $action = 'faceLogin';
     } elseif (in_array($first, ['login', 'register', 'signup', 'logout', 'authenticate'], true)) {
         $controller = 'AuthController';
-        $action = [
+        $actionMap = [
             'login' => 'login',
             'register' => 'register',
             'signup' => 'signup',
             'logout' => 'logout',
             'authenticate' => 'authenticate',
-        ][$first];
+        ];
+        $action = $actionMap[$first] ?? 'login';
+    } elseif ($first === 'forgot-password') {
+        $controller = 'AuthController';
+        $action = 'forgotPassword';
+    } elseif ($first === 'request-password-reset') {
+        $controller = 'AuthController';
+        $action = 'requestPasswordReset';
+    } elseif ($first === 'verify-reset-code') {
+        $controller = 'AuthController';
+        $action = 'verifyResetCode';
+    } elseif ($first === 'reset-password') {
+        $controller = 'AuthController';
+        $action = 'resetPassword';
+    } elseif ($first === 'process-reset-password') {
+        $controller = 'AuthController';
+        $action = 'processResetPassword';
     } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home'], true)) {
         $controller = ucfirst($first) . 'Controller';
         $action = $second !== '' ? toCamelCaseAction($second) : ($first === 'auth' ? 'login' : 'index');

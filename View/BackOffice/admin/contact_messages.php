@@ -29,19 +29,19 @@
         </div>
     <?php endif; ?>
 
-    <!-- Stats Card -->
-    <div class="dashboard-stats" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 30px;">
-        <div class="stat-card">
-            <h3><?= count($messages) ?></h3>
-            <p>Total Messages</p>
+    <!-- Stats Cards -->
+    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+        <div class="stat-card" style="background: linear-gradient(135deg, rgba(84, 140, 168, 0.1) 0%, rgba(84, 140, 168, 0.05) 100%); border: 1px solid rgba(84, 140, 168, 0.2); border-radius: 12px; padding: 20px;">
+            <div style="font-size: 2rem; font-weight: 700; color: #548CA8;"><?= count($messages) ?></div>
+            <div style="color: #64748b; font-size: 0.9rem;">Total Messages</div>
         </div>
-        <div class="stat-card">
-            <h3 style="color: #dc3545;"><?= $unreadCount ?></h3>
-            <p>Unread Messages</p>
+        <div class="stat-card" style="background: linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(220, 53, 69, 0.05) 100%); border: 1px solid rgba(220, 53, 69, 0.2); border-radius: 12px; padding: 20px;">
+            <div style="font-size: 2rem; font-weight: 700; color: #dc3545;"><?= $unreadCount ?></div>
+            <div style="color: #64748b; font-size: 0.9rem;">Unread Messages</div>
         </div>
-        <div class="stat-card">
-            <h3 style="color: #28a745;"><?= count($messages) - $unreadCount ?></h3>
-            <p>Read Messages</p>
+        <div class="stat-card" style="background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 100%); border: 1px solid rgba(40, 167, 69, 0.2); border-radius: 12px; padding: 20px;">
+            <div style="font-size: 2rem; font-weight: 700; color: #28a745;"><?= count($messages) - $unreadCount ?></div>
+            <div style="color: #64748b; font-size: 0.9rem;">Read Messages</div>
         </div>
     </div>
 

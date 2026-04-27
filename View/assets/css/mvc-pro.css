@@ -530,7 +530,8 @@ td {
     width: min(1320px, 97vw);
 }
 
-.student-events-page .admin-layout {
+.student-events-page .admin-layout,
+.admin-layout {
     grid-template-columns: 300px minmax(0, 1fr);
     gap: 1.1rem;
 }
@@ -555,8 +556,8 @@ td {
 }
 
 .student-events-page .student-sidebar-panel {
-    background: #ffffff;
-    border: 1px solid var(--se-border);
+    background: #1E2D41 !important;
+    border: 1px solid #2a3b52 !important;
     border-radius: 14px;
     height: 100%;
     overflow-y: auto;
@@ -588,7 +589,7 @@ td {
 }
 
 .student-events-page .student-sidebar-brand-text {
-    color: #111827;
+    color: #f5f7fb;
     font-size: 1.02rem;
     font-weight: 800;
     letter-spacing: 0.03em;
@@ -598,7 +599,7 @@ td {
 .student-events-page .student-sidebar-section {
     margin: 0.85rem 0 0.42rem;
     padding: 0 0.55rem;
-    color: #92a3ba;
+    color: #8fa4c6;
     font-size: 0.82rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -616,25 +617,127 @@ td {
 }
 
 .student-events-page .student-space-sidebar .admin-side-link:hover {
-    background: #253243;
-    border-color: #35455b;
+    background: rgba(124, 170, 235, 0.2);
+    border-color: #5885bf;
     transform: translateX(2px);
+    color: #f8fbff;
 }
 
 .student-events-page .student-space-sidebar .admin-side-link.active {
-    background: #243041;
-    border: 1px solid #38485c;
+    background: linear-gradient(135deg, #3676b8 0%, #62a3ea 100%);
+    border: 1px solid #78b4f2;
     color: #ffffff;
+    box-shadow: 0 8px 18px rgba(28, 89, 163, 0.35);
 }
 
-.student-events-page .student-space-sidebar .admin-side-icon {
+.student-events-page .student-space-sidebar .admin-side-icon,
+.student-courses-page .student-space-sidebar .admin-side-icon,
+.student-sidebar .admin-side-icon {
     width: 21px;
     height: 21px;
     color: #a8c4e6;
 }
 
-.student-events-page .student-space-sidebar .admin-side-link.active .admin-side-icon {
+.student-events-page .student-space-sidebar .admin-side-link.active .admin-side-icon,
+.student-courses-page .student-space-sidebar .admin-side-link.active .admin-side-icon,
+.student-sidebar .admin-side-link.active .admin-side-icon {
     color: #f59e0b;
+}
+
+/* Global Student Sidebar Styles - Apply to all student pages */
+.student-space-sidebar {
+    position: sticky;
+    top: 88px;
+    height: calc(100vh - 104px);
+    width: 100%;
+    z-index: 2;
+    padding: 0;
+}
+
+.student-space-sidebar .student-sidebar-panel {
+    background: #1E2D41 !important;
+    border: 1px solid #2a3b52 !important;
+    border-radius: 14px;
+    height: 100%;
+    overflow-y: auto;
+    padding: 1.1rem 1rem 1.4rem;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+}
+
+.student-space-sidebar .admin-sidebar-nav {
+    background: #1E2D41 !important;
+    border-color: #2a3b52 !important;
+    box-shadow: none !important;
+}
+
+.student-sidebar-nav {
+    background: #1E2D41 !important;
+    border: 1px solid #2a3b52 !important;
+}
+
+.student-space-sidebar .student-sidebar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.62rem;
+    text-decoration: none;
+    margin-bottom: 1.2rem;
+}
+
+.student-space-sidebar .student-sidebar-brand-mark {
+    width: 39px;
+    height: 39px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    line-height: 1;
+    font-weight: 900;
+    color: #ffffff;
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    text-transform: lowercase;
+}
+
+.student-space-sidebar .student-sidebar-brand-text {
+    color: #f5f7fb !important;
+    font-size: 1.02rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.student-space-sidebar .student-sidebar-section {
+    margin: 0.85rem 0 0.42rem;
+    padding: 0 0.55rem;
+    color: #8fa4c6 !important;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.student-space-sidebar .admin-side-link {
+    font-size: 0.98rem !important;
+    font-weight: 700 !important;
+    padding: 0.7rem 0.78rem !important;
+    color: #e6eeff !important;
+    border: 1px solid transparent !important;
+    border-radius: 10px !important;
+    transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.student-space-sidebar .admin-side-link:hover {
+    background: rgba(124, 170, 235, 0.2) !important;
+    border-color: #5885bf !important;
+    transform: translateX(2px);
+    color: #f8fbff !important;
+}
+
+.student-space-sidebar .admin-side-link.active {
+    background: linear-gradient(135deg, #3676b8 0%, #62a3ea 100%) !important;
+    border: 1px solid #78b4f2 !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(28, 89, 163, 0.35);
 }
 
 .student-events-page .admin-main {

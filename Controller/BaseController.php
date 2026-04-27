@@ -1,7 +1,14 @@
 <?php
 
+require_once __DIR__ . '/../config/database.php';
+
 abstract class BaseController
 {
+    protected function getDb()
+    {
+        return getConnection();
+    }
+
     public function model(string $model)
     {
         $modelFile = __DIR__ . '/../Model/' . $model . '.php';

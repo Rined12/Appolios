@@ -1,28 +1,26 @@
 <?php
 /**
  * APPOLIOS Auth Controller
- * Handles user authentication and registration
+ * Handles user authentication and registration - MVC Pattern
+ * Controller contains: Business Logic (méthodes, logique métier)
+ * Database operations are delegated to Models
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Model/User.php';
-require_once __DIR__ . '/../Model/TeacherApplication.php';
+require_once __DIR__ . '/../Controller/ActivityLogger.php';
+require_once __DIR__ . '/../config/database.php';
 
-class AuthController extends BaseController {
-
+class AuthController extends BaseController
+{
+    use ActivityLogger;
     /**
      * Show login page
      */
-    public function login() {
+    public function login()
+    {
         // Redirect if already logged in
         if ($this->isLoggedIn()) {
-            if ($_SESSION['role'] === 'admin') {
-                $this->redirect('admin/dashboard');
-            } elseif ($_SESSION['role'] === 'teacher') {
-                $this->redirect('teacher/dashboard');
-            } else {
-                $this->redirect('student/dashboard');
-            }
+            $this->redirectByRole($_SESSION['role']);
             return;
         }
 
@@ -36,9 +34,10 @@ class AuthController extends BaseController {
     }
 
     /**
-     * Process login
+     * Process login - Business Logic
      */
-    public function authenticate() {
+    public function authenticate()
+    {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->redirect('login');
             return;
@@ -48,7 +47,7 @@ class AuthController extends BaseController {
         $password = $_POST['password'] ?? '';
         $isAdminLogin = isset($_POST['admin_login']) && $_POST['admin_login'] === '1';
 
-        // Validation
+        // Validation - Business Logic
         if (empty($email) || empty($password)) {
             $this->setFlash('error', 'Please fill in all fields');
             $this->redirect('login');
@@ -61,13 +60,12 @@ class AuthController extends BaseController {
             return;
         }
 
-        // Authenticate user
-        $userModel = $this->model('User');
-        $user = $userModel->authenticate($email, $password);
+        // Use Controller database methods
+        $user = $this->authenticateUser($email, $password);
 
         if ($user) {
             // Check if user is blocked
-            if ($user['is_blocked'] ?? 0) {
+            if ($this->isUserBlocked($user['id'])) {
                 $this->setFlash('error', 'Your account has been blocked. Please contact an administrator.');
                 $this->redirect('login');
                 return;
@@ -79,10 +77,10 @@ class AuthController extends BaseController {
                 return;
             }
 
-            // Regenerate session ID for security
+            // Regenerate session ID for security - Business Logic
             session_regenerate_id(true);
 
-            // Set session variables
+            // Set session variables - Business Logic
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_email'] = $user['email'];
@@ -90,16 +88,11 @@ class AuthController extends BaseController {
             $_SESSION['logged_in'] = true;
             $_SESSION['login_time'] = time();
 
-            $this->setFlash('success', 'Welcome back, ' . $user['name'] . '!');
+            // Log activity - Business Logic
+            $this->logActivity('login', "User logged in: {$user['name']} ({$user['email']})");
 
-            // Redirect based on role
-            if ($user['role'] === 'admin') {
-                $this->redirect('admin/dashboard');
-            } elseif ($user['role'] === 'teacher') {
-                $this->redirect('teacher/dashboard');
-            } else {
-                $this->redirect('student/dashboard');
-            }
+            $this->setFlash('success', 'Welcome back, ' . $user['name'] . '!');
+            $this->redirectByRole($user['role']);
         } else {
             $this->setFlash('error', 'Invalid email or password');
             if ($isAdminLogin) {
@@ -111,18 +104,30 @@ class AuthController extends BaseController {
     }
 
     /**
+     * Redirect user based on role - Helper Business Logic
+     */
+    private function redirectByRole($role)
+    {
+        switch ($role) {
+            case 'admin':
+                $this->redirect('admin/dashboard');
+                break;
+            case 'teacher':
+                $this->redirect('teacher/dashboard');
+                break;
+            default:
+                $this->redirect('student/dashboard');
+        }
+    }
+
+    /**
      * Show registration page
      */
-    public function register() {
+    public function register()
+    {
         // Redirect if already logged in
         if ($this->isLoggedIn()) {
-            if ($_SESSION['role'] === 'admin') {
-                $this->redirect('admin/dashboard');
-            } elseif ($_SESSION['role'] === 'teacher') {
-                $this->redirect('teacher/dashboard');
-            } else {
-                $this->redirect('student/dashboard');
-            }
+            $this->redirectByRole($_SESSION['role']);
             return;
         }
 
@@ -136,9 +141,10 @@ class AuthController extends BaseController {
     }
 
     /**
-     * Process registration
+     * Process registration - Business Logic
      */
-    public function signup() {
+    public function signup()
+    {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->redirect('register');
             return;
@@ -150,7 +156,7 @@ class AuthController extends BaseController {
         $confirmPassword = $_POST['confirm_password'] ?? '';
         $role = $_POST['role'] ?? 'student';
 
-        // Validation
+        // Validation - Business Logic
         $errors = [];
 
         if (empty($name)) {
@@ -173,32 +179,36 @@ class AuthController extends BaseController {
             $errors[] = 'Passwords do not match';
         }
 
-        $userModel = $this->model('User');
-        $teacherAppModel = $this->model('TeacherApplication');
+        // Use Controller database methods
 
-        // Check email exists in both tables
-        if ($userModel->emailExists($email) || $teacherAppModel->emailExists($email)) {
+        // Check email exists
+        if ($this->emailExists($email)) {
             $errors[] = 'Email already registered or pending approval';
         }
 
-        // Handle teacher registration with CV
+        // Handle teacher registration with CV - Business Logic
         if ($role === 'teacher') {
             // Validate CV upload
             if (!isset($_FILES['cv_file']) || $_FILES['cv_file']['error'] !== UPLOAD_ERR_OK) {
                 $errors[] = 'CV file is required for teacher registration';
             } else {
                 $cvFile = $_FILES['cv_file'];
-                
+
                 // Validate file type
                 $allowedTypes = ['application/pdf'];
                 if (!in_array($cvFile['type'], $allowedTypes)) {
                     $errors[] = 'Only PDF files are allowed for CV';
                 }
-                
+
                 // Validate file size (5MB max)
                 if ($cvFile['size'] > 5 * 1024 * 1024) {
                     $errors[] = 'CV file size must be less than 5MB';
                 }
+            }
+
+            // Also check if email is pending in teacher_applications
+            if (!empty($email) && $this->teacherAppEmailExistsPending($email)) {
+                $errors[] = 'A teacher application with this email is already pending review';
             }
 
             if (!empty($errors)) {
@@ -224,27 +234,31 @@ class AuthController extends BaseController {
                 return;
             }
 
-            // Create teacher application
-            $appId = $teacherAppModel->createApplication([
+            // Process face descriptor - Business Logic
+            $faceDescriptor = $this->processFaceDescriptor($_POST['face_descriptor'] ?? '');
+
+            // Insert teacher application using Controller method
+            $appId = $this->createTeacherAppWithFace([
                 'name' => $name,
                 'email' => $email,
                 'password' => $password,
-                'cv_filename' => $_FILES['cv_file']['name'],
-                'cv_path' => 'uploads/cvs/' . $cvFileName
+                'cv_filename' => $cvFileName,
+                'cv_path' => 'uploads/cvs/' . $cvFileName,
+                'face_descriptor' => $faceDescriptor,
             ]);
 
             if ($appId) {
-                $this->setFlash('success', 'Your teacher application has been submitted successfully! An administrator will review your CV and notify you via email once approved.');
+                $this->setFlash('success', 'Your teacher application has been submitted! An administrator will review your CV and notify you once approved.');
                 $this->redirect('login');
             } else {
                 // Clean up uploaded file if DB insert failed
-                unlink($cvPath);
+                if (file_exists($cvPath))
+                    unlink($cvPath);
                 $this->setFlash('error', 'Failed to submit application. Please try again.');
                 $this->redirect('register');
             }
             return;
         }
-
 
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
@@ -253,8 +267,8 @@ class AuthController extends BaseController {
             return;
         }
 
-        // Create user (always student from public registration)
-        $userId = $userModel->create([
+        // Create user using Controller method (always student from public registration)
+        $userId = $this->createUser([
             'name' => $name,
             'email' => $email,
             'password' => $password,
@@ -263,7 +277,7 @@ class AuthController extends BaseController {
 
         if ($userId) {
             // Auto-login the new user
-            $user = $userModel->findById($userId);
+            $user = $this->findUserById($userId);
 
             if ($user) {
                 // Regenerate session ID for security
@@ -276,6 +290,19 @@ class AuthController extends BaseController {
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['logged_in'] = true;
                 $_SESSION['login_time'] = time();
+
+                // Save face descriptor if provided during registration
+                $faceDescriptor = $this->processFaceDescriptor($_POST['face_descriptor'] ?? '');
+                if ($faceDescriptor) {
+                    $this->updateFaceDescriptor($userId, $faceDescriptor);
+                }
+
+                // Log registration activity
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_name'] = $user['name'];
+                $_SESSION['user_email'] = $user['email'];
+                $_SESSION['role'] = $user['role'];
+                $this->logActivity('register', "New user registered: {$user['email']} ({$user['name']})");
 
                 $this->setFlash('success', 'Welcome, ' . $user['name'] . '! Your account has been created.');
                 $this->redirect('student/dashboard');
@@ -291,18 +318,50 @@ class AuthController extends BaseController {
     }
 
     /**
+     * Process face descriptor for uniqueness - Business Logic
+     * @param string $faceDescriptorRaw
+     * @return string|null
+     */
+    private function processFaceDescriptor($faceDescriptorRaw)
+    {
+        if (empty($faceDescriptorRaw)) {
+            return null;
+        }
+
+        $faceArr = json_decode($faceDescriptorRaw, true);
+        if (!is_array($faceArr) || count($faceArr) !== 128) {
+            return null;
+        }
+
+        // Uniqueness check
+        $existingUsers = $this->getUsersWithFaceDescriptor();
+        $isUnique = true;
+        foreach ($existingUsers as $eu) {
+            $stored = json_decode($eu['face_descriptor'], true);
+            if (!$stored || count($stored) !== 128)
+                continue;
+            $dist = 0;
+            for ($i = 0; $i < 128; $i++) {
+                $diff = ($faceArr[$i] ?? 0) - ($stored[$i] ?? 0);
+                $dist += $diff * $diff;
+            }
+            if (sqrt($dist) < 0.55) {
+                $isUnique = false;
+                break;
+            }
+        }
+
+        return $isUnique ? json_encode($faceArr) : null;
+    }
+
+    /**
      * Show admin login page
      */
-    public function adminLogin() {
+    public function adminLogin()
+    {
         // Redirect if already logged in
         if ($this->isLoggedIn()) {
-            if ($_SESSION['role'] === 'admin') {
-                $this->redirect('admin/dashboard');
-            } elseif ($_SESSION['role'] === 'teacher') {
-                $this->redirect('teacher/dashboard');
-            } else {
-                $this->redirect('student/dashboard');
-            }
+            $this->redirectByRole($_SESSION['role']);
             return;
         }
 
@@ -316,25 +375,617 @@ class AuthController extends BaseController {
     }
 
     /**
-     * Logout
+     * Face ID Login — works for ALL roles (student, teacher, admin) - Business Logic
+     * Accepts POST JSON {descriptor: [...]}, finds matching user, logs in, redirects by role
      */
-    public function logout() {
+    public function faceLoginAdmin()
+    {
+        $this->faceLogin();
+    }
+
+    public function faceLogin()
+    {
+        header('Content-Type: application/json');
+
+        $body = json_decode(file_get_contents('php://input'), true);
+        $descriptor = $body['descriptor'] ?? null;
+
+        if (!$descriptor || !is_array($descriptor) || count($descriptor) !== 128) {
+            echo json_encode(['success' => false, 'message' => 'Invalid face descriptor']);
+            return;
+        }
+
+        // Use Controller database method
+        $users = $this->getUsersWithFaceDescriptor();
+
+        if (empty($users)) {
+            echo json_encode(['success' => false, 'message' => 'No Face ID has been registered on this platform yet.']);
+            return;
+        }
+
+        // Face matching algorithm - Business Logic
+        $threshold = 0.55;
+        $matchedUser = null;
+        $minDistance = PHP_FLOAT_MAX;
+
+        foreach ($users as $user) {
+            $stored = json_decode($user['face_descriptor'], true);
+            if (!$stored || count($stored) !== 128)
+                continue;
+
+            $dist = 0;
+            for ($i = 0; $i < 128; $i++) {
+                $diff = ($descriptor[$i] ?? 0) - ($stored[$i] ?? 0);
+                $dist += $diff * $diff;
+            }
+            $dist = sqrt($dist);
+
+            if ($dist < $minDistance) {
+                $minDistance = $dist;
+                if ($dist < $threshold) {
+                    $matchedUser = $user;
+                }
+            }
+        }
+
+        if (!$matchedUser) {
+            echo json_encode(['success' => false, 'message' => 'Face not recognized. Please try again or use email/password.']);
+            return;
+        }
+
+        if ($matchedUser['is_blocked'] ?? 0) {
+            echo json_encode(['success' => false, 'message' => 'This account has been blocked. Contact an administrator.']);
+            return;
+        }
+
+        // Session management - Business Logic
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = $matchedUser['id'];
+        $_SESSION['user_name'] = $matchedUser['name'];
+        $_SESSION['user_email'] = $matchedUser['email'];
+        $_SESSION['role'] = $matchedUser['role'];
+        $_SESSION['logged_in'] = true;
+        $_SESSION['login_time'] = time();
+
+        $redirect = match ($matchedUser['role']) {
+            'admin' => APP_ENTRY . '?url=admin/dashboard',
+            'teacher' => APP_ENTRY . '?url=teacher/dashboard',
+            default => APP_ENTRY . '?url=student/dashboard',
+        };
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Welcome back, ' . $matchedUser['name'] . '!',
+            'redirect' => $redirect
+        ]);
+    }
+
+    /**
+     * Check if a face descriptor is unique - Business Logic
+     * Accepts POST JSON {descriptor: [...]}
+     * Returns {unique: true/false, message}
+     */
+    public function checkFaceUnique()
+    {
+        header('Content-Type: application/json');
+
+        $body = json_decode(file_get_contents('php://input'), true);
+        $descriptor = $body['descriptor'] ?? null;
+
+        if (!$descriptor || !is_array($descriptor) || count($descriptor) !== 128) {
+            echo json_encode(['unique' => false, 'message' => 'Invalid descriptor']);
+            return;
+        }
+
+        // Use Controller database method
+        $users = $this->getUsersWithFaceDescriptor();
+        $threshold = 0.55;
+
+        foreach ($users as $user) {
+            $stored = json_decode($user['face_descriptor'], true);
+            if (!$stored || count($stored) !== 128)
+                continue;
+
+            $dist = 0;
+            for ($i = 0; $i < 128; $i++) {
+                $diff = ($descriptor[$i] ?? 0) - ($stored[$i] ?? 0);
+                $dist += $diff * $diff;
+            }
+            if (sqrt($dist) < $threshold) {
+                echo json_encode(['unique' => false, 'message' => 'This face is already registered with another account.']);
+                return;
+            }
+        }
+
+        echo json_encode(['unique' => true, 'message' => 'Face is unique.']);
+    }
+
+    /**
+     * Save / update face descriptor for any logged-in user - Business Logic
+     * Accepts POST JSON {descriptor: [...]}
+     */
+    public function saveFaceDescriptor()
+    {
+        header('Content-Type: application/json');
+
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            return;
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true);
+        $descriptor = $body['descriptor'] ?? null;
+
+        if (!$descriptor || !is_array($descriptor) || count($descriptor) !== 128) {
+            echo json_encode(['success' => false, 'message' => 'Invalid face descriptor']);
+            return;
+        }
+
+        // Use Controller database method
+        $ok = $this->updateFaceDescriptor($_SESSION['user_id'], json_encode($descriptor));
+
+        if ($ok) {
+            echo json_encode(['success' => true, 'message' => 'Face ID saved successfully!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to save Face ID. Please try again.']);
+        }
+    }
+
+    /**
+     * Logout - Business Logic
+     */
+    public function logout()
+    {
+        // Store user info before destroying session
+        $userId = $_SESSION['user_id'] ?? null;
+        $userName = $_SESSION['user_name'] ?? null;
+        $userEmail = $_SESSION['user_email'] ?? null;
+        $userRole = $_SESSION['role'] ?? null;
+
         // Destroy session
         $_SESSION = [];
 
         if (ini_get('session.use_cookies')) {
             $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
-                $params['path'], $params['domain'],
-                $params['secure'], $params['httponly']
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params['path'],
+                $params['domain'],
+                $params['secure'],
+                $params['httponly']
             );
         }
 
         session_destroy();
 
+        // Log logout activity
+        if ($userId) {
+            $this->logActivity('logout', "User logged out: {$userName} ({$userEmail})", $userId, $userName, $userEmail, $userRole);
+        }
+
         // Start new session for flash message
         session_start();
         $this->setFlash('success', 'You have been logged out successfully');
         $this->redirect('login');
+    }
+
+    // ==========================================
+    // PASSWORD RESET FUNCTIONS - Business Logic
+    // Uses User Model for database operations - MVC Pattern
+    // ==========================================
+
+    /**
+     * Show forgot password page - redirects to login with modal
+     */
+    public function forgotPassword()
+    {
+        // Redirect to login page which has the forgot password modal
+        $this->redirect('login');
+    }
+
+    /**
+     * Process forgot password request - sends 4-digit verification code - Business Logic
+     */
+    public function requestPasswordReset()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('login');
+            return;
+        }
+
+        $email = $this->sanitize($_POST['email'] ?? '');
+
+        // Validation - Business Logic
+        if (empty($email)) {
+            $this->setFlash('error', 'Please enter your email address');
+            $this->redirect('login');
+            return;
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->setFlash('error', 'Please enter a valid email address');
+            $this->redirect('login');
+            return;
+        }
+
+        // Use Controller database method
+        $user = $this->findUserByEmail($email);
+        if (!$user) {
+            // Don't reveal if email exists or not (security)
+            $this->setFlash('success', 'If an account exists with this email, you will receive a verification code.');
+            $this->redirect('login');
+            return;
+        }
+
+        // Generate 4-digit verification code - Business Logic
+        $verificationCode = sprintf('%04d', random_int(1000, 9999));
+        $codeExpiry = date('Y-m-d H:i:s', strtotime('+10 minutes'));
+
+        // Store code using Controller method
+        $success = $this->setPasswordResetToken($user['id'], $verificationCode, $codeExpiry);
+
+        if (!$success) {
+            $this->setFlash('error', 'Failed to process request. Please try again.');
+            $this->redirect('login');
+            return;
+        }
+
+        // Send email with verification code - Business Logic
+        require_once __DIR__ . '/MailService.php';
+        $emailSent = MailService::sendVerificationCode(
+            $user['email'],
+            $user['name'],
+            $verificationCode
+        );
+
+        if ($emailSent) {
+            // Store email in session for next step
+            $_SESSION['reset_email'] = $email;
+
+            // Log password reset request
+            $this->logActivity('reset_password', "Password reset requested for: {$user['email']}", $user['id'], $user['name'], $user['email'], $user['role']);
+
+            $this->setFlash('success', 'Verification code sent to ' . htmlspecialchars($email) . '. Code expires in 10 minutes.');
+            $this->redirect('login&verify=1');
+        } else {
+            $this->setFlash('error', 'Failed to send email. Please check sendmail configuration or contact support.');
+            $this->redirect('login');
+        }
+    }
+
+    /**
+     * Verify the 4-digit code and show reset password form - Business Logic
+     */
+    public function verifyResetCode()
+    {
+        // Redirect if already logged in
+        if ($this->isLoggedIn()) {
+            $this->redirect('student/dashboard');
+            return;
+        }
+
+        $code = $_POST['code'] ?? '';
+        $email = $_SESSION['reset_email'] ?? '';
+
+        if (empty($code)) {
+            $this->setFlash('error', 'Please enter the verification code.');
+            $this->redirect('login&verify=1');
+            return;
+        }
+
+        if (empty($email)) {
+            $this->setFlash('error', 'Session expired. Please request a new verification code.');
+            $this->redirect('login');
+            return;
+        }
+
+        // Use Controller database method
+        $user = $this->findUserByEmail($email);
+        if (!$user) {
+            $this->setFlash('error', 'User not found.');
+            unset($_SESSION['reset_email']);
+            $this->redirect('login');
+            return;
+        }
+
+        // Check if code matches and is not expired - Business Logic
+        if ($user['reset_token'] !== $code) {
+            error_log("Code mismatch: POST={$code}, DB=" . ($user['reset_token'] ?? 'NULL'));
+            $this->setFlash('error', 'Invalid verification code.');
+            unset($_SESSION['reset_email']);
+            $this->redirect('login');
+            return;
+        }
+
+        // Check expiry - Business Logic
+        if (empty($user['reset_token_expiry']) || strtotime($user['reset_token_expiry']) < time()) {
+            $this->setFlash('error', 'Verification code has expired.');
+            unset($_SESSION['reset_email']);
+            $this->redirect('login');
+            return;
+        }
+
+        // Code is valid, store user ID for password reset - Business Logic
+        $_SESSION['reset_user_id'] = $user['id'];
+        $_SESSION['reset_verified'] = true;
+        unset($_SESSION['reset_email']);
+
+        // Redirect to reset password form with modal trigger
+        $this->setFlash('success', 'Code verified! Now enter your new password.');
+        $this->redirect('login&reset=1');
+    }
+
+    /**
+     * Show reset password page (after code verification) - redirects to login with modal
+     */
+    public function resetPassword()
+    {
+        // Redirect if already logged in
+        if ($this->isLoggedIn()) {
+            $this->redirect('student/dashboard');
+            return;
+        }
+
+        // Check if user has verified their code
+        if (!isset($_SESSION['reset_verified']) || !isset($_SESSION['reset_user_id'])) {
+            $this->setFlash('error', 'Please enter the verification code first.');
+            $this->redirect('login');
+            return;
+        }
+
+        // Redirect to login page with reset password modal
+        $this->redirect('login?reset=1');
+    }
+
+    /**
+     * Process reset password (after code verification) - Business Logic
+     */
+    public function processResetPassword()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('login');
+            return;
+        }
+
+        // Check if user has verified their code
+        if (!isset($_SESSION['reset_verified']) || !isset($_SESSION['reset_user_id'])) {
+            $this->setFlash('error', 'Please enter the verification code first.');
+            $this->redirect('login');
+            return;
+        }
+
+        $password = $_POST['password'] ?? '';
+        $confirmPassword = $_POST['confirm_password'] ?? '';
+        $userId = $_SESSION['reset_user_id'];
+
+        // Validation - Business Logic
+        if (empty($password)) {
+            $this->setFlash('error', 'Please enter a new password');
+            $this->redirect('reset-password');
+            return;
+        }
+
+        if (strlen($password) < 6) {
+            $this->setFlash('error', 'Password must be at least 6 characters');
+            $this->redirect('reset-password');
+            return;
+        }
+
+        if ($password !== $confirmPassword) {
+            $this->setFlash('error', 'Passwords do not match');
+            $this->redirect('reset-password');
+            return;
+        }
+
+        // Update password and clear reset code using Controller method
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT, ['cost' => 12]);
+        $success = $this->updatePassword($userId, $hashedPassword);
+
+        if ($success) {
+            // Log activity
+            $user = $this->findUserById($userId);
+            if ($user) {
+                $this->logActivity('reset_password', "Password reset completed for: {$user['email']}", $user['id'], $user['name'], $user['email'], $user['role']);
+            }
+
+            // Clear session variables
+            unset($_SESSION['reset_verified'], $_SESSION['reset_user_id'], $_SESSION['reset_email']);
+
+            $this->setFlash('success', 'Password reset successful! Please login with your new password.');
+            $this->redirect('login');
+        } else {
+            $this->setFlash('error', 'Failed to reset password. Please try again.');
+            $this->redirect('reset-password');
+        }
+    }
+
+    // ==========================================
+    // DATABASE METHODS - Moved from User Model
+    // ==========================================
+
+    private $table = 'users';
+
+    public function createUser($data)
+    {
+        $sql = "INSERT INTO {$this->table} (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
+        try {
+            $stmt = $this->getDb()->prepare($sql);
+            $stmt->execute([
+                $data['name'],
+                $data['email'],
+                password_hash($data['password'], PASSWORD_DEFAULT, ['cost' => HASH_COST]),
+                $data['role'] ?? 'student'
+            ]);
+            return $this->getDb()->lastInsertId();
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function findUserByEmail($email)
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE email = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$email]);
+        return $stmt->fetch();
+    }
+
+    public function authenticateUser($email, $password)
+    {
+        $user = $this->findUserByEmail($email);
+        if ($user && password_verify($password, $user['password'])) {
+            return $user;
+        }
+        return false;
+    }
+
+    public function updateUser($id, $data)
+    {
+        $fields = [];
+        $values = [];
+        foreach ($data as $key => $value) {
+            $fields[] = "{$key} = ?";
+            $values[] = $value;
+        }
+        $values[] = $id;
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        return $stmt->execute($values);
+    }
+
+    public function getStudents()
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE role = 'student'";
+        $stmt = $this->getDb()->query($sql);
+        return $stmt->fetchAll();
+    }
+
+    public function countStudents()
+    {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE role = 'student'";
+        $stmt = $this->getDb()->query($sql);
+        $result = $stmt->fetch();
+        return $result['count'] ?? 0;
+    }
+
+    public function emailExists($email)
+    {
+        return $this->findUserByEmail($email) !== false;
+    }
+
+    public function getTeachers()
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE role = 'teacher' ORDER BY created_at DESC";
+        $stmt = $this->getDb()->query($sql);
+        return $stmt->fetchAll();
+    }
+
+    public function findUserById($id)
+    {
+        $sql = "SELECT * FROM {$this->table} WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch();
+    }
+
+    public function blockUser($id)
+    {
+        $sql = "UPDATE {$this->table} SET is_blocked = 1 WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        return $stmt->execute([$id]);
+    }
+
+    public function unblockUser($id)
+    {
+        $sql = "UPDATE {$this->table} SET is_blocked = 0 WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        return $stmt->execute([$id]);
+    }
+
+    public function isUserBlocked($id)
+    {
+        $sql = "SELECT is_blocked FROM {$this->table} WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$id]);
+        $result = $stmt->fetch();
+        return $result && $result['is_blocked'] == 1;
+    }
+
+    public function getUsersWithFaceDescriptor()
+    {
+        $sql = "SELECT * FROM users WHERE face_descriptor IS NOT NULL AND face_descriptor != '' AND (is_blocked IS NULL OR is_blocked = 0)";
+        $stmt = $this->getDb()->query($sql);
+        return $stmt ? $stmt->fetchAll() : [];
+    }
+
+    public function updateFaceDescriptor($id, $faceDescriptor)
+    {
+        $sql = "UPDATE {$this->table} SET face_descriptor = ? WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        return $stmt->execute([$faceDescriptor, $id]);
+    }
+
+    public function setPasswordResetToken($id, $token, $expiry)
+    {
+        $sql = "UPDATE {$this->table} SET reset_token = ?, reset_token_expiry = ? WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        return $stmt->execute([$token, $expiry, $id]);
+    }
+
+    public function updatePassword($id, $hashedPassword)
+    {
+        $sql = "UPDATE {$this->table} SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        return $stmt->execute([$hashedPassword, $id]);
+    }
+
+    public function createUserWithHashedPassword($data)
+    {
+        $sql = "INSERT INTO {$this->table} (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
+        try {
+            $stmt = $this->getDb()->prepare($sql);
+            $stmt->execute([
+                $data['name'],
+                $data['email'],
+                $data['password'],
+                $data['role'] ?? 'teacher'
+            ]);
+            return $this->getDb()->lastInsertId();
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    // ==========================================
+    // TEACHER APPLICATION METHODS - From TeacherApplication Model
+    // ==========================================
+
+    public function teacherAppEmailExistsPending($email)
+    {
+        $sql = "SELECT id FROM teacher_applications WHERE email = ? AND status = 'pending'";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$email]);
+        return $stmt->fetch() !== false;
+    }
+
+    public function createTeacherAppWithFace($data)
+    {
+        $sql = "INSERT INTO teacher_applications (name, email, password, cv_filename, cv_path, face_descriptor, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')";
+        try {
+            $stmt = $this->getDb()->prepare($sql);
+            $stmt->execute([
+                $data['name'],
+                $data['email'],
+                password_hash($data['password'], PASSWORD_DEFAULT, ['cost' => 12]),
+                $data['cv_filename'],
+                $data['cv_path'],
+                $data['face_descriptor'] ?? null
+            ]);
+            return $this->getDb()->lastInsertId();
+        } catch (PDOException $e) {
+            return false;
+        }
     }
 }

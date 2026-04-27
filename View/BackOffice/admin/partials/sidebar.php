@@ -117,13 +117,21 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             </span>
             <span>Messages</span>
             <?php
-            // Show unread messages count badge
-            require_once __DIR__ . '/../../../../Model/ContactMessage.php';
-            $contactModel = new ContactMessage();
-            $unreadMessages = $contactModel->getUnreadCount();
-            if ($unreadMessages > 0): ?>
-                <span style="margin-left: auto; background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><?= $unreadMessages ?></span>
+            // Show unread messages count badge - uses variable from controller
+            if (isset($unreadCount) && $unreadCount > 0): ?>
+                <span style="margin-left: auto; background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><?= $unreadCount ?></span>
             <?php endif; ?>
         </a>
+
+        <a href="<?= APP_ENTRY ?>?url=admin/activity-log" class="admin-side-link <?= $adminSidebarActive === 'activity-log' ? 'active' : '' ?>">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </span>
+            <span>Activity Log</span>
+        </a>
+
     </nav>
 </aside>
