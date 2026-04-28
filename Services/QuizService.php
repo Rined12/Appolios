@@ -40,6 +40,26 @@ class QuizService extends BaseService
         return $this->quizRepo->getAllForAdmin();
     }
 
+    public function getQuizHistoryForAdmin(): array
+    {
+        return $this->quizRepo->getQuizHistoryForAdmin();
+    }
+
+    public function getQuizStatsForAdmin(): array
+    {
+        return $this->quizRepo->getQuizStatsForAdmin();
+    }
+
+    public function getQuizAttemptsTrendForAdmin(int $days = 21): array
+    {
+        return $this->quizRepo->getQuizAttemptsTrendForAdmin($days);
+    }
+
+    public function getQuizAttemptSeriesMapForAdmin(int $limitPerQuiz = 120): array
+    {
+        return $this->quizRepo->getQuizAttemptSeriesMapForAdmin($limitPerQuiz);
+    }
+
     public function findWithChapterCourse(int $quizId): ?array
     {
         return $this->quizRepo->findWithChapterCourse($quizId);

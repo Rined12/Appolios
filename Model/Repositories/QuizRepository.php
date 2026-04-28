@@ -8,6 +8,7 @@ class QuizRepository extends BaseRepository
 {
     private string $table = 'quizzes';
     private string $linkTable = 'quiz_question_bank';
+    private string $attemptsTable = 'quiz_attempts';
 
     public function __construct(?PDO $db = null)
     {
@@ -105,6 +106,67 @@ class QuizRepository extends BaseRepository
         return $out;
     }
 
+    public function getQuizAttemptSeriesForAdmin(int $quizId, int $limit = 120): array
+    {
+        $limit = max(10, min(400, $limit));
+        $sql = "SELECT a.submitted_at, a.percentage, a.score, a.total
+                FROM {$this->attemptsTable} a
+                WHERE a.quiz_id = ?
+                ORDER BY a.submitted_at ASC
+                LIMIT {$limit}";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([(int) $quizId]);
+        return $stmt->fetchAll();
+    }
+
+    public function getQuizAttemptSeriesMapForAdmin(int $limitPerQuiz = 120): array
+    {
+        $limitPerQuiz = max(10, min(300, $limitPerQuiz));
+        $sql = "SELECT a.quiz_id, a.submitted_at, a.percentage, a.score, a.total
+                FROM {$this->attemptsTable} a
+                JOIN (
+                    SELECT quiz_id, submitted_at, id,
+                           ROW_NUMBER() OVER (PARTITION BY quiz_id ORDER BY submitted_at ASC) AS rn
+                    FROM {$this->attemptsTable}
+                ) x ON x.id = a.id
+                WHERE x.rn <= {$limitPerQuiz}
+                ORDER BY a.quiz_id ASC, a.submitted_at ASC";
+        try {
+            $stmt = $this->db->query($sql);
+            $rows = $stmt ? $stmt->fetchAll() : [];
+        } catch (Throwable $e) {
+            // Fallback for MySQL versions without window functions
+            $rows = [];
+            $quizIdsStmt = $this->db->query("SELECT DISTINCT quiz_id FROM {$this->attemptsTable}");
+            $quizIds = $quizIdsStmt ? $quizIdsStmt->fetchAll(PDO::FETCH_COLUMN) : [];
+            foreach ($quizIds as $qid) {
+                $ser = $this->getQuizAttemptSeriesForAdmin((int) $qid, $limitPerQuiz);
+                foreach ($ser as $r) {
+                    $r['quiz_id'] = (int) $qid;
+                    $rows[] = $r;
+                }
+            }
+        }
+
+        $out = [];
+        foreach ($rows as $r) {
+            $qid = (int) ($r['quiz_id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            if (!isset($out[$qid])) {
+                $out[$qid] = [];
+            }
+            $out[$qid][] = [
+                't' => (string) ($r['submitted_at'] ?? ''),
+                'p' => (float) ($r['percentage'] ?? 0),
+                's' => (int) ($r['score'] ?? 0),
+                'tot' => (int) ($r['total'] ?? 0),
+            ];
+        }
+        return $out;
+    }
+
     public function findWithChapterCourse(int $id): ?array
     {
         $sql = "SELECT q.*, ch.course_id, ch.title AS chapter_title, c.title AS course_title,
@@ -145,6 +207,73 @@ class QuizRepository extends BaseRepository
                 ORDER BY q.created_at DESC";
         $stmt = $this->db->query($sql);
         return $this->hydrateQuestionsList($stmt ? $stmt->fetchAll() : []);
+    }
+
+    public function getQuizHistoryForAdmin(): array
+    {
+        $sql = "SELECT q.*, ch.title AS chapter_title, c.title AS course_title, c.id AS course_id,
+                       u.name AS author_name, u.role AS author_role
+                FROM {$this->table} q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                LEFT JOIN users u ON u.id = q.created_by
+                ORDER BY q.created_at DESC";
+        $stmt = $this->db->query($sql);
+        return $this->hydrateQuestionsList($stmt ? $stmt->fetchAll() : []);
+    }
+
+    public function getQuizStatsForAdmin(): array
+    {
+        $sql = "SELECT q.id, q.title, q.difficulty, q.status, q.created_at,
+                       ch.title AS chapter_title, c.title AS course_title,
+                       u.name AS author_name,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       COALESCE(MAX(a.percentage), 0) AS best_percentage,
+                       COALESCE(MAX(a.score), 0) AS best_score,
+                       COALESCE(MAX(a.total), 0) AS best_total,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM {$this->table} q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                LEFT JOIN users u ON u.id = q.created_by
+                LEFT JOIN {$this->attemptsTable} a ON a.quiz_id = q.id
+                GROUP BY q.id
+                ORDER BY attempts_count DESC, q.created_at DESC";
+        $stmt = $this->db->query($sql);
+        return $stmt ? $stmt->fetchAll() : [];
+    }
+
+    public function getQuizAttemptsTrendForAdmin(int $days = 21): array
+    {
+        $days = max(7, min(90, $days));
+        $sql = "SELECT a.quiz_id,
+                       DATE(a.submitted_at) AS day,
+                       ROUND(AVG(a.percentage), 1) AS avg_percentage,
+                       COUNT(*) AS attempts_count
+                FROM {$this->attemptsTable} a
+                WHERE a.submitted_at >= DATE_SUB(CURDATE(), INTERVAL {$days} DAY)
+                GROUP BY a.quiz_id, DATE(a.submitted_at)
+                ORDER BY day ASC";
+        $stmt = $this->db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll() : [];
+
+        $out = [];
+        foreach ($rows as $r) {
+            $qid = (int) ($r['quiz_id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            if (!isset($out[$qid])) {
+                $out[$qid] = [];
+            }
+            $out[$qid][] = [
+                'day' => (string) ($r['day'] ?? ''),
+                'avg' => (float) ($r['avg_percentage'] ?? 0),
+                'count' => (int) ($r['attempts_count'] ?? 0),
+            ];
+        }
+        return $out;
     }
 
     public function setStatus(int $quizId, string $status): bool

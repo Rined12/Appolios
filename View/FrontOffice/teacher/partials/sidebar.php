@@ -37,7 +37,7 @@ $teacherSidebarActive = $teacherSidebarActive ?? '';
                     <path d="M9 12l2 2 4-4"></path>
                 </svg>
             </span>
-            <span>Quiz</span>
+            <span>Mes Quiz</span>
         </a>
 
         <a href="<?= APP_ENTRY ?>?url=teacher/questions" class="admin-side-link <?= $teacherSidebarActive === 'questions' ? 'active' : '' ?>">

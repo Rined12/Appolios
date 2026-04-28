@@ -1077,6 +1077,61 @@ class AdminController extends BaseController {
         ]);
     }
 
+    public function quizHistory() {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        $quizService = $this->service('QuizService');
+        $this->view('BackOffice/admin/quiz_history', [
+            'title' => 'Historique des quiz - ' . APP_NAME,
+            'quizzes' => $quizService->getQuizHistoryForAdmin(),
+            'flash' => $this->getFlash(),
+        ]);
+    }
+
+    public function quizStats() {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        $quizService = $this->service('QuizService');
+        $rows = $quizService->getQuizStatsForAdmin();
+        $series = $quizService->getQuizAttemptSeriesMapForAdmin(120);
+
+        $totalQuizzes = count($rows);
+        $totalAttempts = 0;
+        $sumAvg = 0.0;
+        $avgCount = 0;
+        $approved = 0;
+
+        foreach ($rows as $r) {
+            $totalAttempts += (int) ($r['attempts_count'] ?? 0);
+            if ((int) ($r['attempts_count'] ?? 0) > 0) {
+                $sumAvg += (float) ($r['avg_percentage'] ?? 0);
+                $avgCount++;
+            }
+            if ((string) ($r['status'] ?? '') === 'approved') {
+                $approved++;
+            }
+        }
+
+        $overallAvg = $avgCount > 0 ? round($sumAvg / $avgCount, 1) : 0.0;
+
+        $this->view('BackOffice/admin/quiz_stats', [
+            'title' => 'Statistiques quiz - ' . APP_NAME,
+            'rows' => $rows,
+            'series' => $series,
+            'kpis' => [
+                'total_quizzes' => $totalQuizzes,
+                'total_attempts' => $totalAttempts,
+                'overall_avg' => $overallAvg,
+                'approved_quizzes' => $approved,
+            ],
+            'flash' => $this->getFlash(),
+        ]);
+    }
+
     public function addQuiz() {
         if (!$this->isAdmin()) {
             $this->redirect('admin/login');

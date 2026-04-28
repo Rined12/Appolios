@@ -44,7 +44,7 @@ $textActiveStyle = 'color:#ffffff !important;font-weight:800;opacity:1;';
 <aside class="admin-sidebar student-space-sidebar">
     <div id="student-sidebar-premium" class="student-sidebar-panel" style="background:linear-gradient(180deg,#0b1f3a 0%,#132b4f 55%,#1a3967 100%);border:1px solid #2a4d7d;box-shadow:0 20px 40px rgba(12,24,45,0.42);opacity:1;">
         <a class="student-sidebar-brand" href="<?= APP_ENTRY ?>?url=student/dashboard" style="display: flex; align-items: center;">
-            <img src="<?= APP_URL ?>/View/assets/images/logo.svg" alt="Appolios" style="height: 35px; width: auto;">
+            <img src="<?= APP_URL ?>/View/assets/images/logo.svg?v=<?= (int) @filemtime(__DIR__ . '/../../assets/images/logo.svg') ?>" alt="Appolios" style="height: 35px; width: auto;">
         </a>
 
         <nav class="admin-sidebar-nav student-sidebar-nav" aria-label="Front Office Navigation" style="background:transparent !important;border:0 !important;box-shadow:none !important;opacity:1 !important;">
