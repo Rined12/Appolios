@@ -664,6 +664,14 @@ class TeacherController extends BaseController {
         $isAjax = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
             || (isset($_POST['batch_mode']) && $_POST['batch_mode'] === '1');
 
+        // Prepend quantity to details for materiel
+        if ($type === 'materiel') {
+            $qty = (int) ($_POST['quantite'] ?? 0);
+            if ($qty > 0) {
+                $details = 'Quantité: ' . $qty . ($details !== '' ? "\n" . $details : '');
+            }
+        }
+
         $errors = [];
         if (!in_array($type, ['rule', 'materiel', 'plan'], true)) {
             $errors[] = 'Invalid resource type.';
@@ -765,6 +773,14 @@ class TeacherController extends BaseController {
             $this->setFlash('error', 'Resource not found for this evenement.');
             $this->redirect('teacher/evenement-ressources&evenement_id=' . $eventId);
             return;
+        }
+
+        // Prepend quantity to details for materiel
+        if ($resource['type'] === 'materiel') {
+            $qty = (int) ($_POST['quantite'] ?? 0);
+            if ($qty > 0) {
+                $details = 'Quantité: ' . $qty . ($details !== '' ? "\n" . $details : '');
+            }
         }
 
         $result = $this->queryUpdateRessource((int) $id, [
@@ -1177,7 +1193,8 @@ class TeacherController extends BaseController {
             "SELECT r.id, r.evenement_id, r.created_by as student_id,
                     r.title as student_name, r.details as status, r.created_at,
                     e.title as event_title, e.date_debut, e.heure_debut,
-                    u.name as student_name_full, u.email as student_email
+                    u.name as student_name_full, u.email as student_email,
+                    u.role as student_role, u.created_at as student_registered_at
              FROM evenement_ressources r
              JOIN evenements e ON r.evenement_id = e.id
              JOIN users u ON r.created_by = u.id
@@ -1211,5 +1228,142 @@ class TeacherController extends BaseController {
              WHERE id = ? AND type = 'participation'"
         );
         return $st->execute([$status, $reason, $id]);
+    }
+
+    /**
+     * Generate AI dummy resources based on event details
+     */
+    public function generateAiResources() {
+        if (!$this->isTeacher()) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Invalid method']);
+            exit;
+        }
+
+        $evenementId = (int)($_POST['evenement_id'] ?? 0);
+        if ($evenementId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Invalid evenement']);
+            exit;
+        }
+
+        // Verify ownership
+        if (!$this->queryEventBelongsToTeacher($evenementId, (int)$_SESSION['user_id'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Event not found or access denied']);
+            exit;
+        }
+
+        $evenement = $this->queryFindEventByIdAndCreator($evenementId, (int)$_SESSION['user_id']);
+        if (!$evenement) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Event not found']);
+            exit;
+        }
+
+        $title = $evenement['title'] ?? 'Evénement';
+        $type = strtolower($evenement['type'] ?? 'general');
+        $heureDebut = $evenement['heure_debut'] ?? '09:00:00';
+        $heureFin = $evenement['heure_fin'] ?? '15:00:00';
+        $capacite = (int)($evenement['capacite_max'] > 0 ? $evenement['capacite_max'] : rand(20, 100));
+
+        // Attempt to use Gemini API if available
+        if (!defined('GEMINI_API_KEY') || empty(GEMINI_API_KEY)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'La clé API Gemini n\'est pas configurée dans config.php.']);
+            exit;
+        }
+
+        $prompt = "Génère des ressources pour un événement nommé '$title' (Type: $type, Capacité: $capacite, de $heureDebut à $heureFin). Pour la liste des 'materiels', tu dois lister UNIQUEMENT les équipements que l'étudiant/participant doit apporter avec lui (ex: Ordinateur portable, Multiprise, Rallonge, etc.), et non ce que l'événement fournit. Renvoie un JSON strict avec ce format : {\"rules\":[{\"title\":\"...\",\"details\":\"...\"}],\"materiels\":[{\"title\":\"...\",\"quantite\":... ,\"details\":\"...\"}],\"plan\":[{\"title\":\"...\",\"details\":\"...\"}]}. Ne renvoie que le JSON, pas de markdown.";
+        
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . GEMINI_API_KEY;
+        $data = ['contents' => [['parts' => [['text' => $prompt]]]]];
+        
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        $response = curl_exec($ch);
+        
+        if (curl_errno($ch)) {
+            $error_msg = curl_error($ch);
+            curl_close($ch);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Erreur de connexion à l\'API: ' . $error_msg]);
+            exit;
+        }
+        curl_close($ch);
+
+        $apiResponse = null;
+        if ($response) {
+            $json = json_decode($response, true);
+            if (isset($json['candidates'][0]['content']['parts'][0]['text'])) {
+                $text = $json['candidates'][0]['content']['parts'][0]['text'];
+                $text = trim(str_replace(['```json', '```'], '', $text));
+                $apiResponse = json_decode($text, true);
+            } elseif (isset($json['error'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Erreur API: ' . ($json['error']['message'] ?? 'Inconnue')]);
+                exit;
+            }
+        }
+
+        if (!$apiResponse || !isset($apiResponse['rules'], $apiResponse['materiels'], $apiResponse['plan'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'L\'IA a renvoyé un format invalide. Veuillez réessayer.']);
+            exit;
+        }
+
+        $rules = $apiResponse['rules'];
+        $materiels = $apiResponse['materiels'];
+        $plan = $apiResponse['plan'];
+
+        // Insert directly into DB
+        foreach ($rules as $r) {
+            $this->queryCreateRessource([
+                'evenement_id' => $evenementId,
+                'type' => 'rule',
+                'title' => $r['title'],
+                'details' => $r['details'],
+                'created_by' => $_SESSION['user_id']
+            ]);
+        }
+
+        foreach ($materiels as $m) {
+            $materielDetails = 'Quantité: ' . ($m['quantite'] ?? 1) . "\n" . ($m['details'] ?? '');
+            $this->queryCreateRessource([
+                'evenement_id' => $evenementId,
+                'type' => 'materiel',
+                'title' => $m['title'],
+                'details' => trim($materielDetails),
+                'created_by' => $_SESSION['user_id']
+            ]);
+        }
+
+        foreach ($plan as $p) {
+            $this->queryCreateRessource([
+                'evenement_id' => $evenementId,
+                'type' => 'plan',
+                'title' => $p['title'],
+                'details' => $p['details'],
+                'created_by' => $_SESSION['user_id']
+            ]);
+        }
+
+        $this->queryMarkEventPending($evenementId);
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'message' => 'Ressources générées et ajoutées avec succès.'
+        ]);
+        exit;
     }
 }

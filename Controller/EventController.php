@@ -124,7 +124,8 @@ class EventController extends BaseController {
             "SELECT r.id, r.evenement_id, r.created_by as student_id,
                     r.title as student_name, r.details as status, r.created_at,
                     e.title as event_title, e.date_debut, e.heure_debut,
-                    u.name as student_name_full, u.email as student_email
+                    u.name as student_name_full, u.email as student_email,
+                    u.role as student_role, u.created_at as student_registered_at
              FROM evenement_ressources r
              JOIN evenements e ON r.evenement_id = e.id
              JOIN users u ON r.created_by = u.id

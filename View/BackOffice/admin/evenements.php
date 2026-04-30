@@ -469,6 +469,10 @@
                 } else if (currentStatus === 'rejected') {
                     statusBg = '#fef2f2'; statusColor = '#ef4444';
                 }
+
+                // Cache participant so inline onclick can access it
+                window._pCache = window._pCache || {};
+                window._pCache[p.id] = p;
                 
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #eef2f6';
@@ -485,8 +489,15 @@
                         </span>
                     </td>
                     <td style="padding: 1rem; text-align: right;">
-                        ${(currentStatus === 'pending' && isAdminEvent) ? `
-                            <div style="display: flex; gap: 5px; justify-content: flex-end;">
+                        <div style="display: flex; gap: 5px; justify-content: flex-end; align-items: center;">
+                            <button type="button"
+                                onclick="showParticipantProfileModal(window._pCache[${p.id}])"
+                                title="View Profile"
+                                style="background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe;width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background 0.2s;"
+                                onmouseover="this.style.background='#dbeafe'" onmouseout="this.style.background='#eff6ff'">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            </button>
+                            ${(currentStatus === 'pending' && isAdminEvent) ? `
                                 <form method="POST" action="<?= APP_ENTRY ?>?url=event/approve-participation/${p.id}" style="margin:0;">
                                     <input type="hidden" name="from_evenement_list" value="1">
                                     <button type="submit" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:4px 8px;border-radius:6px;font-weight:600;font-size:0.75rem;cursor:pointer;" onmouseover="this.style.background='#dcfce7'" onmouseout="this.style.background='#f0fdf4'">&#10003; Approve</button>
@@ -496,10 +507,8 @@
                                     <input type="hidden" name="from_evenement_list" value="1">
                                     <button type="button" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:4px 8px;border-radius:6px;font-weight:600;font-size:0.75rem;cursor:pointer;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'" onclick="promptRejectReason(${p.id})">&#10005; Reject</button>
                                 </form>
-                            </div>
-                        ` : `
-                            <span style="color: #cbd5e1; font-size: 0.8rem;">-</span>
-                        `}
+                            ` : ``}
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -556,6 +565,88 @@
              .replace(/"/g, "&quot;")
              .replace(/'/g, "&#039;");
     }
+</script>
+
+<!-- Participant Profile Modal (Admin) -->
+<div id="participantProfileModal" class="neo-modal-overlay">
+    <div class="neo-modal-card" style="max-width: 480px;">
+        <button class="neo-modal-close" onclick="closeParticipantProfileModal()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+
+        <!-- Avatar + Header -->
+        <div style="display: flex; align-items: center; gap: 18px; margin-bottom: 1.8rem;">
+            <div id="profileAvatar" style="width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg, #548CA8, #2B4865); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; color: white; flex-shrink: 0; letter-spacing: -1px;"></div>
+            <div>
+                <h3 id="profileName" style="margin: 0 0 4px 0; font-size: 1.2rem; font-weight: 800; color: #0f172a;"></h3>
+                <span id="profileRoleBadge" style="font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;"></span>
+            </div>
+        </div>
+
+        <!-- Info Grid -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem;">
+            <div style="background: #f8fafc; border-radius: 12px; padding: 14px;">
+                <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Email</div>
+                <div id="profileEmail" style="font-size: 0.85rem; color: #1e293b; font-weight: 600; word-break: break-all;"></div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 14px;">
+                <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Member Since</div>
+                <div id="profileRegistered" style="font-size: 0.85rem; color: #1e293b; font-weight: 600;"></div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 14px;">
+                <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Requested On</div>
+                <div id="profileRequestedOn" style="font-size: 0.85rem; color: #1e293b; font-weight: 600;"></div>
+            </div>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 14px;">
+                <div style="font-size: 0.72rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Participation Status</div>
+                <div id="profileStatus"></div>
+            </div>
+        </div>
+
+        <button onclick="closeParticipantProfileModal()" style="width: 100%; background: #548CA8; border: none; color: white; padding: 12px; border-radius: 10px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#355C7D'" onmouseout="this.style.background='#548CA8'">Close</button>
+    </div>
+</div>
+
+<script>
+    function showParticipantProfileModal(p) {
+        if (!p) return;
+        const name = p.student_name_full || p.student_name || 'Unknown';
+        const email = p.student_email || '—';
+        const role = p.student_role || 'student';
+        const registered = p.student_registered_at ? new Date(p.student_registered_at).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}) : '—';
+        const requestedOn = p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}) : '—';
+        const status = p.status || 'pending';
+
+        const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+        document.getElementById('profileAvatar').textContent = initials;
+        document.getElementById('profileName').textContent = name;
+        document.getElementById('profileEmail').textContent = email;
+        document.getElementById('profileRegistered').textContent = registered;
+        document.getElementById('profileRequestedOn').textContent = requestedOn;
+
+        const roleBadge = document.getElementById('profileRoleBadge');
+        roleBadge.textContent = role;
+        roleBadge.style.background = role === 'student' ? '#eff6ff' : '#f0fdf4';
+        roleBadge.style.color = role === 'student' ? '#3b82f6' : '#22c55e';
+
+        let sBg = '#fff7ed', sColor = '#f97316';
+        if (status === 'approved') { sBg = '#f0fdf4'; sColor = '#22c55e'; }
+        else if (status === 'rejected') { sBg = '#fef2f2'; sColor = '#ef4444'; }
+        document.getElementById('profileStatus').innerHTML =
+            `<span style="background:${sBg};color:${sColor};padding:4px 10px;border-radius:20px;font-size:0.75rem;font-weight:700;text-transform:uppercase;">${escapeHtml(status)}</span>`;
+
+        document.getElementById('participantProfileModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeParticipantProfileModal() {
+        document.getElementById('participantProfileModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+
+    document.getElementById('participantProfileModal').addEventListener('click', function(e) {
+        if (e.target === this) closeParticipantProfileModal();
+    });
 </script>
 
 <style>

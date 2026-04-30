@@ -210,6 +210,14 @@ class RessourceController extends BaseController {
             return;
         }
 
+        // Prepend quantity to details for materiel
+        if ($resource['type'] === 'materiel') {
+            $qty = (int) ($_POST['quantite'] ?? 0);
+            if ($qty > 0) {
+                $details = 'Quantité: ' . $qty . ($details !== '' ? "\n" . $details : '');
+            }
+        }
+
         $this->queryUpdate((int)$id, ['title'=>$title,'details'=>$details,'evenement_id'=>$evenementId])
             ? $this->setFlash('success','Ressource updated successfully.')
             : $this->setFlash('error','Failed to update ressource.');
@@ -308,5 +316,133 @@ class RessourceController extends BaseController {
             $this->setFlash('error', 'Participation not found.');
         }
         $this->redirect('ressource/evenement-ressources&evenement_id=' . $evenementId);
+    }
+
+    /**
+     * Generate AI dummy resources based on event details
+     */
+    public function generateAiResources() {
+        if (!$this->isAdmin()) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Invalid method']);
+            exit;
+        }
+
+        $evenementId = (int)($_POST['evenement_id'] ?? 0);
+        if ($evenementId <= 0) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Invalid evenement']);
+            exit;
+        }
+
+        $evenement = $this->queryFindEvenement($evenementId);
+        if (!$evenement) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Event not found']);
+            exit;
+        }
+
+        $title = $evenement['title'] ?? 'Evénement';
+        $type = strtolower($evenement['type'] ?? 'general');
+        $heureDebut = $evenement['heure_debut'] ?? '09:00:00';
+        $heureFin = $evenement['heure_fin'] ?? '15:00:00';
+        $capacite = (int)($evenement['capacite_max'] > 0 ? $evenement['capacite_max'] : rand(20, 100));
+
+        // Attempt to use Gemini API if available
+        if (!defined('GEMINI_API_KEY') || empty(GEMINI_API_KEY)) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'La clé API Gemini n\'est pas configurée dans config.php.']);
+            exit;
+        }
+
+        $prompt = "Génère des ressources pour un événement nommé '$title' (Type: $type, Capacité: $capacite, de $heureDebut à $heureFin). Pour la liste des 'materiels', tu dois lister UNIQUEMENT les équipements que l'étudiant/participant doit apporter avec lui (ex: Ordinateur portable, Multiprise, Rallonge, etc.), et non ce que l'événement fournit. Renvoie un JSON strict avec ce format : {\"rules\":[{\"title\":\"...\",\"details\":\"...\"}],\"materiels\":[{\"title\":\"...\",\"quantite\":... ,\"details\":\"...\"}],\"plan\":[{\"title\":\"...\",\"details\":\"...\"}]}. Ne renvoie que le JSON, pas de markdown.";
+        
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . GEMINI_API_KEY;
+        $data = ['contents' => [['parts' => [['text' => $prompt]]]]];
+        
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        $response = curl_exec($ch);
+        
+        if (curl_errno($ch)) {
+            $error_msg = curl_error($ch);
+            curl_close($ch);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Erreur de connexion à l\'API: ' . $error_msg]);
+            exit;
+        }
+        curl_close($ch);
+
+        $apiResponse = null;
+        if ($response) {
+            $json = json_decode($response, true);
+            if (isset($json['candidates'][0]['content']['parts'][0]['text'])) {
+                $text = $json['candidates'][0]['content']['parts'][0]['text'];
+                $text = trim(str_replace(['```json', '```'], '', $text));
+                $apiResponse = json_decode($text, true);
+            } elseif (isset($json['error'])) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Erreur API: ' . ($json['error']['message'] ?? 'Inconnue')]);
+                exit;
+            }
+        }
+
+        if (!$apiResponse || !isset($apiResponse['rules'], $apiResponse['materiels'], $apiResponse['plan'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'L\'IA a renvoyé un format invalide. Veuillez réessayer.']);
+            exit;
+        }
+
+        $rules = $apiResponse['rules'];
+        $materiels = $apiResponse['materiels'];
+        $plan = $apiResponse['plan'];
+
+        // Insert directly into DB
+        foreach ($rules as $r) {
+            $this->queryCreate([
+                'evenement_id' => $evenementId,
+                'type' => 'rule',
+                'title' => $r['title'],
+                'details' => $r['details'],
+                'created_by' => $_SESSION['user_id']
+            ]);
+        }
+
+        foreach ($materiels as $m) {
+            $materielDetails = 'Quantité: ' . ($m['quantite'] ?? 1) . "\n" . ($m['details'] ?? '');
+            $this->queryCreate([
+                'evenement_id' => $evenementId,
+                'type' => 'materiel',
+                'title' => $m['title'],
+                'details' => trim($materielDetails),
+                'created_by' => $_SESSION['user_id']
+            ]);
+        }
+
+        foreach ($plan as $p) {
+            $this->queryCreate([
+                'evenement_id' => $evenementId,
+                'type' => 'plan',
+                'title' => $p['title'],
+                'details' => $p['details'],
+                'created_by' => $_SESSION['user_id']
+            ]);
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'message' => 'Ressources générées et ajoutées avec succès.'
+        ]);
+        exit;
     }
 }
