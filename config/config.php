@@ -35,7 +35,7 @@ define('SESSION_NAME', 'APPOLIOS_SESSION');
 define('HASH_COST', 12);
 
 // AI Integration
-define('GEMINI_API_KEY', 'AIzaSyAoJfpoXHnwWN15CWcpEecMfuQxkxiXVB0');
+define('GEMINI_API_KEY', 'AIzaSyDfZQufORLCYDVFsW34J1OWfizfo-8lyRI');
 
 // Debug Mode (Set to false in production)
 define('DEBUG_MODE', true);
