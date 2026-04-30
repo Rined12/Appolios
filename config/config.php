@@ -4,6 +4,17 @@
  * Main application configuration settings
  */
 
+// Load .env file
+if (file_exists(__DIR__ . '/../.env')) {
+    $lines = file(__DIR__ . '/../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        list($name, $value) = explode('=', $line, 2);
+        $_ENV[trim($name)] = trim($value);
+        putenv(sprintf('%s=%s', trim($name), trim($value)));
+    }
+}
+
 // Application Settings
 define('APP_NAME', 'APPOLIOS');
 define('APP_VERSION', '1.0.0');
@@ -35,7 +46,7 @@ define('SESSION_NAME', 'APPOLIOS_SESSION');
 define('HASH_COST', 12);
 
 // AI Integration
-define('GEMINI_API_KEY', 'AIzaSyDfZQufORLCYDVFsW34J1OWfizfo-8lyRI');
+define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: '');
 
 // Debug Mode (Set to false in production)
 define('DEBUG_MODE', true);
