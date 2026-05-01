@@ -1,0 +1,596 @@
+FILES: Array
+(
+    [course_image] => Array
+        (
+            [name] => 
+            [type] => 
+            [tmp_name] => 
+            [error] => 4
+            [size] => 0
+        )
+
+    [chapters] => Array
+        (
+            [name] => Array
+                (
+                    [0] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => Se╠üance 4 Unite╠ü de dessalement.pdf
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [1] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [2] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [3] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [4] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                )
+
+            [type] => Array
+                (
+                    [0] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => application/pdf
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [1] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [2] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [3] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [4] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                )
+
+            [tmp_name] => Array
+                (
+                    [0] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => C:\xampp\tmp\php9630.tmp
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [1] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [2] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [3] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                    [4] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 
+                                        )
+
+                                )
+
+                        )
+
+                )
+
+            [error] => Array
+                (
+                    [0] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 0
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 4
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 4
+                                        )
+
+                                )
+
+                        )
+
+                    [1] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 4
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 4
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 4
+                                        )
+
+                                )
+
+                        )
+
+                    [2] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 4
+                                        )
+
+                                )
+
+                        )
+
+                    [3] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 4
+                                        )
+
+                                )
+
+                        )
+
+                    [4] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 4
+                                        )
+
+                                )
+
+                        )
+
+                )
+
+            [size] => Array
+                (
+                    [0] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 170513
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 0
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 0
+                                        )
+
+                                )
+
+                        )
+
+                    [1] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 0
+                                        )
+
+                                    [1] => Array
+                                        (
+                                            [pdf_file] => 0
+                                        )
+
+                                    [2] => Array
+                                        (
+                                            [pdf_file] => 0
+                                        )
+
+                                )
+
+                        )
+
+                    [2] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 0
+                                        )
+
+                                )
+
+                        )
+
+                    [3] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 0
+                                        )
+
+                                )
+
+                        )
+
+                    [4] => Array
+                        (
+                            [lessons] => Array
+                                (
+                                    [0] => Array
+                                        (
+                                            [pdf_file] => 0
+                                        )
+
+                                )
+
+                        )
+
+                )
+
+        )
+
+)
+
+
+POST: Array
+(
+    [title] => Web Design with HTML &amp;amp;amp;amp;amp;amp;amp; CSS
+    [description] => Create beautiful websites with HTML and CSS. Learn responsive design, Flexbox, CSS Grid, animations, and modern web design principles.
+    [course_type] => 
+    [image] => 
+    [chapters] => Array
+        (
+            [0] => Array
+                (
+                    [title] => HTML Fundamentals
+                    [description] => Building web structure with HTML
+                    [lessons] => Array
+                        (
+                            [0] => Array
+                                (
+                                    [title] => UX Research
+                                    [lesson_type] => both
+                                    [content] => Understand UsersInterview users, observe behavior, create personas. What problems do they have?
+                                    [video_url] => 
+                                )
+
+                            [1] => Array
+                                (
+                                    [title] => Wireframing
+                                    [lesson_type] => text
+                                    [content] => Low-Fidelity DesignSketch layouts before detailed design. Focus on structure, not colors.
+                                    [video_url] => 
+                                )
+
+                            [2] => Array
+                                (
+                                    [title] => Prototyping
+                                    [lesson_type] => text
+                                    [content] => Test DesignsCreate clickable prototypes to test with users early.
+                                    [video_url] => 
+                                )
+
+                        )
+
+                )
+
+            [1] => Array
+                (
+                    [title] => CSS Basics
+                    [description] => Styling with CSS
+                    [lessons] => Array
+                        (
+                            [0] => Array
+                                (
+                                    [title] => Finding Your Idea
+                                    [lesson_type] => text
+                                    [content] => Business IdeasIdentify problems you can solve. Validate with potential customers first.
+                                    [video_url] => 
+                                )
+
+                            [1] => Array
+                                (
+                                    [title] => Building a Business Plan
+                                    [lesson_type] => text
+                                    [content] => Plan StructureExecutive summary, market analysis, financials, team, timeline.
+                                    [video_url] => 
+                                )
+
+                            [2] => Array
+                                (
+                                    [title] => Funding
+                                    [lesson_type] => text
+                                    [content] => Raise CapitalBootstrap first, then consider angel investors or VCs.
+                                    [video_url] => 
+                                )
+
+                        )
+
+                )
+
+            [2] => Array
+                (
+                    [title] => Responsive Design
+                    [description] => Making websites mobile-friendly
+                    [lessons] => Array
+                        (
+                            [0] => Array
+                                (
+                                    [title] => Email Marketing
+                                    [lesson_type] => text
+                                    [content] => Email CampaignsBuild lists, write compelling subject lines, track opens and clicks.
+                                    [video_url] => 
+                                )
+
+                        )
+
+                )
+
+            [3] => Array
+                (
+                    [title] => Flexbox Layout
+                    [description] => Modern CSS layout techniques
+                    [lessons] => Array
+                        (
+                            [0] => Array
+                                (
+                                    [title] => Social Media Marketing
+                                    [lesson_type] => text
+                                    [content] => Social PlatformsBuild presence on Facebook, Instagram, Twitter, LinkedIn.
+                                    [video_url] => 
+                                )
+
+                        )
+
+                )
+
+            [4] => Array
+                (
+                    [title] => CSS Grid
+                    [description] => Advanced grid layouts
+                    [lessons] => Array
+                        (
+                            [0] => Array
+                                (
+                                    [title] => Business Writing
+                                    [lesson_type] => text
+                                    [content] => Professional WritingWrite clear, concise emails.
+                                    [video_url] => 
+                                )
+
+                        )
+
+                )
+
+        )
+
+)
