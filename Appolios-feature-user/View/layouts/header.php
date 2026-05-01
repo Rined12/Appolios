@@ -242,6 +242,12 @@ body.dark-mode .dark-mode-toggle {
 }
 </style>
 
+<!-- Global JS Variables -->
+<script>
+    var APP_ENTRY = '<?= APP_ENTRY ?>';
+    var APP_URL = '<?= APP_URL ?>';
+</script>
+
 <!-- Dark Mode Script -->
 <script>
 (function() {

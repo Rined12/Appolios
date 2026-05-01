@@ -54,7 +54,11 @@ if (!empty($segments)) {
     $first = strtolower($segments[0]);
     $second = $segments[1] ?? '';
 
-    if (in_array($first, ['login', 'register', 'signup', 'logout', 'authenticate', 'admin'], true) && strtolower($second) === 'login') {
+    if ($first === 'chatbot') {
+        require_once __DIR__ . '/ChatbotController.php';
+        $controller = 'ChatbotController';
+        $action = 'handleRequest';
+    } elseif (in_array($first, ['login', 'register', 'signup', 'logout', 'authenticate', 'admin'], true) && strtolower($second) === 'login') {
         $controller = 'AuthController';
         $action = 'login';
     } elseif (in_array($first, ['login', 'register', 'signup', 'logout', 'authenticate'], true)) {

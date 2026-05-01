@@ -293,3 +293,33 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 
 -- Add course_type column to courses table
 ALTER TABLE courses ADD COLUMN course_type VARCHAR(100) DEFAULT NULL AFTER image;
+
+-- ============================================
+-- CHATBOT CONVERSATIONS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS chatbot_conversations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(100) NOT NULL,
+    user_id INT NULL,
+    role ENUM('user', 'assistant') NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_session_id (session_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- CHATBOT CONTEXT TABLE (Student context)
+-- ============================================
+CREATE TABLE IF NOT EXISTS chatbot_context (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id VARCHAR(100) NOT NULL UNIQUE,
+    user_id INT,
+    enrolled_courses TEXT,
+    current_lesson_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_session_id (session_id),
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

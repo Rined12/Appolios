@@ -9,5 +9,6 @@
 <script src="<?= APP_URL ?>/View/assets/vendor/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="<?= APP_URL ?>/View/assets/js/functions.js"></script>
 <script src="<?= APP_URL ?>/View/assets/js/main.js"></script>
+<script src="<?= APP_URL ?>/View/assets/js/chatbot.js"></script>
 </body>
 </html>
