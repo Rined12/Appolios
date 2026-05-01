@@ -2,6 +2,14 @@
 $studentSidebarActive = 'quiz';
 $quizzes = $quizzes ?? [];
 
+$rank = isset($rank) && is_array($rank) ? $rank : null;
+
+$rankProgress = isset($rankProgress) && is_array($rankProgress) ? $rankProgress : null;
+$rankSpark = isset($rankSpark) && is_array($rankSpark) ? $rankSpark : [];
+
+$flags = isset($flags) && is_array($flags) ? $flags : [];
+$filter = isset($filter) ? (string) $filter : '';
+
 $courses = [];
 foreach ($quizzes as $q) {
     $cid = (int) ($q['course_id'] ?? 0);
@@ -23,9 +31,62 @@ ksort($courses, SORT_NUMERIC);
                         <p>Quiz des cours où vous êtes inscrit. Chaque tentative est enregistrée dans votre historique.</p>
                     </div>
                     <div class="pro-table-actions">
+                        <?php if (!empty($rank)): ?>
+                            <?php
+                                $rp = is_array($rankProgress) ? $rankProgress : null;
+                                $rpPct = (int) ($rp['pct'] ?? 0);
+                                $rpToNext = (int) ($rp['to_next'] ?? 0);
+                                $rpNext = (string) ($rp['next_label'] ?? 'Next');
+                            ?>
+                            <div class="pro-table-card" style="padding: 10px 12px; background: linear-gradient(135deg, rgba(88, 202, 255, 0.14), rgba(170, 106, 255, 0.12)); border: 1px solid rgba(120, 190, 255, 0.25); display:flex; align-items:center; gap:12px;">
+                                <div style="width:34px;height:34px;border-radius:10px; background: rgba(12, 24, 45, 0.55); border: 1px solid rgba(120, 190, 255, 0.25); display:flex;align-items:center;justify-content:center;">
+                                    <i class="bi bi-trophy" style="color: rgba(170, 220, 255, 0.95);"></i>
+                                </div>
+                                <div style="line-height:1.1; min-width: 170px;">
+                                    <div style="font-weight:900; letter-spacing:.2px;">
+                                        <?= htmlspecialchars((string) ($rank['league'] ?? 'Bronze')) ?> <?= htmlspecialchars((string) ($rank['division'] ?? 'III')) ?>
+                                    </div>
+                                    <div style="opacity:.9; font-weight:800; font-size:.9rem;">Rating <?= (int) ($rank['rating'] ?? 1000) ?></div>
+                                    <div style="margin-top:6px;">
+                                        <div style="display:flex; justify-content:space-between; font-size:.78rem; font-weight:800; opacity:.92;">
+                                            <span><?= htmlspecialchars($rpNext) ?></span>
+                                            <span><?= (int) $rpPct ?>%</span>
+                                        </div>
+                                        <div style="margin-top:5px; width: 100%; height: 8px; border-radius: 999px; overflow:hidden; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.12);">
+                                            <div style="height:100%; width: <?= max(0, min(100, $rpPct)) ?>%; background: linear-gradient(90deg, rgba(96,165,250,.95), rgba(167,139,250,.95));"></div>
+                                        </div>
+                                        <div style="margin-top:5px; font-size:.78rem; opacity:.88; font-weight:800;">
+                                            <?= $rpToNext > 0 ? '~' . (int) $rpToNext . ' pts' : 'palier proche' ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php if (!empty($rankSpark) && count($rankSpark) >= 2): ?>
+                                    <?php
+                                        $pts = [];
+                                        $n = count($rankSpark);
+                                        $w = 90;
+                                        $h = 34;
+                                        for ($i = 0; $i < $n; $i++) {
+                                            $x = (int) round(($w - 2) * ($i / max(1, $n - 1))) + 1;
+                                            $y = (int) round(($h - 2) * (1 - (max(0, min(100, (int) $rankSpark[$i])) / 100))) + 1;
+                                            $pts[] = $x . ',' . $y;
+                                        }
+                                    ?>
+                                    <svg width="<?= (int) $w ?>" height="<?= (int) $h ?>" viewBox="0 0 <?= (int) $w ?> <?= (int) $h ?>" style="display:block; opacity:.95;">
+                                        <polyline points="<?= htmlspecialchars(implode(' ', $pts)) ?>" fill="none" stroke="rgba(170, 220, 255, 0.95)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
                         <a href="<?= APP_ENTRY ?>?url=student/quiz-history" class="btn btn-outline">Historique</a>
                         <a href="<?= APP_ENTRY ?>?url=student/chapitres" class="btn btn-outline">Chapitres</a>
                     </div>
+                </div>
+
+                <div style="margin-top: 10px; display:flex; gap: 10px; flex-wrap: wrap;">
+                    <a class="btn <?= $filter === '' ? 'btn-primary' : 'btn-outline' ?>" href="<?= APP_ENTRY ?>?url=student/quiz" style="padding:8px 12px;">Tous</a>
+                    <a class="btn <?= $filter === 'favorites' ? 'btn-primary' : 'btn-outline' ?>" href="<?= APP_ENTRY ?>?url=student/quiz&filter=favorites" style="padding:8px 12px;">Favoris</a>
+                    <a class="btn <?= $filter === 'redo' ? 'btn-primary' : 'btn-outline' ?>" href="<?= APP_ENTRY ?>?url=student/quiz&filter=redo" style="padding:8px 12px;">À refaire</a>
                 </div>
 
                 <?php if (!empty($flash)): ?>
@@ -83,26 +144,46 @@ ksort($courses, SORT_NUMERIC);
                                             elseif ($diff === 'intermediate') { $diffClass .= ' pro-badge--intermediate'; }
                                             elseif ($diff === 'advanced') { $diffClass .= ' pro-badge--advanced'; }
                                             $cid = (int) ($q['course_id'] ?? 0);
+                                            $tagsTxt = (string) ($q['tags'] ?? '');
                                         ?>
-                                        <tr data-id="<?= (int) ($q['id'] ?? 0) ?>" data-title="<?= htmlspecialchars(mb_strtolower((string) ($q['title'] ?? ''))) ?>" data-course="<?= htmlspecialchars(mb_strtolower((string) ($q['course_title'] ?? ''))) ?>" data-chapter="<?= htmlspecialchars(mb_strtolower((string) ($q['chapter_title'] ?? ''))) ?>" data-difficulty="<?= htmlspecialchars($diff) ?>" data-course-id="<?= (int) $cid ?>">
-                                            <td>
-                                                <span class="pro-dot"></span>
-                                                <?= htmlspecialchars((string) ($q['title'] ?? '')) ?>
-                                            </td>
-                                            <td><?= htmlspecialchars((string) ($q['course_title'] ?? '')) ?></td>
-                                            <td><?= htmlspecialchars((string) ($q['chapter_title'] ?? '')) ?></td>
-                                            <td>
-                                                <span class="pro-badge"><?= (int) ($q['question_count'] ?? 0) ?> question(s)</span>
-                                                <span class="<?= $diffClass ?>"><?= htmlspecialchars(difficulty_label_fr($diff)) ?></span>
-                                                <?php if (!empty($q['time_limit_sec'])): ?>
-                                                    <span class="pro-badge"><?= (int) $q['time_limit_sec'] ?> s max</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <a class="btn btn-primary" style="white-space:nowrap;" href="<?= APP_ENTRY ?>?url=student/quiz/<?= (int) $q['id'] ?>">Commencer</a>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
+                                        <?php
+                                        $qid = (int) ($q['id'] ?? 0);
+                                        $f = $flags[$qid] ?? ['favorite' => false, 'redo' => false];
+                                        $isFav = !empty($f['favorite']);
+                                        $isRedo = !empty($f['redo']);
+                                    ?>
+                                    <tr data-id="<?= (int) $qid ?>" data-title="<?= htmlspecialchars(mb_strtolower((string) ($q['title'] ?? ''))) ?>" data-course="<?= htmlspecialchars(mb_strtolower((string) ($q['course_title'] ?? ''))) ?>" data-chapter="<?= htmlspecialchars(mb_strtolower((string) ($q['chapter_title'] ?? ''))) ?>" data-difficulty="<?= htmlspecialchars($diff) ?>" data-tags="<?= htmlspecialchars(mb_strtolower($tagsTxt)) ?>" data-course-id="<?= (int) $cid ?>" data-favorite="<?= $isFav ? '1' : '0' ?>" data-redo="<?= $isRedo ? '1' : '0' ?>">
+                                        <td>
+                                            <span class="pro-dot"></span>
+                                            <?= htmlspecialchars((string) ($q['title'] ?? '')) ?>
+                                        </td>
+                                        <td><?= htmlspecialchars((string) ($q['course_title'] ?? '')) ?></td>
+                                        <td><?= htmlspecialchars((string) ($q['chapter_title'] ?? '')) ?></td>
+                                        <td>
+                                            <span class="pro-badge"><?= (int) ($q['question_count'] ?? 0) ?> question(s)</span>
+                                            <span class="<?= $diffClass ?>"><?= htmlspecialchars(difficulty_label_fr($diff)) ?></span>
+                                            <?php if (!empty($q['time_limit_sec'])): ?>
+                                                <span class="pro-badge"><?= (int) $q['time_limit_sec'] ?> s max</span>
+                                            <?php endif; ?>
+                                            <?php if (trim($tagsTxt) !== ''): ?>
+                                                <?php foreach (array_slice(array_filter(array_map('trim', preg_split('/[;,]+/', $tagsTxt))), 0, 3) as $tg): ?>
+                                                    <span class="pro-tag-chip"><?= htmlspecialchars($tg) ?></span>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <div style="display:flex; align-items:center; gap:10px; justify-content:flex-end;">
+                                                <a class="pro-icon-btn" href="<?= APP_ENTRY ?>?url=student/toggle-favorite-quiz/<?= (int) $qid ?>" title="Favori" aria-label="Favori" style="<?= $isFav ? 'color:#fbbf24;' : '' ?>">
+                                                    <i class="bi <?= $isFav ? 'bi-star-fill' : 'bi-star' ?>"></i>
+                                                </a>
+                                                <a class="pro-icon-btn" href="<?= APP_ENTRY ?>?url=student/toggle-redo-quiz/<?= (int) $qid ?>" title="À refaire" aria-label="À refaire" style="<?= $isRedo ? 'color:#60a5fa;' : '' ?>">
+                                                    <i class="bi <?= $isRedo ? 'bi-arrow-repeat' : 'bi-arrow-repeat' ?>"></i>
+                                                </a>
+                                                <a class="btn btn-primary" style="white-space:nowrap;" href="<?= APP_ENTRY ?>?url=student/quiz/<?= (int) $qid ?>">Commencer</a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
                                 </tbody>
                             </table>
                         </div>
@@ -120,12 +201,14 @@ ksort($courses, SORT_NUMERIC);
 <script>
 (function () {
   var input = document.getElementById('studentQuizSearch');
-  var selCourse = document.getElementById('studentQuizCourse');
-  var selDiff = document.getElementById('studentQuizDifficulty');
+  var courseSel = document.getElementById('studentQuizCourse');
+  var diffSel = document.getElementById('studentQuizDifficulty');
   var sortSel = document.getElementById('studentQuizSort');
   var exportBtn = document.getElementById('studentQuizExport');
   var table = document.getElementById('studentQuizTable');
-  if (!input || !selCourse || !selDiff || !sortSel || !exportBtn || !table) return;
+  if (!input || !courseSel || !diffSel || !sortSel || !exportBtn || !table) return;
+
+  var initialFilter = '<?= htmlspecialchars($filter, ENT_QUOTES) ?>';
 
   function norm(v) {
     return (v || '').toString().trim().toLowerCase();
@@ -133,19 +216,28 @@ ksort($courses, SORT_NUMERIC);
 
   function apply() {
     var q = norm(input.value);
-    var d = norm(selDiff.value);
-    var c = norm(selCourse.value);
+    var d = norm(diffSel.value);
+    var c = norm(courseSel.value);
     table.querySelectorAll('tbody tr').forEach(function (tr) {
       var title = norm(tr.getAttribute('data-title'));
       var course = norm(tr.getAttribute('data-course'));
       var chapter = norm(tr.getAttribute('data-chapter'));
       var diff = norm(tr.getAttribute('data-difficulty'));
+      var tags = norm(tr.getAttribute('data-tags'));
       var courseId = norm(tr.getAttribute('data-course-id'));
 
-      var matchText = !q || title.indexOf(q) !== -1 || course.indexOf(q) !== -1 || chapter.indexOf(q) !== -1;
+      var matchText = !q || title.indexOf(q) !== -1 || course.indexOf(q) !== -1 || chapter.indexOf(q) !== -1 || tags.indexOf(q) !== -1;
       var matchDiff = !d || diff === d;
       var matchCourse = !c || courseId === c;
-      tr.style.display = (matchText && matchDiff && matchCourse) ? '' : 'none';
+
+      var matchFlag = true;
+      if (initialFilter === 'favorites') {
+        matchFlag = tr.getAttribute('data-favorite') === '1';
+      } else if (initialFilter === 'redo') {
+        matchFlag = tr.getAttribute('data-redo') === '1';
+      }
+
+      tr.style.display = (matchText && matchDiff && matchCourse && matchFlag) ? '' : 'none';
     });
   }
 
@@ -214,8 +306,8 @@ ksort($courses, SORT_NUMERIC);
   }
 
   input.addEventListener('input', apply);
-  selCourse.addEventListener('change', apply);
-  selDiff.addEventListener('change', apply);
+  courseSel.addEventListener('change', apply);
+  diffSel.addEventListener('change', apply);
   sortSel.addEventListener('change', function () { sortRows(); apply(); });
   exportBtn.addEventListener('click', function () { apply(); exportCsv(); });
 
