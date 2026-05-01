@@ -74,6 +74,52 @@ class AdminController extends BaseController
     }
 
     /**
+     * Statistics page
+     */
+    public function statistics()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        // 1. Get ban categories from activity logs
+        $sqlBans = "SELECT 
+                    SUM(CASE WHEN activity_description LIKE '%2 hours%' THEN 1 ELSE 0 END) as ban_2h,
+                    SUM(CASE WHEN activity_description LIKE '%10 hours%' THEN 1 ELSE 0 END) as ban_10h,
+                    SUM(CASE WHEN activity_description LIKE '%1 day%' THEN 1 ELSE 0 END) as ban_1d,
+                    SUM(CASE WHEN activity_description LIKE '%permanently%' OR activity_description LIKE '%blocked user%' THEN 1 ELSE 0 END) as ban_perm
+                FROM activity_log 
+                WHERE activity_type IN ('ban_user', 'block_user')";
+        
+        $stmtBans = $this->getDb()->prepare($sqlBans);
+        $stmtBans->execute();
+        $stats = $stmtBans->fetch(PDO::FETCH_ASSOC);
+
+        // 2. Get user distribution (Students vs Teachers) using direct SQL
+        $sqlUsers = "SELECT role, COUNT(*) as count FROM users WHERE role IN ('student', 'teacher') GROUP BY role";
+        $stmtUsers = $this->getDb()->query($sqlUsers);
+        $userCounts = $stmtUsers->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $totalStudents = (int) ($userCounts['student'] ?? 0);
+        $totalTeachers = (int) ($userCounts['teacher'] ?? 0);
+
+        $data = [
+            'title' => 'Admin Statistics - APPOLIOS',
+            'description' => 'Platform activity and ban analytics',
+            'adminSidebarActive' => 'statistics',
+            'stats' => $stats,
+            'totalStudents' => $totalStudents,
+            'totalTeachers' => $totalTeachers,
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/statistics', $data);
+    }
+
+    /**
      * Export users to PDF
      */
     public function exportUsersPDF()
