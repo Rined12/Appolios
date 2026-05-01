@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '/BaseController.php';
-require_once __DIR__ . '/../Model/AccountMaintenance.php';
+require_once __DIR__ . '/../Service/AccountMaintenanceService.php';
 
 /**
  * CLI maintenance tasks (user accounts). Invoke via Controller/cli.php only.
@@ -21,7 +21,7 @@ class MaintenanceController extends BaseController
     {
         $this->requireCli();
         try {
-            $m = new AccountMaintenance();
+            $m = new AccountMaintenanceService();
             echo $m->applyDefaultPasswords123();
         } catch (Throwable $e) {
             echo 'Error: ' . $e->getMessage() . "\n";
@@ -33,7 +33,7 @@ class MaintenanceController extends BaseController
     {
         $this->requireCli();
         try {
-            $m = new AccountMaintenance();
+            $m = new AccountMaintenanceService();
             echo $m->ensureTeacherRoleAndSample();
         } catch (Throwable $e) {
             echo 'Error: ' . $e->getMessage() . "\n";
@@ -45,7 +45,7 @@ class MaintenanceController extends BaseController
     {
         $this->requireCli();
         try {
-            $m = new AccountMaintenance();
+            $m = new AccountMaintenanceService();
             echo $m->recreateAllAccountsPassword('password');
         } catch (Throwable $e) {
             echo 'Error: ' . $e->getMessage() . "\n";
@@ -57,7 +57,7 @@ class MaintenanceController extends BaseController
     {
         $this->requireCli();
         try {
-            $m = new AccountMaintenance();
+            $m = new AccountMaintenanceService();
             echo $m->resetThreeDefaultAccounts('password');
         } catch (Throwable $e) {
             echo 'Error: ' . $e->getMessage() . "\n";
@@ -69,7 +69,7 @@ class MaintenanceController extends BaseController
     {
         $this->requireCli();
         try {
-            $m = new AccountMaintenance();
+            $m = new AccountMaintenanceService();
             echo $m->debugLoginDumpAndReinit();
         } catch (Throwable $e) {
             echo 'Error: ' . $e->getMessage() . "\n";
@@ -81,7 +81,7 @@ class MaintenanceController extends BaseController
     {
         $this->requireCli();
         try {
-            $m = new AccountMaintenance();
+            $m = new AccountMaintenanceService();
             echo $m->testAuthRepairDemo();
         } catch (Throwable $e) {
             echo 'Error: ' . $e->getMessage() . "\n";

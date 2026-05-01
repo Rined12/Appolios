@@ -1,8 +1,8 @@
 <?php
 
-require_once __DIR__ . '/../Model/BaseModel.php';
+require_once __DIR__ . '/BaseRepository.php';
 
-class Groupe extends BaseModel
+class GroupeRepository extends BaseRepository
 {
     protected string $table = 'groupe';
     private ?array $columnsCache = null;
@@ -286,6 +286,12 @@ class Groupe extends BaseModel
              VALUES (?, ?, ?, NOW())"
         );
         return $stmt->execute([(int) $id_groupe, (int) $id_user, $role]);
+    }
+
+    public function retirerMembre($id_groupe, $id_user): bool
+    {
+        $stmt = $this->db->prepare("DELETE FROM groupe_user WHERE id_groupe = ? AND id_user = ?");
+        return $stmt->execute([(int) $id_groupe, (int) $id_user]);
     }
 
     public function getMembres($id_groupe): array

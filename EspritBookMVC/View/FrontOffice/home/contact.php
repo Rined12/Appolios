@@ -12,12 +12,10 @@
             <p style="font-size: 1.2rem; margin-top: 20px;">Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.</p>
         </div>
 
-        <!-- Flash Messages -->
-        <?php if (isset($_SESSION['flash'])): ?>
-            <div style="max-width: 1100px; margin: 0 auto 30px auto; padding: 15px 20px; border-radius: 10px; font-weight: 500; <?= $_SESSION['flash']['type'] === 'error' ? 'background: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;' : 'background: rgba(25, 135, 84, 0.1); border: 1px solid rgba(25, 135, 84, 0.3); color: #198754;' ?>">
-                <?= htmlspecialchars($_SESSION['flash']['message']) ?>
+        <?php if (!empty($flash_banner)): ?>
+            <div style="max-width: 1100px; margin: 0 auto 30px auto; padding: 15px 20px; border-radius: 10px; font-weight: 500; <?= $flash_banner['inner_style'] ?>">
+                <?= htmlspecialchars($flash_banner['message']) ?>
             </div>
-            <?php unset($_SESSION['flash']); ?>
         <?php endif; ?>
 
         <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 50px; max-width: 1100px; margin: 0 auto;">

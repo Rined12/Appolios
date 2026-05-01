@@ -1,110 +1,95 @@
 <?php
 $studentSidebarActive = 'discussions';
-$currentUserId = (int) ($currentUserId ?? ($_SESSION['user_id'] ?? 0));
+$foPrefix = $foPrefix ?? 'student';
+$discussion_cards = $discussion_cards ?? [];
+$listQ = (string) ($listQ ?? '');
+$listSort = (string) ($listSort ?? 'newest');
+$listQueryActive = (bool) ($listQueryActive ?? false);
 ?>
-<div class="dashboard student-events-page">
+<div class="dashboard student-events-page collab-hub">
     <div class="container admin-dashboard-container">
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
             <div class="admin-main">
-                <style>
-                    .discussion-box-grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                        gap: 16px;
-                    }
-                    .discussion-box-card {
-                        background: #fff;
-                        border: 1px solid #e2e8f0;
-                        border-radius: 14px;
-                        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
-                        padding: 14px;
-                        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-                    }
-                    .discussion-box-card:hover {
-                        transform: translateY(-4px);
-                        border-color: #cbd5e1;
-                        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
-                    }
-                    .discussion-box-card h4 {
-                        margin: 0 0 6px 0;
-                        color: #1e293b;
-                        font-size: 1.05rem;
-                    }
-                    .discussion-box-card p {
-                        margin: 0 0 12px 0;
-                        color: #64748b;
-                        min-height: 42px;
-                    }
-                    .discussion-box-meta {
-                        display: inline-block;
-                        margin-bottom: 10px;
-                        font-size: 12px;
-                        padding: 4px 10px;
-                        border-radius: 999px;
-                        background: #f1f5f9;
-                        color: #475569;
-                        font-weight: 700;
-                        transition: transform 0.2s ease, box-shadow 0.2s ease;
-                    }
-                    .discussion-box-card:hover .discussion-box-meta {
-                        transform: translateY(-1px);
-                        box-shadow: 0 4px 10px rgba(71, 85, 105, 0.15);
-                    }
-                    .discussion-box-actions {
-                        display: flex;
-                        gap: 8px;
-                        flex-wrap: wrap;
-                    }
-                    .discussion-box-actions .action-btn {
-                        transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
-                    }
-                    .discussion-box-actions .action-btn:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
-                        filter: brightness(1.02);
-                    }
-                </style>
-                <div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;">
-                    <div><h1>Discussions</h1><p>Discussions from groups you joined.</p></div>
-                    <a href="<?= APP_ENTRY ?>?url=student/discussions/create" class="btn btn-yellow">Create Discussion</a>
-                </div>
-                <?php if (!empty($discussions)): ?>
-                    <div class="discussion-box-grid">
-                        <?php foreach ($discussions as $d): ?>
-                            <?php
-                                $status = (string) ($d['approval_statut'] ?? $d['approval_status'] ?? 'approuve');
-                                $statusLabel = $status === 'approuve' ? 'Approved' : ($status === 'rejete' ? 'Rejected' : 'Pending approval');
-                                $statusBg = $status === 'approuve' ? '#dcfce7' : ($status === 'rejete' ? '#fee2e2' : '#ffedd5');
-                                $statusColor = $status === 'approuve' ? '#166534' : ($status === 'rejete' ? '#991b1b' : '#9a3412');
-                                $authorId = (int) ($d['id_auteur'] ?? $d['created_by'] ?? 0);
-                                $isAuthor = $authorId === $currentUserId;
-                            ?>
-                            <article class="discussion-box-card">
-                                <span class="discussion-box-meta">Group: <?= htmlspecialchars((string) ($d['nom_groupe'] ?? 'N/A')) ?></span>
-                                <span class="discussion-box-meta" style="background:<?= $statusBg ?>;color:<?= $statusColor ?>;margin-left:6px;"><?= htmlspecialchars($statusLabel) ?></span>
-                                <h4><?= htmlspecialchars($d['titre'] ?? 'Discussion') ?></h4>
-                                <p><?= htmlspecialchars((string) ($d['contenu'] ?? '')) ?></p>
-                                <div class="discussion-box-actions">
-                                    <?php if ($status === 'approuve'): ?>
-                                        <a class="btn btn-primary action-btn" href="<?= APP_ENTRY ?>?url=student/discussions/<?= (int) ($d['id_discussion'] ?? 0) ?>/chat">Live Chat</a>
-                                        <?php if ($isAuthor): ?>
-                                            <a class="btn btn-secondary action-btn" href="<?= APP_ENTRY ?>?url=student/discussions/<?= (int) ($d['id_discussion'] ?? 0) ?>/edit">Edit</a>
-                                            <a class="btn action-btn danger" href="<?= APP_ENTRY ?>?url=student/discussions/<?= (int) ($d['id_discussion'] ?? 0) ?>/delete">Delete</a>
-                                        <?php endif; ?>
-                                    <?php else: ?>
-                                        <?php if ($isAuthor): ?>
-                                            <span style="font-size:13px;color:#64748b;">Wait for admin approval to use this discussion.</span>
-                                        <?php else: ?>
-                                            <span style="font-size:13px;color:#64748b;">Only approved discussions are visible for interaction.</span>
-                                        <?php endif; ?>
+                <?php require __DIR__ . '/partials/collab_hub_styles.php'; ?>
+
+                <header class="collab-hero">
+                    <div class="collab-hero__inner">
+                        <div>
+                            <div class="collab-eyebrow"><i class="bi bi-chat-dots-fill" aria-hidden="true"></i> Collaboration hub</div>
+                            <h1>Discussions</h1>
+                            <p>Threads from every group you belong to — search, sort, and jump into live chat in one place.</p>
+                        </div>
+                        <div class="collab-hero-actions">
+                            <a href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions/create" class="collab-btn-primary">
+                                <i class="bi bi-plus-lg" aria-hidden="true"></i> New discussion
+                            </a>
+                            <a href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes" class="collab-btn-ghost">
+                                <i class="bi bi-people" aria-hidden="true"></i> Browse groups
+                            </a>
+                        </div>
+                    </div>
+                </header>
+
+                <form class="collab-toolbar" method="get" action="<?= APP_ENTRY ?>" novalidate>
+                    <input type="hidden" name="url" value="<?= htmlspecialchars($foPrefix . '/discussions', ENT_QUOTES, 'UTF-8') ?>">
+                    <div style="flex:1 1 320px; min-width:0;">
+                        <label for="fo_disc_search">Find a thread</label>
+                        <div class="collab-search-row">
+                            <input id="fo_disc_search" type="text" name="q" value="<?= htmlspecialchars($listQ) ?>" placeholder="Title, message text, group name…" autocomplete="off">
+                            <button type="submit" title="Search" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+                    <div style="flex:0 0 auto;">
+                        <label for="fo_disc_sort">Order</label>
+                        <select id="fo_disc_sort" name="sort" aria-label="Sort discussions" onchange="this.form.submit()">
+                            <option value="newest"<?= $listSort === 'newest' ? ' selected' : '' ?>>Newest first</option>
+                            <option value="oldest"<?= $listSort === 'oldest' ? ' selected' : '' ?>>Oldest first</option>
+                            <option value="title_asc"<?= $listSort === 'title_asc' ? ' selected' : '' ?>>Title (A–Z)</option>
+                            <option value="title_desc"<?= $listSort === 'title_desc' ? ' selected' : '' ?>>Title (Z–A)</option>
+                            <option value="group_asc"<?= $listSort === 'group_asc' ? ' selected' : '' ?>>Group (A–Z)</option>
+                            <option value="group_desc"<?= $listSort === 'group_desc' ? ' selected' : '' ?>>Group (Z–A)</option>
+                        </select>
+                    </div>
+                </form>
+
+                <?php if (!empty($discussion_cards)): ?>
+                    <div class="collab-disc-grid">
+                        <?php foreach ($discussion_cards as $card): ?>
+                            <article class="collab-disc-card">
+                                <span class="collab-pill collab-pill--group"><i class="bi bi-people-fill" aria-hidden="true"></i> <?= htmlspecialchars((string) ($card['group_name'] ?? 'N/A'), ENT_QUOTES, 'UTF-8') ?></span>
+                                <h4 class="collab-disc-card__title"><?= htmlspecialchars((string) ($card['title'] ?? 'Discussion'), ENT_QUOTES, 'UTF-8') ?></h4>
+                                <p class="collab-disc-card__excerpt collab-line-clamp-3"><?= htmlspecialchars((string) ($card['content'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
+                                <div class="collab-card-actions">
+                                    <a class="collab-chip-btn collab-chip-btn--live" href="<?= htmlspecialchars((string) ($card['url_chat'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>">
+                                        <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> Live chat
+                                    </a>
+                                    <?php if (!empty($card['is_author'])): ?>
+                                        <a class="collab-chip-btn collab-chip-btn--muted" href="<?= htmlspecialchars((string) ($card['url_edit'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>">
+                                            <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+                                        </a>
+                                        <a class="collab-chip-btn collab-chip-btn--danger" href="<?= htmlspecialchars((string) ($card['url_delete'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>">
+                                            <i class="bi bi-trash" aria-hidden="true"></i> Delete
+                                        </a>
                                     <?php endif; ?>
                                 </div>
                             </article>
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <div class="table-container">No discussions yet.</div>
+                    <div class="collab-empty">
+                        <div class="collab-empty-icon" aria-hidden="true">💬</div>
+                        <?php if ($listQueryActive): ?>
+                            <h3>No matches</h3>
+                            <p>Try another keyword or reset the sort order — your threads might use different wording.</p>
+                        <?php else: ?>
+                            <h3>Quiet for now</h3>
+                            <p>Create a discussion inside one of your approved groups, or join a group first to see activity here.</p>
+                            <div style="margin-top:1.25rem;">
+                                <a href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions/create" class="collab-btn-primary">Start a discussion</a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>

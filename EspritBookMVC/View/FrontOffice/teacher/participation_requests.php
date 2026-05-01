@@ -4,6 +4,9 @@
  */
 
 $teacherSidebarActive = 'participations';
+$participation_counts = $participation_counts ?? ['total' => 0, 'pending_count' => 0, 'approved_count' => 0, 'rejected_count' => 0];
+$participation_request_cards = $participation_request_cards ?? [];
+$flash_strip = $flash_strip ?? null;
 ?>
 
 <div class="dashboard">
@@ -20,57 +23,45 @@ $teacherSidebarActive = 'participations';
                     <p style="margin:0;opacity:0.85;max-width:600px;">Review and manage student participation requests for your events.</p>
                 </div>
 
-                <!-- Flash Message -->
-                <?php if (!empty($flash)): ?>
-                    <div style="padding:1rem 1.5rem;border-radius:12px;margin-bottom:1.5rem;font-weight:600;
-                        background:<?= $flash['type'] === 'success' ? '#f0fdf4' : ($flash['type'] === 'error' ? '#fef2f2' : '#fff7ed') ?>;
-                        color:<?= $flash['type'] === 'success' ? '#16a34a' : ($flash['type'] === 'error' ? '#dc2626' : '#ea580c') ?>;
-                        border:1px solid <?= $flash['type'] === 'success' ? '#bbf7d0' : ($flash['type'] === 'error' ? '#fecaca' : '#fed7aa') ?>;">
-                        <?= htmlspecialchars($flash['message']) ?>
+                <?php if (!empty($flash_strip)): ?>
+                    <div style="padding:1rem 1.5rem;border-radius:12px;margin-bottom:1.5rem;font-weight:600;white-space:pre-line; <?= $flash_strip['inner_style'] ?>">
+                        <?= htmlspecialchars($flash_strip['message']) ?>
                     </div>
                 <?php endif; ?>
 
-                <!-- Stats Row -->
-                <?php
-                $pending  = array_filter($requests ?? [], fn($r) => $r['status'] === 'pending');
-                $approved = array_filter($requests ?? [], fn($r) => $r['status'] === 'approved');
-                $rejected = array_filter($requests ?? [], fn($r) => $r['status'] === 'rejected');
-                ?>
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;">
                     <div style="background:white;border-radius:16px;padding:1.5rem;border:1px solid #eef2f6;text-align:center;box-shadow:0 4px 15px rgba(0,0,0,0.03);">
-                        <div style="font-size:2rem;font-weight:800;color:#f97316;"><?= count($pending) ?></div>
+                        <div style="font-size:2rem;font-weight:800;color:#f97316;"><?= (int) ($participation_counts['pending_count'] ?? 0) ?></div>
                         <div style="font-size:0.85rem;color:#64748b;font-weight:600;margin-top:4px;">Pending</div>
                     </div>
                     <div style="background:white;border-radius:16px;padding:1.5rem;border:1px solid #eef2f6;text-align:center;box-shadow:0 4px 15px rgba(0,0,0,0.03);">
-                        <div style="font-size:2rem;font-weight:800;color:#22c55e;"><?= count($approved) ?></div>
+                        <div style="font-size:2rem;font-weight:800;color:#22c55e;"><?= (int) ($participation_counts['approved_count'] ?? 0) ?></div>
                         <div style="font-size:0.85rem;color:#64748b;font-weight:600;margin-top:4px;">Approved</div>
                     </div>
                     <div style="background:white;border-radius:16px;padding:1.5rem;border:1px solid #eef2f6;text-align:center;box-shadow:0 4px 15px rgba(0,0,0,0.03);">
-                        <div style="font-size:2rem;font-weight:800;color:#ef4444;"><?= count($rejected) ?></div>
+                        <div style="font-size:2rem;font-weight:800;color:#ef4444;"><?= (int) ($participation_counts['rejected_count'] ?? 0) ?></div>
                         <div style="font-size:0.85rem;color:#64748b;font-weight:600;margin-top:4px;">Rejected</div>
                     </div>
                 </div>
 
                 <!-- Requests List (Card Design) -->
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <?php if (!empty($requests)): ?>
-                        <?php foreach ($requests as $req): ?>
+                    <?php if (!empty($participation_request_cards)): ?>
+                        <?php foreach ($participation_request_cards as $req): ?>
                             <?php
-                            $s = $req['status'] ?? 'pending';
-                            $statusColor = $s === 'approved' ? '#22c55e' : ($s === 'rejected' ? '#ef4444' : '#f97316');
-                            $statusBg    = $s === 'approved' ? '#f0fdf4' : ($s === 'rejected' ? '#fef2f2' : '#fff7ed');
-                            $studentName = $req['student_name_full'] ?? $req['student_name'] ?? 'Student';
-                            $firstLetter = strtoupper(substr($studentName, 0, 1));
+                            $s = (string) ($req['display_status'] ?? 'pending');
+                            $statusColor = (string) ($req['display_status_color'] ?? '#f97316');
+                            $statusBg = (string) ($req['display_status_bg'] ?? '#fff7ed');
                             ?>
                             <div style="background: white; border-radius: 20px; padding: 1.5rem 2rem; border: 1px solid #eef2f6; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#548CA8'; this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='#eef2f6'; this.style.transform='translateY(0)'">
                                 
                                 <!-- Student Info -->
                                 <div style="display: flex; align-items: center; gap: 1.2rem; flex: 1;">
                                     <div style="width: 50px; height: 50px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #2B4865; font-size: 1.2rem;">
-                                        <?= $firstLetter ?>
+                                        <?= htmlspecialchars((string) ($req['display_student_initial'] ?? 'S')) ?>
                                     </div>
                                     <div>
-                                        <div style="font-weight: 800; color: #1e293b; font-size: 1.1rem;"><?= htmlspecialchars($studentName) ?></div>
+                                        <div style="font-weight: 800; color: #1e293b; font-size: 1.1rem;"><?= htmlspecialchars((string) ($req['display_student_name'] ?? '')) ?></div>
                                         <div style="font-size: 0.85rem; color: #94a3b8; font-weight: 500;"><?= htmlspecialchars($req['student_email'] ?? '') ?></div>
                                         <div style="font-size: 0.8rem; color: #548CA8; font-weight: 700; margin-top: 4px; display: flex; align-items: center; gap: 5px;">
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -81,7 +72,7 @@ $teacherSidebarActive = 'participations';
 
                                 <!-- Status Badge -->
                                 <div style="flex: 0 0 auto;">
-                                    <span style="background:<?= $statusBg ?>; color:<?= $statusColor ?>; padding: 6px 16px; border-radius: 50px; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
+                                    <span style="background:<?= htmlspecialchars($statusBg) ?>; color:<?= htmlspecialchars($statusColor) ?>; padding: 6px 16px; border-radius: 50px; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
                                         <?= htmlspecialchars($s) ?>
                                     </span>
                                 </div>
@@ -106,7 +97,7 @@ $teacherSidebarActive = 'participations';
                                         </form>
                                     <?php else: ?>
                                         <div style="color: #94a3b8; font-size: 0.85rem; font-style: italic; border: 1.5px dashed #e2e8f0; padding: 6px 15px; border-radius: 10px;">
-                                            Processed on <?= !empty($req['updated_at']) ? date('d M', strtotime($req['updated_at'])) : 'Recently' ?>
+                                            Processed on <?= htmlspecialchars((string) ($req['display_processed_short'] ?? 'Recently')) ?>
                                         </div>
                                     <?php endif; ?>
                                 </div>

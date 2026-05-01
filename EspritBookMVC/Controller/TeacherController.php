@@ -5,10 +5,12 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Model/User.php';
-require_once __DIR__ . '/../Model/Course.php';
-require_once __DIR__ . '/../Model/Evenement.php';
-require_once __DIR__ . '/../Model/EvenementRessource.php';
+require_once __DIR__ . '/../Repository/UserRepository.php';
+require_once __DIR__ . '/../Repository/CourseRepository.php';
+require_once __DIR__ . '/../Model/Entity/EvenementEntity.php';
+require_once __DIR__ . '/../Model/Entity/EvenementRessourceEntity.php';
+require_once __DIR__ . '/../Presentation/bootstrap.php';
+require_once __DIR__ . '/../Model/Entity/UserEntity.php';
 
 class TeacherController extends BaseController {
 
@@ -49,16 +51,16 @@ class TeacherController extends BaseController {
     public function dashboard() {
         $this->requireTeacher();
 
-        $userModel = $this->model('User');
-        $courseModel = $this->model('Course');
+        $userRepository = $this->model('UserRepository');
+        $courseRepository = $this->model('CourseRepository');
 
         // Get stats
-        $myCourses = $courseModel->getCoursesByTeacher($_SESSION['user_id']);
+        $myCourses = $courseRepository->getCoursesByTeacher($_SESSION['user_id']);
         $stats = [
             'total_courses' => count($myCourses),
-            'total_students' => $courseModel->countStudentsByTeacher($_SESSION['user_id']),
-            'active_enrollments' => $courseModel->countActiveEnrollmentsByTeacher($_SESSION['user_id']),
-            'total_evenements' => count($this->queryEventsByCreator((int)$_SESSION['user_id']))
+            'total_students' => $courseRepository->countStudentsByTeacher($_SESSION['user_id']),
+            'active_enrollments' => $courseRepository->countActiveEnrollmentsByTeacher($_SESSION['user_id']),
+            'total_evenements' => count($this->model('EvenementRepository')->findByCreator((int)$_SESSION['user_id']))
         ];
 
         $data = [
@@ -77,8 +79,8 @@ class TeacherController extends BaseController {
     public function myCourses() {
         $this->requireTeacher();
 
-        $courseModel = $this->model('Course');
-        $courses = $courseModel->getCoursesByTeacher($_SESSION['user_id']);
+        $courseRepository = $this->model('CourseRepository');
+        $courses = $courseRepository->getCoursesByTeacher($_SESSION['user_id']);
 
         $data = [
             'title' => 'My Courses - APPOLIOS',
@@ -96,6 +98,7 @@ class TeacherController extends BaseController {
 
         $data = [
             'title' => 'Add Course - APPOLIOS',
+            'course_old' => $this->consumeSessionOld(),
             'flash' => $this->getFlash()
         ];
 
@@ -130,9 +133,9 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
+        $courseRepository = $this->model('CourseRepository');
         
-        $result = $courseModel->create([
+        $result = $courseRepository->create([
             'title' => $title,
             'description' => $description,
             'video_url' => $video_url,
@@ -154,8 +157,8 @@ class TeacherController extends BaseController {
     public function editCourse($id) {
         $this->requireTeacher();
 
-        $courseModel = $this->model('Course');
-        $course = $courseModel->findById($id);
+        $courseRepository = $this->model('CourseRepository');
+        $course = $courseRepository->findById($id);
 
         // Check if course belongs to this teacher
         if (!$course || $course['created_by'] != $_SESSION['user_id']) {
@@ -184,8 +187,8 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
-        $course = $courseModel->findById($id);
+        $courseRepository = $this->model('CourseRepository');
+        $course = $courseRepository->findById($id);
 
         // Check if course belongs to this teacher
         if (!$course || $course['created_by'] != $_SESSION['user_id']) {
@@ -210,7 +213,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $result = $courseModel->update($id, [
+        $result = $courseRepository->update($id, [
             'title' => $title,
             'description' => $description,
             'video_url' => $video_url
@@ -231,8 +234,8 @@ class TeacherController extends BaseController {
     public function deleteCourse($id) {
         $this->requireTeacher();
 
-        $courseModel = $this->model('Course');
-        $course = $courseModel->findById($id);
+        $courseRepository = $this->model('CourseRepository');
+        $course = $courseRepository->findById($id);
 
         // Check if course belongs to this teacher
         if (!$course || $course['created_by'] != $_SESSION['user_id']) {
@@ -241,7 +244,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $result = $courseModel->delete($id);
+        $result = $courseRepository->delete($id);
 
         if ($result) {
             $this->setFlash('success', 'Course deleted successfully!');
@@ -258,8 +261,8 @@ class TeacherController extends BaseController {
     public function viewCourse($id) {
         $this->requireTeacher();
 
-        $courseModel = $this->model('Course');
-        $course = $courseModel->findById($id);
+        $courseRepository = $this->model('CourseRepository');
+        $course = $courseRepository->findById($id);
 
         // Check if course belongs to this teacher
         if (!$course || $course['created_by'] != $_SESSION['user_id']) {
@@ -269,7 +272,7 @@ class TeacherController extends BaseController {
         }
 
         // Get enrolled students
-        $students = $courseModel->getEnrolledStudents($id);
+        $students = $courseRepository->getEnrolledStudents($id);
 
         $data = [
             'title' => htmlspecialchars($course['title']) . ' - APPOLIOS',
@@ -286,12 +289,19 @@ class TeacherController extends BaseController {
     public function profile() {
         $this->requireTeacher();
 
-        $userModel = $this->model('User');
-        $user = $userModel->findById($_SESSION['user_id']);
+        $userRepository = $this->model('UserRepository');
+        $userRow = $userRepository->findById($_SESSION['user_id']);
+        if (!is_array($userRow)) {
+            $this->setFlash('error', 'User not found.');
+            $this->redirect('login');
+            return;
+        }
+        $profileUser = UserEntity::fromPersistedRow($userRow);
 
         $data = [
             'title' => 'My Profile - APPOLIOS',
-            'user' => $user
+            'profile_user' => $profileUser,
+            'flash_banner' => FlashBannerPresenter::fromSessionFlash($this->getFlash()),
         ];
 
         $this->view('FrontOffice/teacher/edit_profile', $data);
@@ -328,12 +338,12 @@ class TeacherController extends BaseController {
             $errors[] = 'Please enter a valid email address.';
         }
 
-        $userModel = $this->model('User');
-        $currentUser = $userModel->findById($_SESSION['user_id']);
+        $userRepository = $this->model('UserRepository');
+        $currentUser = $userRepository->findById($_SESSION['user_id']);
 
         // Check if email is taken by another user
         if ($email !== $currentUser['email']) {
-            if ($userModel->emailExists($email)) {
+            if ($userRepository->emailExists($email)) {
                 $errors[] = 'This email is already taken.';
             }
         }
@@ -355,7 +365,7 @@ class TeacherController extends BaseController {
         }
 
         if (!empty($errors)) {
-            $this->setFlash('error', implode('<br>', $errors));
+            $this->setFlash('error', implode("\n", $errors));
             $this->redirect('teacher/edit-profile');
             return;
         }
@@ -370,7 +380,7 @@ class TeacherController extends BaseController {
             $updateData['password'] = password_hash($newPassword, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
         }
 
-        if ($userModel->update($_SESSION['user_id'], $updateData)) {
+        if ($userRepository->update($_SESSION['user_id'], $updateData)) {
             // Update session data
             $_SESSION['user_name'] = $name;
             $_SESSION['user_email'] = $email;
@@ -389,7 +399,9 @@ class TeacherController extends BaseController {
     public function evenements() {
         $this->requireTeacher();
 
-        $evenements = $this->queryEventsByCreator((int)$_SESSION['user_id']);
+        $evenements = EventCardPresenter::decorateList(
+            $this->model('EvenementRepository')->findByCreator((int) $_SESSION['user_id'])
+        );
 
         $data = [
             'title' => 'My Evenements - APPOLIOS',
@@ -415,7 +427,9 @@ class TeacherController extends BaseController {
 
         $data = [
             'title' => 'Propose Evenement - APPOLIOS',
-            'flash' => $this->getFlash()
+            'flash' => $this->getFlash(),
+            'evenement_old' => $this->consumeSessionOld(),
+            'evenement_min_date' => DisplayFormatter::formMinDateTomorrow(),
         ];
 
         $this->view('FrontOffice/teacher/add_evenement', $data);
@@ -444,7 +458,7 @@ class TeacherController extends BaseController {
 
         $eventDate = $payload['date_debut'] . ' ' . (!empty($payload['heure_debut']) ? $payload['heure_debut'] : '00:00') . ':00';
 
-        $result = $this->queryCreateEvent([
+        $result = $this->model('EvenementRepository')->create([
             'title' => $payload['title'],
             'titre' => $payload['title'],
             'description' => $payload['description'],
@@ -482,7 +496,7 @@ class TeacherController extends BaseController {
     public function editEvenement($id) {
         $this->requireTeacher();
 
-        $evenement = $this->queryFindEventByIdAndCreator((int) $id, (int) $_SESSION['user_id']);
+        $evenement = $this->model('EvenementRepository')->findByIdAndCreator((int) $id, (int) $_SESSION['user_id']);
 
         if (!$evenement) {
             $this->setFlash('error', 'Evenement not found or access denied.');
@@ -490,9 +504,29 @@ class TeacherController extends BaseController {
             return;
         }
 
+        $old = $this->consumeSessionOld();
+        $form = [
+            'title' => $old['title'] ?? ($evenement['titre'] ?? $evenement['title'] ?? ''),
+            'description' => $old['description'] ?? ($evenement['description'] ?? ''),
+            'date_debut' => $old['date_debut'] ?? ($evenement['date_debut'] ?? ''),
+            'date_fin' => $old['date_fin'] ?? ($evenement['date_fin'] ?? ''),
+            'heure_debut' => $old['heure_debut'] ?? (isset($evenement['heure_debut']) ? substr((string) $evenement['heure_debut'], 0, 5) : ''),
+            'heure_fin' => $old['heure_fin'] ?? (isset($evenement['heure_fin']) ? substr((string) $evenement['heure_fin'], 0, 5) : ''),
+            'lieu' => $old['lieu'] ?? (($evenement['lieu'] ?? '') ?: ($evenement['location'] ?? '')),
+            'capacite_max' => $old['capacite_max'] ?? ($evenement['capacite_max'] ?? ''),
+            'type' => $old['type'] ?? ($evenement['type'] ?? 'general'),
+            'statut' => $old['statut'] ?? ($evenement['statut'] ?? 'planifie'),
+        ];
+        $approval = (string) ($evenement['approval_status'] ?? 'approved');
+        $approvalHeadingColor = $approval === 'approved' ? '#22c55e' : ($approval === 'rejected' ? '#ef4444' : '#f97316');
+
         $data = [
             'title' => 'Edit Evenement - APPOLIOS',
             'evenement' => $evenement,
+            'form' => $form,
+            'evenement_min_date' => DisplayFormatter::formMinDateTomorrow(),
+            'evenement_approval_label' => $approval,
+            'evenement_approval_heading_color' => $approvalHeadingColor,
             'flash' => $this->getFlash()
         ];
 
@@ -511,7 +545,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $existing = $this->queryFindEventByIdAndCreator((int) $id, (int) $_SESSION['user_id']);
+        $existing = $this->model('EvenementRepository')->findByIdAndCreator((int) $id, (int) $_SESSION['user_id']);
         if (!$existing) {
             $this->setFlash('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
@@ -529,7 +563,7 @@ class TeacherController extends BaseController {
         }
 
         $eventDate = $payload['date_debut'] . ' ' . (!empty($payload['heure_debut']) ? $payload['heure_debut'] : '00:00') . ':00';
-        $result = $this->queryUpdateEvent((int) $id, [
+        $result = $this->model('EvenementRepository')->update((int) $id, [
             'title' => $payload['title'],
             'titre' => $payload['title'],
             'description' => $payload['description'],
@@ -554,7 +588,7 @@ class TeacherController extends BaseController {
         $status = $existing['approval_status'] ?? 'approved';
         $needsReview = in_array($status, ['approved', 'rejected']);
         if ($needsReview) {
-            $this->queryMarkEventPending((int) $id);
+            $this->model('EvenementRepository')->markNonPendingAsPending((int) $id);
             $this->setFlash('success', 'Evenement updated and sent back to pending approval.');
         } else {
             $this->setFlash('success', 'Evenement updated successfully.');
@@ -569,7 +603,7 @@ class TeacherController extends BaseController {
     public function deleteEvenement($id) {
         $this->requireTeacher();
 
-        $evenement = $this->queryFindEventByIdAndCreator((int) $id, (int) $_SESSION['user_id']);
+        $evenement = $this->model('EvenementRepository')->findByIdAndCreator((int) $id, (int) $_SESSION['user_id']);
 
         if (!$evenement) {
             $this->setFlash('error', 'Evenement not found or access denied.');
@@ -584,7 +618,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $result = $this->queryDeleteEvent((int) $id);
+        $result = $this->model('EvenementRepository')->delete((int) $id);
         if ($result) {
             $this->setFlash('success', 'Pending evenement deleted successfully.');
         } else {
@@ -607,7 +641,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $event = $this->queryFindEventByIdAndCreator($eventId, (int) $_SESSION['user_id']);
+        $event = $this->model('EvenementRepository')->findByIdAndCreator($eventId, (int) $_SESSION['user_id']);
         if (!$event) {
             $this->setFlash('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
@@ -617,22 +651,29 @@ class TeacherController extends BaseController {
         $editId = (int) ($_GET['edit_id'] ?? 0);
         $editResource = null;
         if ($editId > 0) {
-            $candidate = $this->queryFindRessource($editId);
+            $candidate = $this->model('EvenementRessourceRepository')->findById($editId);
             if ($candidate && (int) $candidate['evenement_id'] === $eventId) {
                 $editResource = $candidate;
             }
         }
+
+        $resRepo = $this->model('EvenementRessourceRepository');
+        $participationsList = $resRepo->findParticipationsByEvent($eventId);
+        $flash = $this->getFlash();
 
         $data = [
             'title' => 'Evenement Resources - APPOLIOS',
             'selectedEvenementId' => $eventId,
             'selectedEvenement' => $event,
             'editResource' => $editResource,
-            'rules' => $this->queryRessourcesByTypeAndEvent('rule', $eventId),
-            'materials' => $this->queryRessourcesByTypeAndEvent('materiel', $eventId),
-            'plans' => $this->queryRessourcesByTypeAndEvent('plan', $eventId),
-            'participations' => $this->queryParticipationsByEvent($eventId),
-            'flash' => $this->getFlash()
+            'rules' => $resRepo->findByTypeAndEvent('rule', $eventId),
+            'materials' => ResourceMaterielPresenter::decorateItems($resRepo->findByTypeAndEvent('materiel', $eventId)),
+            'plans' => $resRepo->findByTypeAndEvent('plan', $eventId),
+            'participations' => ParticipationRequestRowPresenter::decorateList($participationsList),
+            'participation_rollup' => ParticipationRollupPresenter::rollup($participationsList),
+            'ressource_old' => $this->consumeSessionOld(),
+            'flash' => $flash,
+            'participation_modal_open' => $flash !== null,
         ];
 
         $this->view('FrontOffice/teacher/evenement_ressources', $data);
@@ -664,7 +705,7 @@ class TeacherController extends BaseController {
             $errors[] = 'Title is required.';
         }
 
-        $event = $this->queryFindEventByIdAndCreator($eventId, (int) $_SESSION['user_id']);
+        $event = $this->model('EvenementRepository')->findByIdAndCreator($eventId, (int) $_SESSION['user_id']);
         if (!$event) {
             $errors[] = 'Evenement not found or access denied.';
         }
@@ -682,7 +723,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $createdId = $this->queryCreateRessource([
+        $createdId = $this->model('EvenementRessourceRepository')->create([
             'evenement_id' => $eventId,
             'type' => $type,
             'title' => $title,
@@ -692,11 +733,11 @@ class TeacherController extends BaseController {
 
         $verified = false;
         if ($createdId) {
-            $verified = $this->queryRessourceExistsInScope($createdId, $eventId, $type);
+            $verified = $this->model('EvenementRessourceRepository')->existsInScope($createdId, $eventId, $type);
         }
 
         if ($createdId && $verified) {
-            $this->queryMarkEventPending($eventId);
+            $this->model('EvenementRepository')->markNonPendingAsPending($eventId);
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode([
@@ -745,28 +786,28 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $event = $this->queryFindEventByIdAndCreator($eventId, (int) $_SESSION['user_id']);
+        $event = $this->model('EvenementRepository')->findByIdAndCreator($eventId, (int) $_SESSION['user_id']);
         if (!$event) {
             $this->setFlash('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
             return;
         }
 
-        $resource = $this->queryFindRessource((int) $id);
+        $resource = $this->model('EvenementRessourceRepository')->findById((int) $id);
         if (!$resource || (int) $resource['evenement_id'] !== $eventId) {
             $this->setFlash('error', 'Resource not found for this evenement.');
             $this->redirect('teacher/evenement-ressources&evenement_id=' . $eventId);
             return;
         }
 
-        $result = $this->queryUpdateRessource((int) $id, [
+        $result = $this->model('EvenementRessourceRepository')->update((int) $id, [
             'title' => $title,
             'details' => $details,
             'evenement_id' => $eventId
         ]);
 
         if ($result) {
-            $this->queryMarkEventPending($eventId);
+            $this->model('EvenementRepository')->markNonPendingAsPending($eventId);
             $this->setFlash('success', 'Resource updated successfully.');
         } else {
             $this->setFlash('error', 'Failed to update resource.');
@@ -793,163 +834,23 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $event = $this->queryFindEventByIdAndCreator($eventId, (int) $_SESSION['user_id']);
+        $event = $this->model('EvenementRepository')->findByIdAndCreator($eventId, (int) $_SESSION['user_id']);
         if (!$event) {
             $this->setFlash('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
             return;
         }
 
-        $result = $this->queryDeleteRessource((int) $id, $eventId);
+        $result = $this->model('EvenementRessourceRepository')->delete((int) $id, $eventId);
 
         if ($result) {
-            $this->queryMarkEventPending($eventId);
+            $this->model('EvenementRepository')->markNonPendingAsPending($eventId);
             $this->setFlash('success', 'Resource deleted successfully.');
         } else {
             $this->setFlash('error', 'Failed to delete resource.');
         }
 
         $this->redirect('teacher/evenement-ressources&evenement_id=' . $eventId);
-    }
-
-    // =========================================================================
-    // PRIVATE DB QUERY METHODS — Evenements
-    // =========================================================================
-
-    private function getDb(): PDO {
-        static $pdo = null;
-        if ($pdo === null) {
-            $pdo = new PDO(
-                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET,
-                DB_USER, DB_PASS,
-                [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
-        }
-        return $pdo;
-    }
-
-    private function queryEventsByCreator(int $userId): array {
-        $st = $this->getDb()->prepare(
-            "SELECT e.*, COUNT(r.id) as resource_count
-             FROM evenements e
-             LEFT JOIN evenement_ressources r ON r.evenement_id = e.id
-             WHERE e.created_by = ?
-             GROUP BY e.id
-             ORDER BY COALESCE(CONCAT(e.date_debut,' ',e.heure_debut), e.event_date) ASC"
-        );
-        $st->execute([$userId]);
-        return $st->fetchAll();
-    }
-
-    private function queryFindEventByIdAndCreator(int $id, int $userId): array|false {
-        $st = $this->getDb()->prepare(
-            "SELECT * FROM evenements WHERE id = ? AND created_by = ? LIMIT 1"
-        );
-        $st->execute([$id, $userId]);
-        return $st->fetch();
-    }
-
-    private function queryCreateEvent(array $d): int|false {
-        try {
-            $st = $this->getDb()->prepare(
-                "INSERT INTO evenements
-                 (title,titre,description,date_debut,date_fin,heure_debut,heure_fin,
-                  lieu,capacite_max,type,statut,approval_status,location,event_date,created_by,created_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())"
-            );
-            $st->execute([
-                $d['title'],$d['titre'],$d['description'],$d['date_debut'],$d['date_fin'],
-                $d['heure_debut'],$d['heure_fin'],$d['lieu'],$d['capacite_max'],
-                $d['type'],$d['statut'],$d['approval_status']??'pending',
-                $d['location'],$d['event_date'],$d['created_by']
-            ]);
-            return (int)$this->getDb()->lastInsertId();
-        } catch (PDOException $e) { return false; }
-    }
-
-    private function queryUpdateEvent(int $id, array $d): bool {
-        $st = $this->getDb()->prepare(
-            "UPDATE evenements
-             SET title=?,titre=?,description=?,date_debut=?,date_fin=?,
-                 heure_debut=?,heure_fin=?,lieu=?,capacite_max=?,type=?,
-                 statut=?,location=?,event_date=?,updated_at=CURRENT_TIMESTAMP
-             WHERE id=?"
-        );
-        return $st->execute([
-            $d['title'],$d['titre'],$d['description'],$d['date_debut'],$d['date_fin'],
-            $d['heure_debut'],$d['heure_fin'],$d['lieu'],$d['capacite_max'],
-            $d['type'],$d['statut'],$d['location'],$d['event_date'],$id
-        ]);
-    }
-
-    private function queryDeleteEvent(int $id): bool {
-        $st = $this->getDb()->prepare("DELETE FROM evenements WHERE id=?");
-        return $st->execute([$id]);
-    }
-
-    private function queryMarkEventPending(int $id): void {
-        $st = $this->getDb()->prepare(
-            "UPDATE evenements SET approval_status='pending', updated_at=CURRENT_TIMESTAMP
-             WHERE id=? AND approval_status != 'pending'"
-        );
-        $st->execute([$id]);
-    }
-
-    // =========================================================================
-    // PRIVATE DB QUERY METHODS — Ressources
-    // =========================================================================
-
-    private function queryFindRessource(int $id): array|false {
-        $st = $this->getDb()->prepare("SELECT * FROM evenement_ressources WHERE id = ? LIMIT 1");
-        $st->execute([$id]);
-        return $st->fetch();
-    }
-
-    private function queryRessourcesByTypeAndEvent(string $type, int $eventId): array {
-        $st = $this->getDb()->prepare(
-            "SELECT r.*, u.name as creator_name, e.title as evenement_title
-             FROM evenement_ressources r
-             JOIN users u ON r.created_by = u.id
-             JOIN evenements e ON r.evenement_id = e.id
-             WHERE r.type = ? AND r.evenement_id = ?
-             ORDER BY r.created_at DESC"
-        );
-        $st->execute([$type, $eventId]);
-        return $st->fetchAll();
-    }
-
-    private function queryCreateRessource(array $d): int|false {
-        try {
-            $st = $this->getDb()->prepare(
-                "INSERT INTO evenement_ressources (evenement_id,type,title,details,created_by,created_at)
-                 VALUES (?,?,?,?,?,NOW())"
-            );
-            $st->execute([$d['evenement_id'],$d['type'],$d['title'],$d['details'],$d['created_by']]);
-            return (int)$this->getDb()->lastInsertId();
-        } catch (PDOException $e) { return false; }
-    }
-
-    private function queryRessourceExistsInScope(int $id, int $eventId, string $type): bool {
-        $st = $this->getDb()->prepare(
-            "SELECT id FROM evenement_ressources WHERE id=? AND evenement_id=? AND type=? LIMIT 1"
-        );
-        $st->execute([$id, $eventId, $type]);
-        return (bool)$st->fetch();
-    }
-
-    private function queryUpdateRessource(int $id, array $d): bool {
-        $st = $this->getDb()->prepare(
-            "UPDATE evenement_ressources SET title=?,details=?,updated_at=CURRENT_TIMESTAMP
-             WHERE id=? AND evenement_id=?"
-        );
-        return $st->execute([$d['title'],$d['details'],$id,$d['evenement_id']]);
-    }
-
-    private function queryDeleteRessource(int $id, int $eventId): bool {
-        $st = $this->getDb()->prepare(
-            "DELETE FROM evenement_ressources WHERE id=? AND evenement_id=?"
-        );
-        return $st->execute([$id, $eventId]);
     }
 
     /**
@@ -1005,22 +906,19 @@ class TeacherController extends BaseController {
         return $errors;
     }
 
-    // =========================================================================
-    // PUBLIC PARTICIPATION ACTIONS — Teacher approves/rejects
-    // =========================================================================
-
     /**
      * Show all participation requests for teacher's events.
      */
     public function participationRequests() {
         $this->requireTeacher();
 
-        $requests = $this->queryParticipationsByCreator((int) $_SESSION['user_id']);
+        $requests = $this->model('EvenementRessourceRepository')->findParticipationsByCreator((int) $_SESSION['user_id']);
 
         $data = [
-            'title'    => 'Participation Requests - APPOLIOS',
-            'requests' => $requests,
-            'flash'    => $this->getFlash()
+            'title' => 'Participation Requests - APPOLIOS',
+            'participation_request_cards' => ParticipationRequestRowPresenter::decorateList($requests),
+            'participation_counts' => ParticipationRollupPresenter::rollup($requests),
+            'flash_strip' => FlashBannerPresenter::fromSessionFlash($this->getFlash()),
         ];
 
         $this->view('FrontOffice/teacher/participation_requests', $data);
@@ -1037,14 +935,14 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $participation = $this->queryFindParticipationById((int) $id);
-        if (!$participation || !$this->queryEventBelongsToTeacher((int) $participation['evenement_id'], (int) $_SESSION['user_id'])) {
+        $participation = $this->model('EvenementRessourceRepository')->findParticipationById((int) $id);
+        if (!$participation || !$this->model('EvenementRepository')->isCreatedBy((int) $participation['evenement_id'], (int) $_SESSION['user_id'])) {
             $this->setFlash('error', 'Participation request not found or access denied.');
             $this->redirect('teacher/participation-requests');
             return;
         }
 
-        if ($this->queryUpdateParticipationStatus((int) $id, 'approved')) {
+        if ($this->model('EvenementRessourceRepository')->updateParticipationStatusTeacher((int) $id, 'approved')) {
             $this->setFlash('success', 'Participation approved.');
         } else {
             $this->setFlash('error', 'Failed to approve participation.');
@@ -1069,8 +967,8 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $participation = $this->queryFindParticipationById((int) $id);
-        if (!$participation || !$this->queryEventBelongsToTeacher((int) $participation['evenement_id'], (int) $_SESSION['user_id'])) {
+        $participation = $this->model('EvenementRessourceRepository')->findParticipationById((int) $id);
+        if (!$participation || !$this->model('EvenementRepository')->isCreatedBy((int) $participation['evenement_id'], (int) $_SESSION['user_id'])) {
             $this->setFlash('error', 'Participation request not found or access denied.');
             $this->redirect('teacher/participation-requests');
             return;
@@ -1078,7 +976,7 @@ class TeacherController extends BaseController {
 
         $reason = $this->sanitize($_POST['reason'] ?? 'No specific reason provided.');
 
-        if ($this->queryUpdateParticipationStatus((int) $id, 'rejected', $reason)) {
+        if ($this->model('EvenementRessourceRepository')->updateParticipationStatusTeacher((int) $id, 'rejected', $reason)) {
             $this->setFlash('success', 'Participation rejected with reason.');
         } else {
             $this->setFlash('error', 'Failed to reject participation.');
@@ -1103,19 +1001,16 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $participation = $this->queryFindParticipationById((int) $id);
-        if (!$participation || !$this->queryEventBelongsToTeacher((int) $participation['evenement_id'], (int) $_SESSION['user_id'])) {
+        $participation = $this->model('EvenementRessourceRepository')->findParticipationById((int) $id);
+        if (!$participation || !$this->model('EvenementRepository')->isCreatedBy((int) $participation['evenement_id'], (int) $_SESSION['user_id'])) {
             $this->setFlash('error', 'Access denied. You can only delete participations for events you created.');
             $this->redirect('teacher/participation-requests');
             return;
         }
 
-        $st = $this->getDb()->prepare(
-            "DELETE FROM evenement_ressources WHERE id = ? AND type = 'participation'"
-        );
-        $st->execute([(int) $id]);
+        $deleted = $this->model('EvenementRessourceRepository')->deleteParticipationById((int) $id);
 
-        if ($st->rowCount() > 0) {
+        if ($deleted > 0) {
             $this->setFlash('success', 'Participation removed successfully.');
         } else {
             $this->setFlash('error', 'Participation not found.');
@@ -1127,63 +1022,5 @@ class TeacherController extends BaseController {
         } else {
             $this->redirect('teacher/participation-requests');
         }
-    }
-
-    // =========================================================================
-    // PRIVATE DB QUERY METHODS — Participation (via evenement_ressources)
-    // =========================================================================
-
-    private function queryParticipationsByEvent(int $eventId): array {
-        $st = $this->getDb()->prepare(
-            "SELECT r.id, r.evenement_id, r.created_by as student_id,
-                    r.title as student_name, r.details as status, r.created_at,
-                    (SELECT u.email FROM users u WHERE u.id = r.created_by LIMIT 1) as student_email
-             FROM evenement_ressources r
-             WHERE r.evenement_id = ? AND r.type = 'participation'
-             ORDER BY r.created_at DESC"
-        );
-        $st->execute([$eventId]);
-        return $st->fetchAll();
-    }
-
-    private function queryParticipationsByCreator(int $teacherId): array {
-        $st = $this->getDb()->prepare(
-            "SELECT r.id, r.evenement_id, r.created_by as student_id,
-                    r.title as student_name, r.details as status, r.created_at,
-                    e.title as event_title, e.date_debut, e.heure_debut,
-                    u.name as student_name_full, u.email as student_email
-             FROM evenement_ressources r
-             JOIN evenements e ON r.evenement_id = e.id
-             JOIN users u ON r.created_by = u.id
-             WHERE r.type = 'participation' AND e.created_by = ?
-             ORDER BY r.created_at DESC"
-        );
-        $st->execute([$teacherId]);
-        return $st->fetchAll();
-    }
-
-    private function queryFindParticipationById(int $id): array|false {
-        $st = $this->getDb()->prepare(
-            "SELECT * FROM evenement_ressources WHERE id = ? AND type = 'participation' LIMIT 1"
-        );
-        $st->execute([$id]);
-        return $st->fetch();
-    }
-
-    private function queryEventBelongsToTeacher(int $eventId, int $teacherId): bool {
-        $st = $this->getDb()->prepare(
-            "SELECT id FROM evenements WHERE id = ? AND created_by = ? LIMIT 1"
-        );
-        $st->execute([$eventId, $teacherId]);
-        return (bool) $st->fetch();
-    }
-
-    private function queryUpdateParticipationStatus(int $id, string $status, string $reason = null): bool {
-        $st = $this->getDb()->prepare(
-            "UPDATE evenement_ressources
-             SET details = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE id = ? AND type = 'participation'"
-        );
-        return $st->execute([$status, $reason, $id]);
     }
 }

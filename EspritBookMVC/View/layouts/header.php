@@ -1,44 +1,14 @@
 <?php
+/** @var string $title */
+/** @var string $currentUrl */
+/** @var bool $isAuthPage */
+/** @var mixed $role */
+/** @var string $bodyClassAttr */
 $title = $title ?? APP_NAME;
-$currentUrl = (string) ($_GET['url'] ?? 'home/index');
-$isAuthPage = str_starts_with($currentUrl, 'login') || str_starts_with($currentUrl, 'register') || str_starts_with($currentUrl, 'admin/login');
-$role = $_SESSION['role'] ?? null;
-$bodyClasses = [];
-
-$bodyClasses[] = 'neo-brand';
-
-if (str_starts_with($currentUrl, 'student/evenements') || str_starts_with($currentUrl, 'student/evenement')) {
-    $bodyClasses[] = 'theme-student-events';
-}
-
-if (str_starts_with($currentUrl, 'home/index')) {
-    $bodyClasses[] = 'theme-home-lite';
-}
-
-// apply the home-lite theme to admin/backoffice pages as requested
-if (str_starts_with($currentUrl, 'admin')) {
-    $bodyClasses[] = 'theme-home-lite';
-}
-
-if (
-    str_starts_with($currentUrl, 'student/dashboard') ||
-    str_starts_with($currentUrl, 'student/course') ||
-    str_starts_with($currentUrl, 'login') ||
-    str_starts_with($currentUrl, 'register')
-) {
-    $bodyClasses[] = 'neo-dark-ui';
-}
-
-if ($isAuthPage) {
-    $bodyClasses[] = 'auth-page';
-}
-
-// apply the home-lite theme to all non-auth pages (site-wide) so front/back pages share the same palette
-if (!$isAuthPage && !in_array('theme-home-lite', $bodyClasses, true)) {
-    $bodyClasses[] = 'theme-home-lite';
-}
-
-$bodyClassAttr = implode(' ', $bodyClasses);
+$currentUrl = $currentUrl ?? 'home/index';
+$isAuthPage = (bool) ($isAuthPage ?? false);
+$role = $role ?? null;
+$bodyClassAttr = $bodyClassAttr ?? 'neo-brand theme-home-lite';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -308,7 +278,7 @@ body.dark-mode .dark-mode-toggle {
                     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                 </svg>
             </button>
-            <?php if (!empty($_SESSION['logged_in'])): ?>
+            <?php if (!empty($viewerLoggedIn)): ?>
                 <a class="neo-btn-outline" href="<?= APP_ENTRY ?>?url=logout">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                     Logout

@@ -2,16 +2,30 @@
 
 abstract class BaseController
 {
+    /**
+     * Resolve persistence (Repository/), application services (Service/), or legacy Model/ classes.
+     */
     public function model(string $model)
     {
-        $modelFile = __DIR__ . '/../Model/' . $model . '.php';
-
-        if (!file_exists($modelFile)) {
-            throw new Exception("Model '{$model}' not found");
+        $repositoryFile = __DIR__ . '/../Repository/' . $model . '.php';
+        if (file_exists($repositoryFile)) {
+            require_once $repositoryFile;
+            return new $model();
         }
 
-        require_once $modelFile;
-        return new $model();
+        $serviceFile = __DIR__ . '/../Service/' . $model . '.php';
+        if (file_exists($serviceFile)) {
+            require_once $serviceFile;
+            return new $model();
+        }
+
+        $modelFile = __DIR__ . '/../Model/' . $model . '.php';
+        if (file_exists($modelFile)) {
+            require_once $modelFile;
+            return new $model();
+        }
+
+        throw new Exception("Class '{$model}' not found in Repository, Service, or Model.");
     }
 
     public function view(string $view, array $data = []): void
@@ -32,10 +46,91 @@ abstract class BaseController
             $data['errors'] = $this->getErrors();
         }
 
+        $data = array_merge($this->layoutPresentationData(), $data);
+
         extract($data);
         require $headerFile;
         require $viewFile;
         require $footerFile;
+    }
+
+    /**
+     * Render a single view file with no layout (e.g. printable ticket, raw HTML response).
+     *
+     * @param string $view Path relative to View/ without .php (e.g. "student/ticket")
+     * @param array<string, mixed> $data Variables extracted for the template
+     */
+    protected function renderStandaloneView(string $view, array $data = []): void
+    {
+        $viewFile = __DIR__ . '/../View/' . $view . '.php';
+
+        if (!file_exists($viewFile)) {
+            throw new Exception("View '{$view}' not found");
+        }
+
+        extract($data, EXTR_SKIP);
+        require $viewFile;
+        exit;
+    }
+
+    /**
+     * Layout-only values for the shared header (routing/theme flags). Controllers may override keys.
+     *
+     * @return array<string, mixed>
+     */
+    protected function layoutPresentationData(): array
+    {
+        $currentUrl = trim((string) ($_GET['url'] ?? ''), '/');
+        if ($currentUrl === '') {
+            $currentUrl = 'home/index';
+        }
+
+        $isAuthPage = str_starts_with($currentUrl, 'login')
+            || str_starts_with($currentUrl, 'register')
+            || str_starts_with($currentUrl, 'admin/login');
+
+        $role = $_SESSION['role'] ?? null;
+
+        $bodyClasses = ['neo-brand'];
+
+        if (str_starts_with($currentUrl, 'student/evenements') || str_starts_with($currentUrl, 'student/evenement')) {
+            $bodyClasses[] = 'theme-student-events';
+        }
+
+        if (str_starts_with($currentUrl, 'home/index')) {
+            $bodyClasses[] = 'theme-home-lite';
+        }
+
+        if (str_starts_with($currentUrl, 'admin')) {
+            $bodyClasses[] = 'theme-home-lite';
+        }
+
+        if (
+            str_starts_with($currentUrl, 'student/dashboard')
+            || str_starts_with($currentUrl, 'student/course')
+            || str_starts_with($currentUrl, 'login')
+            || str_starts_with($currentUrl, 'register')
+        ) {
+            $bodyClasses[] = 'neo-dark-ui';
+        }
+
+        if ($isAuthPage) {
+            $bodyClasses[] = 'auth-page';
+        }
+
+        if (!$isAuthPage && !in_array('theme-home-lite', $bodyClasses, true)) {
+            $bodyClasses[] = 'theme-home-lite';
+        }
+
+        return [
+            'currentUrl' => $currentUrl,
+            'isAuthPage' => $isAuthPage,
+            'role' => $role,
+            'bodyClassAttr' => implode(' ', $bodyClasses),
+            'viewerLoggedIn' => !empty($_SESSION['logged_in']),
+            'viewerUserId' => (int) ($_SESSION['user_id'] ?? 0),
+            'viewerUserName' => (string) ($_SESSION['user_name'] ?? ''),
+        ];
     }
 
     protected function isLoggedIn(): bool
@@ -101,6 +196,24 @@ abstract class BaseController
         $errors = $_SESSION['form_errors'] ?? [];
         unset($_SESSION['form_errors']);
         return $errors;
+    }
+
+    /** Repopulated form values after redirect (controllers consume; views never touch $_SESSION). */
+    protected function consumeSessionOld(): array
+    {
+        $old = $_SESSION['old'] ?? [];
+        unset($_SESSION['old']);
+
+        return is_array($old) ? $old : [];
+    }
+
+    /** Inline validation lists stored under $_SESSION['errors'] (e.g. registration). */
+    protected function consumeSessionInlineErrors(): array
+    {
+        $errors = $_SESSION['errors'] ?? [];
+        unset($_SESSION['errors']);
+
+        return is_array($errors) ? $errors : [];
     }
 
     protected function groupeImageUrlFromRow(array $row): string

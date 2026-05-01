@@ -2,7 +2,10 @@
 
 require_once __DIR__ . '/../config/database.php';
 
-abstract class BaseModel
+/**
+ * Shared PDO persistence base for repositories (not a domain entity).
+ */
+abstract class BaseRepository
 {
     protected PDO $db;
     protected string $table = '';

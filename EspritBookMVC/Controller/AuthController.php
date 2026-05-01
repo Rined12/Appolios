@@ -5,8 +5,9 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Model/User.php';
-require_once __DIR__ . '/../Model/TeacherApplication.php';
+require_once __DIR__ . '/../Repository/UserRepository.php';
+require_once __DIR__ . '/../Repository/TeacherApplicationRepository.php';
+require_once __DIR__ . '/../Presentation/FlashBannerPresenter.php';
 
 class AuthController extends BaseController {
 
@@ -62,8 +63,8 @@ class AuthController extends BaseController {
         }
 
         // Authenticate user
-        $userModel = $this->model('User');
-        $user = $userModel->authenticate($email, $password);
+        $userRepository = $this->model('UserRepository');
+        $user = $userRepository->authenticate($email, $password);
 
         if ($user) {
             // Check if user is blocked
@@ -126,10 +127,13 @@ class AuthController extends BaseController {
             return;
         }
 
+        $flash = $this->getFlash();
         $data = [
             'title' => 'Sign Up - APPOLIOS',
             'description' => 'Create your APPOLIOS account',
-            'flash' => $this->getFlash()
+            'flash_banner' => FlashBannerPresenter::fromSessionFlash($flash),
+            'register_old' => $this->consumeSessionOld(),
+            'register_inline_errors' => $this->consumeSessionInlineErrors(),
         ];
 
         $this->view('FrontOffice/auth/register', $data);
@@ -173,19 +177,19 @@ class AuthController extends BaseController {
             $errors[] = 'Passwords do not match';
         }
 
-        $userModel = $this->model('User');
+        $userRepository = $this->model('UserRepository');
 
         // Student signup should only rely on users table.
-        if ($userModel->emailExists($email)) {
+        if ($userRepository->emailExists($email)) {
             $errors[] = 'Email already registered';
         }
 
         // Handle teacher registration with CV
         if ($role === 'teacher') {
-            $teacherAppModel = $this->model('TeacherApplication');
+            $teacherAppRepository = $this->model('TeacherApplicationRepository');
 
             // Also block emails already pending as teacher applications.
-            if ($teacherAppModel->emailExists($email)) {
+            if ($teacherAppRepository->emailExists($email)) {
                 $errors[] = 'Email already pending approval';
             }
 
@@ -231,7 +235,7 @@ class AuthController extends BaseController {
             }
 
             // Create teacher application
-            $appId = $teacherAppModel->createApplication([
+            $appId = $teacherAppRepository->createApplication([
                 'name' => $name,
                 'email' => $email,
                 'password' => $password,
@@ -260,7 +264,7 @@ class AuthController extends BaseController {
         }
 
         // Create user (always student from public registration)
-        $userId = $userModel->create([
+        $userId = $userRepository->create([
             'name' => $name,
             'email' => $email,
             'password' => $password,
@@ -269,7 +273,7 @@ class AuthController extends BaseController {
 
         if ($userId) {
             // Auto-login the new user
-            $user = $userModel->findById($userId);
+            $user = $userRepository->findById($userId);
 
             if ($user) {
                 // Regenerate session ID for security

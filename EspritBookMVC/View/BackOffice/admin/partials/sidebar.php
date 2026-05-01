@@ -4,6 +4,8 @@
  */
 
 $adminSidebarActive = $adminSidebarActive ?? '';
+$unread_contact_messages_count = (int) ($unread_contact_messages_count ?? 0);
+$pendingTeacherApps = (int) ($pendingTeacherApps ?? 0);
 ?>
 
 <aside class="admin-sidebar dark-theme">
@@ -137,13 +139,8 @@ $adminSidebarActive = $adminSidebarActive ?? '';
                 </svg>
             </span>
             <span>Messages</span>
-            <?php
-            // Show unread messages count badge
-            require_once __DIR__ . '/../../../../Model/ContactMessage.php';
-            $contactModel = new ContactMessage();
-            $unreadMessages = $contactModel->getUnreadCount();
-            if ($unreadMessages > 0): ?>
-                <span style="margin-left: auto; background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><?= $unreadMessages ?></span>
+            <?php if ($unread_contact_messages_count > 0): ?>
+                <span style="margin-left: auto; background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><?= $unread_contact_messages_count ?></span>
             <?php endif; ?>
         </a>
     </nav>

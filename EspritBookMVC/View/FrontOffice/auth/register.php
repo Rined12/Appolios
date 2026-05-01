@@ -2,18 +2,8 @@
 /**
  * APPOLIOS - Registration Page (Premium Neo Design)
  */
-
-// Get old input if available
-$old = $_SESSION['old'] ?? [];
-unset($_SESSION['old']);
-
-// Get flash messages
-$flash = $_SESSION['flash'] ?? null;
-unset($_SESSION['flash']);
-
-// Get errors
-$errors = $_SESSION['errors'] ?? [];
-unset($_SESSION['errors']);
+$register_old = $register_old ?? [];
+$register_inline_errors = $register_inline_errors ?? [];
 ?>
 
 <section class="neo-auth-wrap">
@@ -40,16 +30,16 @@ unset($_SESSION['errors']);
             <h2>Register</h2>
             <p class="neo-muted" style="margin-top: 0.45rem;">Create your account and start your first track.</p>
 
-            <?php if ($flash): ?>
-                <div class="neo-alert <?= $flash['type'] === 'error' ? 'error' : 'success' ?>">
-                    <?= htmlspecialchars($flash['message']) ?>
+            <?php if (!empty($flash_banner)): ?>
+                <div class="neo-alert <?= htmlspecialchars($flash_banner['alert_class']) ?>">
+                    <?= htmlspecialchars($flash_banner['message']) ?>
                 </div>
             <?php endif; ?>
 
-            <?php if (!empty($errors)): ?>
+            <?php if (!empty($register_inline_errors)): ?>
                 <div class="neo-alert error">
-                    <?php foreach ($errors as $error): ?>
-                        <div>• <?= htmlspecialchars($error) ?></div>
+                    <?php foreach ($register_inline_errors as $error): ?>
+                        <div>• <?= htmlspecialchars((string) $error) ?></div>
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
@@ -57,12 +47,12 @@ unset($_SESSION['errors']);
             <form action="<?= APP_ENTRY ?>?url=signup" method="POST" enctype="multipart/form-data" novalidate>
                 <div class="neo-field">
                     <label for="name">Full Name</label>
-                    <input type="text" id="name" name="name" placeholder="Your full name" value="<?= htmlspecialchars($old['name'] ?? '') ?>" data-js-required="1">
+                    <input type="text" id="name" name="name" placeholder="Your full name" value="<?= htmlspecialchars($register_old['name'] ?? '') ?>" data-js-required="1">
                 </div>
 
                 <div class="neo-field">
                     <label for="email">Email Address</label>
-                    <input type="text" id="email" name="email" placeholder="you@example.com" value="<?= htmlspecialchars($old['email'] ?? '') ?>" data-js-required="1">
+                    <input type="text" id="email" name="email" placeholder="you@example.com" value="<?= htmlspecialchars($register_old['email'] ?? '') ?>" data-js-required="1">
                 </div>
 
                 <div class="neo-field">

@@ -1,83 +1,22 @@
 <?php
 /**
- * APPOLIOS Ressource Controller
- * SQL + business logic here. Model = getters/setters only.
+ * APPOLIOS Ressource Controller — validation and workflow for event resources.
+ * Persistence: EvenementRepository, EvenementRessourceRepository.
  */
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Model/EvenementRessource.php';
 
 class RessourceController extends BaseController {
 
-    private function getDb(): PDO {
-        static $pdo = null;
-        if ($pdo === null) {
-            $pdo = new PDO(
-                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET,
-                DB_USER, DB_PASS,
-                [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
-        }
-        return $pdo;
+    /**
+     * @return array{0: EvenementRepository, 1: EvenementRessourceRepository}
+     */
+    private function services(): array
+    {
+        return [
+            $this->model('EvenementRepository'),
+            $this->model('EvenementRessourceRepository'),
+        ];
     }
-
-    private function queryFindEvenement(int $id): array|false {
-        $st = $this->getDb()->prepare("SELECT * FROM evenements WHERE id = ? LIMIT 1");
-        $st->execute([$id]);
-        return $st->fetch();
-    }
-
-    private function queryFindRessource(int $id): array|false {
-        $st = $this->getDb()->prepare("SELECT * FROM evenement_ressources WHERE id = ? LIMIT 1");
-        $st->execute([$id]);
-        return $st->fetch();
-    }
-
-    private function queryByTypeAndEvenement(string $type, int $evenementId): array {
-        $st = $this->getDb()->prepare(
-            "SELECT r.*, u.name as creator_name, e.title as evenement_title
-             FROM evenement_ressources r
-             JOIN users u ON r.created_by = u.id
-             JOIN evenements e ON r.evenement_id = e.id
-             WHERE r.type = ? AND r.evenement_id = ?
-             ORDER BY r.created_at DESC"
-        );
-        $st->execute([$type, $evenementId]);
-        return $st->fetchAll();
-    }
-
-    private function queryExistsInScope(int $id, int $evenementId, string $type): bool {
-        $st = $this->getDb()->prepare(
-            "SELECT id FROM evenement_ressources WHERE id=? AND evenement_id=? AND type=? LIMIT 1"
-        );
-        $st->execute([$id, $evenementId, $type]);
-        return (bool)$st->fetch();
-    }
-
-    private function queryCreate(array $d): int|false {
-        try {
-            $st = $this->getDb()->prepare(
-                "INSERT INTO evenement_ressources (evenement_id,type,title,details,created_by,created_at)
-                 VALUES (?,?,?,?,?,NOW())"
-            );
-            $st->execute([$d['evenement_id'],$d['type'],$d['title'],$d['details'],$d['created_by']]);
-            return (int)$this->getDb()->lastInsertId();
-        } catch (PDOException $e) { return false; }
-    }
-
-    private function queryUpdate(int $id, array $d): bool {
-        $st = $this->getDb()->prepare(
-            "UPDATE evenement_ressources SET title=?,details=?,updated_at=CURRENT_TIMESTAMP
-             WHERE id=? AND evenement_id=?"
-        );
-        return $st->execute([$d['title'],$d['details'],$id,$d['evenement_id']]);
-    }
-
-    private function queryDelete(int $id, int $evenementId): bool {
-        $st = $this->getDb()->prepare("DELETE FROM evenement_ressources WHERE id=? AND evenement_id=?");
-        return $st->execute([$id, $evenementId]);
-    }
-
-    // ─── ACTIONS ──────────────────────────────────────────────────────────────
 
     public function evenementRessources() {
         if (!$this->isAdmin()) {
@@ -90,7 +29,8 @@ class RessourceController extends BaseController {
             $this->redirect('event/evenements'); return;
         }
 
-        $selectedEvenement = $this->queryFindEvenement($selectedId);
+        [$evenementRepo, $resRepo] = $this->services();
+        $selectedEvenement = $evenementRepo->findById($selectedId);
         if (!$selectedEvenement) {
             $this->setFlash('error','Evenement not found.');
             $this->redirect('event/evenements'); return;
@@ -99,11 +39,19 @@ class RessourceController extends BaseController {
         $editId       = (int)($_GET['edit_id'] ?? 0);
         $editResource = null;
         if ($editId > 0) {
-            $candidate = $this->queryFindRessource($editId);
+            $candidate = $resRepo->findById($editId);
             if ($candidate && (int)$candidate['evenement_id'] === $selectedId) {
                 $editResource = $candidate;
             }
         }
+
+        $participationsList = $resRepo->findParticipationsByEvent($selectedId);
+        $participationPendingCount = count(array_filter(
+            $participationsList,
+            static fn(array $p): bool => (string) ($p['status'] ?? '') === 'pending'
+        ));
+        $adminIsCreator = isset($_SESSION['user_id'])
+            && (int) ($selectedEvenement['created_by'] ?? -1) === (int) $_SESSION['user_id'];
 
         $this->view('BackOffice/admin/evenement_ressources', [
             'title'               => 'Evenement Resources - APPOLIOS',
@@ -111,25 +59,14 @@ class RessourceController extends BaseController {
             'selectedEvenementId' => $selectedId,
             'selectedEvenement'   => $selectedEvenement,
             'editResource'        => $editResource,
-            'rules'               => $this->queryByTypeAndEvenement('rule',    $selectedId),
-            'materials'           => $this->queryByTypeAndEvenement('materiel', $selectedId),
-            'plans'               => $this->queryByTypeAndEvenement('plan',    $selectedId),
-            'participations'      => $this->queryParticipationsByEvent($selectedId),
+            'rules'               => $resRepo->findByTypeAndEvent('rule',    $selectedId),
+            'materials'           => $resRepo->findByTypeAndEvent('materiel', $selectedId),
+            'plans'               => $resRepo->findByTypeAndEvent('plan',    $selectedId),
+            'participations'      => $participationsList,
+            'participation_pending_count' => $participationPendingCount,
+            'admin_is_creator'    => $adminIsCreator,
             'flash'               => $this->getFlash(),
         ]);
-    }
-
-    private function queryParticipationsByEvent(int $eventId): array {
-        $st = $this->getDb()->prepare(
-            "SELECT r.id, r.evenement_id, r.created_by as student_id,
-                    r.title as student_name, r.details as status, r.created_at,
-                    (SELECT u.email FROM users u WHERE u.id = r.created_by LIMIT 1) as student_email
-             FROM evenement_ressources r
-             WHERE r.evenement_id = ? AND r.type = 'participation'
-             ORDER BY r.created_at DESC"
-        );
-        $st->execute([$eventId]);
-        return $st->fetchAll();
     }
 
     public function storeEvenementRessource() {
@@ -144,7 +81,6 @@ class RessourceController extends BaseController {
                         strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
                     || (isset($_POST['batch_mode']) && $_POST['batch_mode'] === '1');
 
-        // Prepend quantity to details for materiel
         if ($type === 'materiel') {
             $qty = (int)($_POST['quantite'] ?? 0);
             if ($qty > 0) {
@@ -155,8 +91,9 @@ class RessourceController extends BaseController {
         $errors = [];
         if (!in_array($type, ['rule','materiel','plan'], true)) $errors[] = 'Invalid resource type.';
         if (empty($title))    $errors[] = 'Title is required.';
+        [$evenementRepo, $resRepo] = $this->services();
         if ($evenementId <= 0) $errors[] = 'Please select an evenement.';
-        elseif (!$this->queryFindEvenement($evenementId)) $errors[] = 'Evenement not found.';
+        elseif (!$evenementRepo->findById($evenementId)) $errors[] = 'Evenement not found.';
 
         if (!empty($errors)) {
             if ($isAjax) { header('Content-Type: application/json'); echo json_encode(['success'=>false,'message'=>implode(' ',$errors)]); exit; }
@@ -164,11 +101,11 @@ class RessourceController extends BaseController {
             $this->redirect('ressource/evenement-ressources&evenement_id='.$evenementId); return;
         }
 
-        $createdId = $this->queryCreate([
+        $createdId = $resRepo->create([
             'evenement_id'=>$evenementId,'type'=>$type,
             'title'=>$title,'details'=>$details,'created_by'=>$_SESSION['user_id']
         ]);
-        $verified = $createdId && $this->queryExistsInScope($createdId, $evenementId, $type);
+        $verified = $createdId && $resRepo->existsInScope($createdId, $evenementId, $type);
         $labels   = ['rule'=>'Rule','materiel'=>'Materiel','plan'=>'Plan'];
 
         if ($verified) {
@@ -203,14 +140,15 @@ class RessourceController extends BaseController {
             return;
         }
 
-        $resource = $this->queryFindRessource((int)$id);
+        [, $resRepo] = $this->services();
+        $resource = $resRepo->findById((int)$id);
         if (!$resource || (int)$resource['evenement_id'] !== $evenementId) {
             $this->setFlash('error','Resource not found for this evenement.');
             $this->redirect('ressource/evenement-ressources&evenement_id='.$evenementId);
             return;
         }
 
-        $this->queryUpdate((int)$id, ['title'=>$title,'details'=>$details,'evenement_id'=>$evenementId])
+        $resRepo->update((int)$id, ['title'=>$title,'details'=>$details,'evenement_id'=>$evenementId])
             ? $this->setFlash('success','Ressource updated successfully.')
             : $this->setFlash('error','Failed to update ressource.');
         $this->redirect('ressource/evenement-ressources&evenement_id='.$evenementId);
@@ -226,83 +164,56 @@ class RessourceController extends BaseController {
             $this->redirect('event/evenements'); return;
         }
 
-        $this->queryDelete((int)$id, $evenementId)
+        [, $resRepo] = $this->services();
+        $resRepo->delete((int)$id, $evenementId)
             ? $this->setFlash('success','Ressource deleted successfully.')
             : $this->setFlash('error','Failed to delete ressource.');
         $this->redirect('ressource/evenement-ressources&evenement_id='.$evenementId);
     }
 
-    // ─── PARTICIPATION ACTIONS (Admin) ────────────────────────────────────────
-
-    /**
-     * Approve a student participation request.
-     * Sets details = 'approved' on the evenement_ressources row.
-     */
     public function approveParticipation($id) {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { $this->redirect('event/evenements'); return; }
 
         $evenementId = (int)($_POST['from_evenement_id'] ?? 0);
-        $this->queryUpdateParticipationStatus((int)$id, 'approved')
+        [, $resRepo] = $this->services();
+        $resRepo->updateParticipationStatusAdmin((int)$id, 'approved')
             ? $this->setFlash('success', 'Participation approved.')
             : $this->setFlash('error', 'Failed to approve participation.');
 
         $this->redirect('ressource/evenement-ressources&evenement_id=' . $evenementId);
     }
 
-    /**
-     * Reject a student participation request.
-     * Sets details = 'rejected' on the evenement_ressources row.
-     */
     public function rejectParticipation($id) {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { $this->redirect('event/evenements'); return; }
 
         $evenementId = (int)($_POST['from_evenement_id'] ?? 0);
         $reason = $this->sanitize($_POST['reason'] ?? 'No specific reason provided.');
-        
-        $this->queryUpdateParticipationStatus((int)$id, 'rejected', $reason)
+
+        [, $resRepo] = $this->services();
+        $resRepo->updateParticipationStatusAdmin((int)$id, 'rejected', $reason)
             ? $this->setFlash('success', 'Participation rejected with reason.')
             : $this->setFlash('error', 'Failed to reject participation.');
 
         $this->redirect('ressource/evenement-ressources&evenement_id=' . $evenementId);
     }
 
-    private function queryUpdateParticipationStatus(int $id, string $status, string $reason = null): bool {
-        $s = in_array($status, ['approved','rejected'], true) ? $status : 'pending';
-        $st = $this->getDb()->prepare(
-            "UPDATE evenement_ressources
-             SET details = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE id = ? AND type = 'participation'"
-        );
-        return $st->execute([$s, $reason, $id]);
-    }
-
-    /**
-     * Delete a student participation record.
-     * Admin can only delete participations on events THEY created.
-     */
     public function deleteParticipation($id) {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') { $this->redirect('event/evenements'); return; }
 
         $evenementId = (int)($_POST['from_evenement_id'] ?? 0);
 
-        // Security: verify the event belongs to the current admin
-        $event = $this->queryFindEvenement($evenementId);
+        [$evenementRepo, $resRepo] = $this->services();
+        $event = $evenementRepo->findById($evenementId);
         if (!$event || (int)($event['created_by'] ?? -1) !== (int)$_SESSION['user_id']) {
             $this->setFlash('error', 'Access denied. You can only delete participations for events you created.');
             $this->redirect('ressource/evenement-ressources&evenement_id=' . $evenementId);
             return;
         }
 
-        // Verify participation belongs to that event
-        $st = $this->getDb()->prepare(
-            "DELETE FROM evenement_ressources WHERE id = ? AND evenement_id = ? AND type = 'participation'"
-        );
-        $st->execute([(int)$id, $evenementId]);
-
-        if ($st->rowCount() > 0) {
+        if ($resRepo->deleteParticipationForEvent((int)$id, $evenementId) > 0) {
             $this->setFlash('success', 'Participation removed successfully.');
         } else {
             $this->setFlash('error', 'Participation not found.');

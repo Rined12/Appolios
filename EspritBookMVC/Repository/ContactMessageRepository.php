@@ -4,9 +4,9 @@
  * Handles contact us messages storage and retrieval
  */
 
-require_once __DIR__ . '/BaseModel.php';
+require_once __DIR__ . '/BaseRepository.php';
 
-class ContactMessage extends BaseModel {
+class ContactMessageRepository extends BaseRepository {
     protected string $table = 'contact_messages';
 
     /**

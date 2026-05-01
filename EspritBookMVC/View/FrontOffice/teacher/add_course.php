@@ -3,8 +3,8 @@
  * APPOLIOS - Teacher Add Course Page
  */
 
-$old = $_SESSION['old'] ?? [];
-unset($_SESSION['old']);
+$course_old = $course_old ?? [];
+$old = $course_old;
 
 $teacherSidebarActive = 'courses';
 ?>

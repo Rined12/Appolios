@@ -1,134 +1,135 @@
 <?php
 $studentSidebarActive = 'groupes';
 $viewerId = (int) ($_SESSION['user_id'] ?? 0);
+$listQ = (string) ($listQ ?? '');
+$listSort = (string) ($listSort ?? 'name_asc');
+$listQueryActive = (bool) ($listQueryActive ?? false);
 ?>
-<div class="dashboard student-events-page">
+<div class="dashboard student-events-page collab-hub">
     <div class="container admin-dashboard-container">
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
             <div class="admin-main">
-                <style>
-                    .group-box-grid {
-                        display: grid;
-                        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                        gap: 16px;
-                    }
-                    .group-box-card {
-                        background: #fff;
-                        border: 1px solid #e2e8f0;
-                        border-radius: 14px;
-                        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06);
-                        padding: 14px;
-                        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-                    }
-                    .group-box-card:hover {
-                        transform: translateY(-4px);
-                        border-color: #cbd5e1;
-                        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
-                    }
-                    .group-box-card h4 {
-                        margin: 0 0 6px 0;
-                        color: #1e293b;
-                        font-size: 1.05rem;
-                    }
-                    .group-box-cover {
-                        width: 100%;
-                        height: 140px;
-                        border-radius: 10px;
-                        object-fit: cover;
-                        border: 1px solid #e2e8f0;
-                        margin-bottom: 10px;
-                        background: #f8fafc;
-                        transition: transform 0.25s ease;
-                    }
-                    .group-box-card:hover .group-box-cover { transform: scale(1.02); }
-                    .group-box-card p {
-                        margin: 0 0 12px 0;
-                        color: #64748b;
-                        min-height: 42px;
-                    }
-                    .group-box-actions {
-                        display: flex;
-                        gap: 8px;
-                        flex-wrap: wrap;
-                    }
-                    .group-box-actions .action-btn {
-                        transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
-                    }
-                    .group-box-actions .action-btn:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
-                        filter: brightness(1.02);
-                    }
-                    .group-box-badge {
-                        display: inline-block;
-                        margin-bottom: 10px;
-                        font-size: 12px;
-                        padding: 4px 10px;
-                        border-radius: 999px;
-                        background: #ffedd5;
-                        color: #9a3412;
-                        font-weight: 700;
-                        transition: transform 0.2s ease, box-shadow 0.2s ease;
-                    }
-                    .group-box-card:hover .group-box-badge {
-                        transform: translateY(-1px);
-                        box-shadow: 0 4px 10px rgba(154, 52, 18, 0.15);
-                    }
-                </style>
+                <?php require __DIR__ . '/partials/collab_hub_styles.php'; ?>
 
-                <div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;">
-                    <div><h1>Groups</h1><p>Approved groups and your pending groups.</p></div>
-                    <a class="btn btn-yellow" href="<?= APP_ENTRY ?>?url=student/groupes/create">Create Group</a>
-                </div>
+                <header class="collab-hero">
+                    <div class="collab-hero__inner">
+                        <div>
+                            <div class="collab-eyebrow"><i class="bi bi-collection-fill" aria-hidden="true"></i> Study circles</div>
+                            <h1>Groups</h1>
+                            <p>Discover approved communities, track your pending submissions, and manage spaces you lead.</p>
+                        </div>
+                        <div class="collab-hero-actions">
+                            <a href="<?= APP_ENTRY ?>?url=student/groupes/create" class="collab-btn-primary">
+                                <i class="bi bi-plus-lg" aria-hidden="true"></i> Create group
+                            </a>
+                            <a href="<?= APP_ENTRY ?>?url=student/discussions" class="collab-btn-ghost">
+                                <i class="bi bi-chat-square-text" aria-hidden="true"></i> Discussions
+                            </a>
+                        </div>
+                    </div>
+                </header>
+
+                <form class="collab-toolbar" method="get" action="<?= APP_ENTRY ?>" novalidate>
+                    <input type="hidden" name="url" value="student/groupes">
+                    <div style="flex:1 1 320px; min-width:0;">
+                        <label for="fo_group_search">Search groups</label>
+                        <div class="collab-search-row">
+                            <input id="fo_group_search" type="text" name="q" value="<?= htmlspecialchars($listQ) ?>" placeholder="Name or description…" autocomplete="off">
+                            <button type="submit" title="Search" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+                    <div style="flex:0 0 auto;">
+                        <label for="fo_group_sort">Sort</label>
+                        <select id="fo_group_sort" name="sort" aria-label="Sort groups" onchange="this.form.submit()">
+                            <option value="name_asc"<?= $listSort === 'name_asc' ? ' selected' : '' ?>>Name (A–Z)</option>
+                            <option value="name_desc"<?= $listSort === 'name_desc' ? ' selected' : '' ?>>Name (Z–A)</option>
+                            <option value="newest"<?= $listSort === 'newest' ? ' selected' : '' ?>>Newest first</option>
+                            <option value="oldest"<?= $listSort === 'oldest' ? ' selected' : '' ?>>Oldest first</option>
+                        </select>
+                    </div>
+                </form>
+
                 <?php if (!empty($mesGroupesEnApprobation)): ?>
-                    <h3>My groups pending approval</h3>
-                    <div class="group-box-grid" style="margin-bottom:18px;">
-                        <?php foreach ($mesGroupesEnApprobation as $g): ?>
-                            <?php $cover = trim((string) ($g['image_url'] ?? $g['photo'] ?? $g['image'] ?? '')); ?>
-                            <article class="group-box-card">
-                                <span class="group-box-badge">Pending Approval</span>
-                                <?php if ($cover !== ''): ?>
-                                    <img class="group-box-cover" src="<?= htmlspecialchars($cover) ?>" alt="Group photo" onerror="this.style.display='none';">
-                                <?php endif; ?>
-                                <h4><?= htmlspecialchars($g['nom_groupe']) ?></h4>
-                                <p><?= htmlspecialchars((string) ($g['description'] ?? '')) ?></p>
-                                <div class="group-box-actions">
-                                    <a class="btn btn-secondary action-btn" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>">View</a>
-                                    <a class="btn btn-primary action-btn" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>/edit">Edit</a>
-                                </div>
-                            </article>
-                        <?php endforeach; ?>
+                    <div class="collab-pending-block">
+                        <h3 class="collab-section-label"><span class="dot" aria-hidden="true"></span> Awaiting approval</h3>
+                        <div class="collab-group-grid">
+                            <?php foreach ($mesGroupesEnApprobation as $g): ?>
+                                <?php $cover = trim((string) ($g['image_url'] ?? $g['photo'] ?? $g['image'] ?? '')); ?>
+                                <article class="collab-group-card collab-group-card--pending">
+                                    <div class="collab-group-card__media<?= $cover === '' ? ' collab-group-card__media--fallback' : '' ?>">
+                                        <span class="collab-group-card__pending-tag">Awaiting approval</span>
+                                        <?php if ($cover !== ''): ?>
+                                            <img src="<?= htmlspecialchars($cover) ?>" alt="" loading="lazy" onerror="this.closest('.collab-group-card__media').classList.add('collab-group-card__media--fallback'); this.remove();">
+                                        <?php else: ?>
+                                            <div class="collab-group-card__ph" aria-hidden="true"><i class="bi bi-hourglass-split"></i></div>
+                                        <?php endif; ?>
+                                        <div class="collab-group-card__overlay"></div>
+                                        <h4 class="collab-group-card__floating-title"><?= htmlspecialchars($g['nom_groupe']) ?></h4>
+                                    </div>
+                                    <div class="collab-group-card__body">
+                                        <p class="collab-line-clamp-2"><?= htmlspecialchars((string) ($g['description'] ?? '')) ?></p>
+                                        <div class="collab-card-actions">
+                                            <a class="collab-chip-btn collab-chip-btn--muted" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>"><i class="bi bi-eye" aria-hidden="true"></i> View</a>
+                                            <a class="collab-chip-btn collab-chip-btn--live" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>/edit"><i class="bi bi-pencil-square" aria-hidden="true"></i> Edit</a>
+                                        </div>
+                                    </div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
 
-                <h3>Approved groups</h3>
+                <h3 class="collab-section-label"><span class="dot" aria-hidden="true"></span> Approved groups</h3>
                 <?php if (!empty($groupes)): ?>
-                    <div class="group-box-grid">
+                    <div class="collab-group-grid">
                         <?php foreach ($groupes as $g): ?>
                             <?php
                                 $cover = trim((string) ($g['image_url'] ?? $g['photo'] ?? $g['image'] ?? ''));
                                 $ownerId = (int) ($g['id_createur'] ?? $g['created_by'] ?? 0);
                                 $isOwner = $ownerId === $viewerId;
+                                $isMember = (bool) ($g['is_member_viewer'] ?? false);
                             ?>
-                            <article class="group-box-card">
-                                <?php if ($cover !== ''): ?>
-                                    <img class="group-box-cover" src="<?= htmlspecialchars($cover) ?>" alt="Group photo" onerror="this.style.display='none';">
-                                <?php endif; ?>
-                                <h4><?= htmlspecialchars($g['nom_groupe']) ?></h4>
-                                <p><?= htmlspecialchars((string) ($g['description'] ?? '')) ?></p>
-                                <div class="group-box-actions">
-                                    <a class="btn btn-secondary action-btn" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>">View</a>
-                                    <a class="btn btn-primary action-btn" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>/join">Join</a>
-                                    <?php if ($isOwner): ?>
-                                        <a class="btn btn-outline action-btn" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>/edit">Edit</a>
+                            <article class="collab-group-card">
+                                <div class="collab-group-card__media<?= $cover === '' ? ' collab-group-card__media--fallback' : '' ?>">
+                                    <?php if ($cover !== ''): ?>
+                                        <img src="<?= htmlspecialchars($cover) ?>" alt="" loading="lazy" onerror="this.closest('.collab-group-card__media').classList.add('collab-group-card__media--fallback'); this.remove();">
+                                    <?php else: ?>
+                                        <div class="collab-group-card__ph" aria-hidden="true"><i class="bi bi-people-fill"></i></div>
                                     <?php endif; ?>
+                                    <div class="collab-group-card__overlay"></div>
+                                    <h4 class="collab-group-card__floating-title"><?= htmlspecialchars($g['nom_groupe']) ?></h4>
+                                </div>
+                                <div class="collab-group-card__body">
+                                    <p class="collab-line-clamp-2"><?= htmlspecialchars((string) ($g['description'] ?? '')) ?></p>
+                                    <div class="collab-card-actions">
+                                        <a class="collab-chip-btn collab-chip-btn--muted" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>"><i class="bi bi-door-open" aria-hidden="true"></i> Open</a>
+                                        <?php if ($isOwner): ?>
+                                            <a class="collab-chip-btn collab-chip-btn--muted" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>/edit"><i class="bi bi-sliders" aria-hidden="true"></i> Manage</a>
+                                        <?php elseif ($isMember): ?>
+                                            <a class="collab-chip-btn collab-chip-btn--danger" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>/quit" onclick="return confirm('Quit this group?');"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Quit</a>
+                                        <?php else: ?>
+                                            <a class="collab-chip-btn collab-chip-btn--live" href="<?= APP_ENTRY ?>?url=student/groupes/<?= (int) $g['id_groupe'] ?>/join"><i class="bi bi-person-plus" aria-hidden="true"></i> Join</a>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </article>
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <div class="table-container">No groups available.</div>
+                    <div class="collab-empty">
+                        <div class="collab-empty-icon" aria-hidden="true">👥</div>
+                        <?php if ($listQueryActive): ?>
+                            <h3>No groups match</h3>
+                            <p>Adjust your search terms or clear the filter to see the full catalogue.</p>
+                        <?php else: ?>
+                            <h3>No groups yet</h3>
+                            <p>Be the first to propose a circle — admins approve new communities regularly.</p>
+                            <div style="margin-top:1.25rem;">
+                                <a href="<?= APP_ENTRY ?>?url=student/groupes/create" class="collab-btn-primary">Create a group</a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>

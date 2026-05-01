@@ -5,40 +5,26 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Model/User.php';
-require_once __DIR__ . '/../Model/Course.php';
-require_once __DIR__ . '/../Model/Enrollment.php';
-require_once __DIR__ . '/../Model/Groupe.php';
-require_once __DIR__ . '/../Model/Discussion.php';
+require_once __DIR__ . '/../Repository/UserRepository.php';
+require_once __DIR__ . '/../Repository/CourseRepository.php';
+require_once __DIR__ . '/../Repository/EnrollmentRepository.php';
+require_once __DIR__ . '/../Repository/GroupeRepository.php';
+require_once __DIR__ . '/../Repository/DiscussionRepository.php';
 
 
 class AdminController extends BaseController {
 
-    private function getDb(): PDO {
-        static $pdo = null;
-        if ($pdo === null) {
-            $pdo = new PDO(
-                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET,
-                DB_USER, DB_PASS,
-                [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
+    public function view(string $view, array $data = []): void
+    {
+        if (str_starts_with($view, 'BackOffice/admin/')) {
+            if (!array_key_exists('unread_contact_messages_count', $data)) {
+                $data['unread_contact_messages_count'] = $this->model('ContactMessageRepository')->getUnreadCount();
+            }
+            if (!array_key_exists('pendingTeacherApps', $data)) {
+                $data['pendingTeacherApps'] = $this->model('TeacherApplicationRepository')->countPending();
+            }
         }
-        return $pdo;
-    }
-
-    private function countEvenements(): int {
-        return (int) $this->getDb()->query("SELECT COUNT(*) FROM evenements")->fetchColumn();
-    }
-
-    private function getRecentEvenements(int $limit = 3): array {
-        $st = $this->getDb()->prepare(
-            "SELECT * FROM evenements
-             ORDER BY COALESCE(CONCAT(date_debut,' ',heure_debut), event_date) ASC
-             LIMIT ?"
-        );
-        $st->bindValue(1, $limit, PDO::PARAM_INT);
-        $st->execute();
-        return $st->fetchAll();
+        parent::view($view, $data);
     }
 
     /**
@@ -52,23 +38,24 @@ class AdminController extends BaseController {
             return;
         }
 
-        $userModel       = $this->model('User');
-        $courseModel     = $this->model('Course');
-        $enrollmentModel = $this->model('Enrollment');
-        $teacherAppModel = $this->model('TeacherApplication');
+        $userRepository         = $this->model('UserRepository');
+        $courseRepository       = $this->model('CourseRepository');
+        $enrollmentRepository   = $this->model('EnrollmentRepository');
+        $teacherAppRepository   = $this->model('TeacherApplicationRepository');
+        $evenementRepository    = $this->model('EvenementRepository');
 
         $data = [
             'title'             => 'Admin Dashboard - APPOLIOS',
             'description'       => 'Administrator control panel',
-            'totalUsers'        => $userModel->count(),
-            'totalStudents'     => $userModel->countStudents(),
-            'totalCourses'      => $courseModel->count(),
-            'totalEnrollments'  => $enrollmentModel->countAll(),
-            'totalEvenements'   => $this->countEvenements(),
-            'recentCourses'     => $courseModel->getAllWithCreator(),
-            'recentEvenements'  => $this->getRecentEvenements(3),
-            'recentUsers'       => $userModel->getStudents(),
-            'pendingTeacherApps'=> $teacherAppModel->countPending(),
+            'totalUsers'        => $userRepository->count(),
+            'totalStudents'     => $userRepository->countStudents(),
+            'totalCourses'      => $courseRepository->count(),
+            'totalEnrollments'  => $enrollmentRepository->countAll(),
+            'totalEvenements'   => $evenementRepository->countAll(),
+            'recentCourses'     => $courseRepository->getAllWithCreator(),
+            'recentEvenements'  => $evenementRepository->findRecent(3),
+            'recentUsers'       => $userRepository->getStudents(),
+            'pendingTeacherApps'=> $teacherAppRepository->countPending(),
             'flash'             => $this->getFlash()
         ];
 
@@ -85,8 +72,8 @@ class AdminController extends BaseController {
             return;
         }
 
-        $userModel = $this->model('User');
-        $users = $userModel->findAll();
+        $userRepository = $this->model('UserRepository');
+        $users = $userRepository->findAll();
 
         $data = [
             'title' => 'Manage Users - APPOLIOS',
@@ -108,164 +95,30 @@ class AdminController extends BaseController {
             return;
         }
 
-        $userModel = $this->model('User');
-        $users = $userModel->findAll();
+        $userRepository = $this->model('UserRepository');
+        $users = $userRepository->findAll();
+        $userRows = [];
+        foreach ($users as $u) {
+            $ts = strtotime((string) ($u['created_at'] ?? ''));
+            $role = (string) ($u['role'] ?? '');
+            $userRows[] = [
+                'id' => (string) ($u['id'] ?? ''),
+                'name' => (string) ($u['name'] ?? ''),
+                'email' => (string) ($u['email'] ?? ''),
+                'role' => $role,
+                'role_label' => $role !== '' ? ucfirst($role) : '',
+                'is_blocked' => !empty($u['is_blocked']),
+                'registered_display' => $ts !== false ? date('M d, Y H:i', $ts) : '',
+            ];
+        }
 
-        // Generate PDF using simple HTML output optimized for printing
         header('Content-Type: text/html; charset=utf-8');
-        ?>
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Users Export - APPOLIOS</title>
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: 'Segoe UI', Arial, sans-serif;
-                    font-size: 12px;
-                    line-height: 1.5;
-                    color: #333;
-                    padding: 20px;
-                }
-                .header {
-                    text-align: center;
-                    margin-bottom: 30px;
-                    padding-bottom: 20px;
-                    border-bottom: 3px solid #548CA8;
-                }
-                .header h1 {
-                    color: #2B4865;
-                    font-size: 24px;
-                    margin-bottom: 5px;
-                }
-                .header p {
-                    color: #666;
-                    font-size: 12px;
-                }
-                .info {
-                    margin-bottom: 20px;
-                    color: #666;
-                    font-size: 11px;
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 10px;
-                }
-                th {
-                    background: #548CA8;
-                    color: white;
-                    padding: 10px 8px;
-                    text-align: left;
-                    font-weight: 600;
-                    font-size: 11px;
-                }
-                td {
-                    padding: 8px;
-                    border-bottom: 1px solid #ddd;
-                    font-size: 11px;
-                }
-                tr:nth-child(even) {
-                    background: #f8f9fa;
-                }
-                .badge {
-                    padding: 2px 8px;
-                    border-radius: 12px;
-                    font-size: 10px;
-                    color: white;
-                    display: inline-block;
-                }
-                .badge-admin { background: #E19864; }
-                .badge-teacher { background: #548CA8; }
-                .badge-student { background: #28a745; }
-                .badge-blocked { background: #dc3545; }
-                .footer {
-                    margin-top: 30px;
-                    text-align: center;
-                    font-size: 10px;
-                    color: #999;
-                    border-top: 1px solid #ddd;
-                    padding-top: 15px;
-                }
-                @media print {
-                    body { padding: 0; }
-                    .no-print { display: none; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>APPOLIOS - Users Report</h1>
-                <p>Complete list of registered users</p>
-            </div>
-
-            <div class="info">
-                <strong>Generated:</strong> <?= date('F d, Y H:i:s') ?><br>
-                <strong>Total Users:</strong> <?= count($users) ?>
-            </div>
-
-            <div class="no-print" style="margin-bottom: 20px;">
-                <button onclick="window.print()" style="padding: 10px 20px; background: #548CA8; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">
-                    Print / Save as PDF
-                </button>
-                <a href="<?= APP_ENTRY ?>?url=admin/users" style="display: inline-block; padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; margin-left: 10px; text-decoration: none;">
-                    Back to Users
-                </a>
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 8%;">ID</th>
-                        <th style="width: 20%;">Full Name</th>
-                        <th style="width: 25%;">Email Address</th>
-                        <th style="width: 12%;">Role</th>
-                        <th style="width: 15%;">Status</th>
-                        <th style="width: 20%;">Registered Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($users as $user): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($user['id']) ?></td>
-                        <td><?= htmlspecialchars($user['name']) ?></td>
-                        <td><?= htmlspecialchars($user['email']) ?></td>
-                        <td>
-                            <span class="badge badge-<?= $user['role'] ?>">
-                                <?= ucfirst(htmlspecialchars($user['role'])) ?>
-                            </span>
-                        </td>
-                        <td>
-                            <?php if ($user['is_blocked'] ?? 0): ?>
-                                <span class="badge badge-blocked">Blocked</span>
-                            <?php else: ?>
-                                <span style="color: #28a745;">Active</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><?= date('M d, Y H:i', strtotime($user['created_at'])) ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-
-            <div class="footer">
-                <p>APPOLIOS E-Learning Platform - User Management Report</p>
-                <p>This document is confidential and intended for authorized personnel only.</p>
-            </div>
-
-            <script>
-                // Auto-trigger print dialog when page loads
-                window.onload = function() {
-                    setTimeout(function() {
-                        window.print();
-                    }, 500);
-                };
-            </script>
-        </body>
-        </html>
-        <?php
-        exit;
+        $this->renderStandaloneView('BackOffice/admin/export_users_pdf', [
+            'userRows' => $userRows,
+            'generatedAt' => date('F d, Y H:i:s'),
+            'totalUsers' => count($userRows),
+            'backUrl' => APP_ENTRY . '?url=admin/users',
+        ]);
     }
 
     /**
@@ -285,8 +138,8 @@ class AdminController extends BaseController {
             return;
         }
 
-        $userModel = $this->model('User');
-        $user = $userModel->findById((int) $id);
+        $userRepository = $this->model('UserRepository');
+        $user = $userRepository->findById((int) $id);
 
         if (!$user) {
             $this->setFlash('error', 'User not found.');
@@ -294,7 +147,7 @@ class AdminController extends BaseController {
             return;
         }
 
-        if ($userModel->block((int) $id)) {
+        if ($userRepository->block((int) $id)) {
             $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been blocked successfully.');
         } else {
             $this->setFlash('error', 'Failed to block user.');
@@ -313,8 +166,8 @@ class AdminController extends BaseController {
             return;
         }
 
-        $userModel = $this->model('User');
-        $user = $userModel->findById((int) $id);
+        $userRepository = $this->model('UserRepository');
+        $user = $userRepository->findById((int) $id);
 
         if (!$user) {
             $this->setFlash('error', 'User not found.');
@@ -322,7 +175,7 @@ class AdminController extends BaseController {
             return;
         }
 
-        if ($userModel->unblock((int) $id)) {
+        if ($userRepository->unblock((int) $id)) {
             $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been unblocked successfully.');
         } else {
             $this->setFlash('error', 'Failed to unblock user.');
@@ -341,11 +194,11 @@ class AdminController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/ContactMessage.php';
-        $contactModel = $this->model('ContactMessage');
+        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
+        $contactRepository = $this->model('ContactMessageRepository');
 
-        $messages = $contactModel->getAllMessages(100, 0);
-        $unreadCount = $contactModel->getUnreadCount();
+        $messages = $contactRepository->getAllMessages(100, 0);
+        $unreadCount = $contactRepository->getUnreadCount();
 
         $data = [
             'title' => 'Contact Messages Inbox - APPOLIOS',
@@ -368,10 +221,10 @@ class AdminController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/ContactMessage.php';
-        $contactModel = $this->model('ContactMessage');
+        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
+        $contactRepository = $this->model('ContactMessageRepository');
 
-        $message = $contactModel->getById((int) $id);
+        $message = $contactRepository->getById((int) $id);
 
         if (!$message) {
             $this->setFlash('error', 'Message not found.');
@@ -381,8 +234,8 @@ class AdminController extends BaseController {
 
         // Auto-mark as read when viewing
         if (!$message['is_read']) {
-            $contactModel->markAsRead((int) $id, (int) $_SESSION['user_id']);
-            $message = $contactModel->getById((int) $id);
+            $contactRepository->markAsRead((int) $id, (int) $_SESSION['user_id']);
+            $message = $contactRepository->getById((int) $id);
         }
 
         $data = [
@@ -405,10 +258,10 @@ class AdminController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/ContactMessage.php';
-        $contactModel = $this->model('ContactMessage');
+        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
+        $contactRepository = $this->model('ContactMessageRepository');
 
-        if ($contactModel->markAsUnread((int) $id)) {
+        if ($contactRepository->markAsUnread((int) $id)) {
             $this->setFlash('success', 'Message marked as unread.');
         } else {
             $this->setFlash('error', 'Failed to mark message as unread.');
@@ -427,17 +280,17 @@ class AdminController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/ContactMessage.php';
-        $contactModel = $this->model('ContactMessage');
+        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
+        $contactRepository = $this->model('ContactMessageRepository');
 
-        $message = $contactModel->getById((int) $id);
+        $message = $contactRepository->getById((int) $id);
         if (!$message) {
             $this->setFlash('error', 'Message not found.');
             $this->redirect('admin/contact-messages');
             return;
         }
 
-        if ($contactModel->delete((int) $id)) {
+        if ($contactRepository->delete((int) $id)) {
             $this->setFlash('success', 'Message deleted successfully.');
         } else {
             $this->setFlash('error', 'Failed to delete message.');
@@ -456,8 +309,8 @@ class AdminController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
-        $courses = $courseModel->getAllWithCreator();
+        $courseRepository = $this->model('CourseRepository');
+        $courses = $courseRepository->getAllWithCreator();
 
         $data = [
             'title' => 'Manage Courses - APPOLIOS',
@@ -524,9 +377,9 @@ class AdminController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
+        $courseRepository = $this->model('CourseRepository');
 
-        $result = $courseModel->create([
+        $result = $courseRepository->create([
             'title' => $title,
             'description' => $description,
             'video_url' => $videoUrl,
@@ -551,8 +404,8 @@ class AdminController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
-        $course = $courseModel->findById($id);
+        $courseRepository = $this->model('CourseRepository');
+        $course = $courseRepository->findById($id);
 
         if (!$course) {
             $this->setFlash('error', 'Course not found');
@@ -605,9 +458,9 @@ class AdminController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
+        $courseRepository = $this->model('CourseRepository');
 
-        $result = $courseModel->update($id, [
+        $result = $courseRepository->update($id, [
             'title' => $title,
             'description' => $description,
             'video_url' => $videoUrl
@@ -631,9 +484,9 @@ class AdminController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
+        $courseRepository = $this->model('CourseRepository');
 
-        if ($courseModel->delete($id)) {
+        if ($courseRepository->delete($id)) {
             $this->setFlash('success', 'Course deleted successfully!');
         } else {
             $this->setFlash('error', 'Failed to delete course.');
@@ -658,9 +511,9 @@ class AdminController extends BaseController {
             return;
         }
 
-        $userModel = $this->model('User');
+        $userRepository = $this->model('UserRepository');
 
-        if ($userModel->delete($id)) {
+        if ($userRepository->delete($id)) {
             $this->setFlash('success', 'User deleted successfully!');
         } else {
             $this->setFlash('error', 'Failed to delete user.');
@@ -679,8 +532,8 @@ class AdminController extends BaseController {
             return;
         }
 
-        $userModel = $this->model('User');
-        $teachers = $userModel->getTeachers();
+        $userRepository = $this->model('UserRepository');
+        $teachers = $userRepository->getTeachers();
 
         $data = [
             'title' => 'Manage Teachers - APPOLIOS',
@@ -702,155 +555,27 @@ class AdminController extends BaseController {
             return;
         }
 
-        $userModel = $this->model('User');
-        $teachers = $userModel->getTeachers();
+        $userRepository = $this->model('UserRepository');
+        $teachers = $userRepository->getTeachers();
+        $teacherRows = [];
+        foreach ($teachers as $t) {
+            $ts = strtotime((string) ($t['created_at'] ?? ''));
+            $teacherRows[] = [
+                'id' => (string) ($t['id'] ?? ''),
+                'name' => (string) ($t['name'] ?? ''),
+                'email' => (string) ($t['email'] ?? ''),
+                'is_blocked' => !empty($t['is_blocked']),
+                'registered_display' => $ts !== false ? date('M d, Y H:i', $ts) : '',
+            ];
+        }
 
-        // Generate PDF using simple HTML output optimized for printing
         header('Content-Type: text/html; charset=utf-8');
-        ?>
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Teachers Export - APPOLIOS</title>
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    font-family: 'Segoe UI', Arial, sans-serif;
-                    font-size: 12px;
-                    line-height: 1.5;
-                    color: #333;
-                    padding: 20px;
-                }
-                .header {
-                    text-align: center;
-                    margin-bottom: 30px;
-                    padding-bottom: 20px;
-                    border-bottom: 3px solid #548CA8;
-                }
-                .header h1 {
-                    color: #2B4865;
-                    font-size: 24px;
-                    margin-bottom: 5px;
-                }
-                .header p {
-                    color: #666;
-                    font-size: 12px;
-                }
-                .info {
-                    margin-bottom: 20px;
-                    color: #666;
-                    font-size: 11px;
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 10px;
-                }
-                th {
-                    background: #548CA8;
-                    color: white;
-                    padding: 10px 8px;
-                    text-align: left;
-                    font-weight: 600;
-                    font-size: 11px;
-                }
-                td {
-                    padding: 8px;
-                    border-bottom: 1px solid #ddd;
-                    font-size: 11px;
-                }
-                tr:nth-child(even) {
-                    background: #f8f9fa;
-                }
-                .badge {
-                    padding: 2px 8px;
-                    border-radius: 12px;
-                    font-size: 10px;
-                    color: white;
-                    display: inline-block;
-                }
-                .badge-teacher { background: #548CA8; }
-                .badge-blocked { background: #dc3545; }
-                .footer {
-                    margin-top: 30px;
-                    text-align: center;
-                    font-size: 10px;
-                    color: #999;
-                    border-top: 1px solid #ddd;
-                    padding-top: 15px;
-                }
-                @media print {
-                    body { padding: 0; }
-                    .no-print { display: none; }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>APPOLIOS - Teachers Report</h1>
-                <p>Complete list of registered teachers</p>
-            </div>
-
-            <div class="info">
-                <strong>Generated:</strong> <?= date('F d, Y H:i:s') ?><br>
-                <strong>Total Teachers:</strong> <?= count($teachers) ?>
-            </div>
-
-            <div class="no-print" style="margin-bottom: 20px;">
-                <button onclick="window.print()" style="padding: 10px 20px; background: #548CA8; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;">
-                    Print / Save as PDF
-                </button>
-                <a href="<?= APP_ENTRY ?>?url=admin/teachers" style="display: inline-block; padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; margin-left: 10px; text-decoration: none;">
-                    Back to Teachers
-                </a>
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 8%;">ID</th>
-                        <th style="width: 25%;">Full Name</th>
-                        <th style="width: 30%;">Email Address</th>
-                        <th style="width: 15%;">Status</th>
-                        <th style="width: 22%;">Registered Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($teachers as $teacher): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($teacher['id']) ?></td>
-                        <td><?= htmlspecialchars($teacher['name']) ?></td>
-                        <td><?= htmlspecialchars($teacher['email']) ?></td>
-                        <td>
-                            <span class="badge badge-teacher">Teacher</span>
-                            <?php if ($teacher['is_blocked'] ?? 0): ?>
-                                <span class="badge badge-blocked" style="margin-left: 5px;">Blocked</span>
-                            <?php endif; ?>
-                        </td>
-                        <td><?= date('M d, Y H:i', strtotime($teacher['created_at'])) ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-
-            <div class="footer">
-                <p>APPOLIOS E-Learning Platform - Teachers Management Report</p>
-                <p>This document is confidential and intended for authorized personnel only.</p>
-            </div>
-
-            <script>
-                // Auto-trigger print dialog when page loads
-                window.onload = function() {
-                    setTimeout(function() {
-                        window.print();
-                    }, 500);
-                };
-            </script>
-        </body>
-        </html>
-        <?php
-        exit;
+        $this->renderStandaloneView('BackOffice/admin/export_teachers_pdf', [
+            'teacherRows' => $teacherRows,
+            'generatedAt' => date('F d, Y H:i:s'),
+            'totalTeachers' => count($teacherRows),
+            'backUrl' => APP_ENTRY . '?url=admin/teachers',
+        ]);
     }
 
     /**
@@ -905,9 +630,9 @@ class AdminController extends BaseController {
             $errors['password'] = 'Password must be at least 6 characters';
         }
 
-        $userModel = $this->model('User');
+        $userRepository = $this->model('UserRepository');
 
-        if ($userModel->emailExists($email)) {
+        if ($userRepository->emailExists($email)) {
             $errors['email'] = 'Email already registered';
         }
 
@@ -918,7 +643,7 @@ class AdminController extends BaseController {
             return;
         }
 
-        $result = $userModel->create([
+        $result = $userRepository->create([
             'name' => $name,
             'email' => $email,
             'password' => $password,
@@ -944,15 +669,15 @@ class AdminController extends BaseController {
             return;
         }
 
-        $teacherAppModel = $this->model('TeacherApplication');
-        $userModel = $this->model('User');
+        $teacherAppRepository = $this->model('TeacherApplicationRepository');
+        $userRepository = $this->model('UserRepository');
 
         $data = [
             'title' => 'Teacher Applications - APPOLIOS',
             'description' => 'Manage teacher registration requests',
-            'applications' => $teacherAppModel->getPendingApplications(),
-            'pendingCount' => $teacherAppModel->countPending(),
-            'pendingTeacherApps' => $teacherAppModel->countPending(),
+            'applications' => $teacherAppRepository->getPendingApplications(),
+            'pendingCount' => $teacherAppRepository->countPending(),
+            'pendingTeacherApps' => $teacherAppRepository->countPending(),
             'adminSidebarActive' => 'teacher-applications',
             'flash' => $this->getFlash()
         ];
@@ -983,11 +708,11 @@ class AdminController extends BaseController {
             return;
         }
 
-        $teacherAppModel = $this->model('TeacherApplication');
-        $userModel = $this->model('User');
+        $teacherAppRepository = $this->model('TeacherApplicationRepository');
+        $userRepository = $this->model('UserRepository');
 
         // Get application details
-        $application = $teacherAppModel->getById($applicationId);
+        $application = $teacherAppRepository->getById($applicationId);
         if (!$application) {
             $this->setFlash('error', 'Application not found.');
             $this->redirect('admin/teacher-applications');
@@ -995,7 +720,7 @@ class AdminController extends BaseController {
         }
 
         // Create user account for teacher using the original password
-        $userId = $userModel->create([
+        $userId = $userRepository->create([
             'name' => $application['name'],
             'email' => $application['email'],
             'password' => $application['password'], // Plain password - will be hashed by create()
@@ -1004,7 +729,7 @@ class AdminController extends BaseController {
 
         if ($userId) {
             // Update application status
-            $teacherAppModel->approve($applicationId, (int) $_SESSION['user_id'], $adminNotes);
+            $teacherAppRepository->approve($applicationId, (int) $_SESSION['user_id'], $adminNotes);
             $this->setFlash('success', 'Teacher application approved! The teacher can now login with their email and the password they registered with.');
         } else {
             $this->setFlash('error', 'Failed to create teacher account.');
@@ -1042,8 +767,8 @@ class AdminController extends BaseController {
             return;
         }
 
-        $teacherAppModel = $this->model('TeacherApplication');
-        $application = $teacherAppModel->getById($applicationId);
+        $teacherAppRepository = $this->model('TeacherApplicationRepository');
+        $application = $teacherAppRepository->getById($applicationId);
 
         if (!$application) {
             $this->setFlash('error', 'Application not found.');
@@ -1058,7 +783,7 @@ class AdminController extends BaseController {
         }
 
         // Update application status
-        $result = $teacherAppModel->reject($applicationId, (int) $_SESSION['user_id'], $adminNotes);
+        $result = $teacherAppRepository->reject($applicationId, (int) $_SESSION['user_id'], $adminNotes);
 
         if ($result) {
             $this->setFlash('success', 'Teacher application rejected.');
@@ -1075,7 +800,7 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $groupeModel = $this->model('Groupe');
+        $groupeRepository = $this->model('GroupeRepository');
         $first = $params[0] ?? null;
         $second = $params[1] ?? null;
         $id = is_numeric($first) ? (int) $first : 0;
@@ -1124,9 +849,9 @@ class AdminController extends BaseController {
                 'id_createur' => (int) $_SESSION['user_id'],
                 'approval_statut' => $approval,
             ];
-            $createdId = $groupeModel->create($createData);
+            $createdId = $groupeRepository->create($createData);
             if ($createdId) {
-                $groupeModel->ajouterMembre((int) $createdId, (int) $_SESSION['user_id'], 'admin');
+                $groupeRepository->ajouterMembre((int) $createdId, (int) $_SESSION['user_id'], 'admin');
                 $this->setFlash('success', 'Group created successfully.');
                 $this->redirect('admin/sl-groupes');
                 return;
@@ -1137,7 +862,7 @@ class AdminController extends BaseController {
         }
 
         if ($id > 0 && $second === 'edit') {
-            $row = $groupeModel->findById($id);
+            $row = $groupeRepository->findById($id);
             if (!$row) {
                 $this->setFlash('error', 'Group not found.');
                 $this->redirect('admin/sl-groupes');
@@ -1157,7 +882,7 @@ class AdminController extends BaseController {
         }
 
         if ($id > 0 && $second === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $row = $groupeModel->findById($id);
+            $row = $groupeRepository->findById($id);
             if (!$row) {
                 $this->setFlash('error', 'Group not found.');
                 $this->redirect('admin/sl-groupes');
@@ -1187,7 +912,7 @@ class AdminController extends BaseController {
                 return;
             }
 
-            $ok = $groupeModel->updateGroupe($id, [
+            $ok = $groupeRepository->updateGroupe($id, [
                 'nom_groupe' => htmlspecialchars($nom, ENT_QUOTES, 'UTF-8'),
                 'description' => htmlspecialchars($desc, ENT_QUOTES, 'UTF-8'),
                 'statut' => (string) ($row['statut'] ?? 'actif'),
@@ -1199,25 +924,25 @@ class AdminController extends BaseController {
         }
 
         if ($id > 0 && $second === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $discussionModel = $this->model('Discussion');
-            $discussionModel->deleteAllForGroup($id);
-            $groupeModel->deleteMembresForGroup($id);
-            $ok = $groupeModel->delete($id);
+            $discussionRepository = $this->model('DiscussionRepository');
+            $discussionRepository->deleteAllForGroup($id);
+            $groupeRepository->deleteMembresForGroup($id);
+            $ok = $groupeRepository->delete($id);
             $this->setFlash($ok ? 'success' : 'error', $ok ? 'Group deleted.' : 'Failed to delete group.');
             $this->redirect('admin/sl-groupes');
             return;
         }
 
         if ($id > 0 && $second === 'approve' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $row = $groupeModel->findById($id);
-            $ok = $row ? $groupeModel->updateGroupe($id, ['nom_groupe' => $row['nom_groupe'], 'description' => $row['description'], 'statut' => $row['statut'] ?? 'actif', 'approval_statut' => 'approuve']) : false;
+            $row = $groupeRepository->findById($id);
+            $ok = $row ? $groupeRepository->updateGroupe($id, ['nom_groupe' => $row['nom_groupe'], 'description' => $row['description'], 'statut' => $row['statut'] ?? 'actif', 'approval_statut' => 'approuve']) : false;
             $this->setFlash($ok ? 'success' : 'error', $ok ? 'Groupe approuve.' : 'Approbation echouee.');
             $this->redirect('admin/sl-groupes');
             return;
         }
         if ($id > 0 && $second === 'reject' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $row = $groupeModel->findById($id);
-            $ok = $row ? $groupeModel->updateGroupe($id, ['nom_groupe' => $row['nom_groupe'], 'description' => $row['description'], 'statut' => $row['statut'] ?? 'actif', 'approval_statut' => 'rejete']) : false;
+            $row = $groupeRepository->findById($id);
+            $ok = $row ? $groupeRepository->updateGroupe($id, ['nom_groupe' => $row['nom_groupe'], 'description' => $row['description'], 'statut' => $row['statut'] ?? 'actif', 'approval_statut' => 'rejete']) : false;
             $this->setFlash($ok ? 'success' : 'error', $ok ? 'Groupe rejete.' : 'Rejet echoue.');
             $this->redirect('admin/sl-groupes');
             return;
@@ -1226,7 +951,7 @@ class AdminController extends BaseController {
         $this->view('BackOffice/admin/sl_groupes', [
             'title' => 'Admin Groupes - APPOLIOS',
             'description' => 'Validation des groupes',
-            'groupes' => $groupeModel->getAllWithCreator(300, 0),
+            'groupes' => $groupeRepository->getAllWithCreator(300, 0),
             'adminSidebarActive' => 'sl-groupes',
             'flash' => $this->getFlash(),
         ]);
@@ -1238,15 +963,15 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $discussionModel = $this->model('Discussion');
-        $groupeModel = $this->model('Groupe');
+        $discussionRepository = $this->model('DiscussionRepository');
+        $groupeRepository = $this->model('GroupeRepository');
         $first = $params[0] ?? null;
         $second = $params[1] ?? null;
         $id = is_numeric($first) ? (int) $first : 0;
 
         if ($first === 'create') {
             $groups = array_values(array_filter(
-                $groupeModel->getAllWithCreator(500, 0),
+                $groupeRepository->getAllWithCreator(500, 0),
                 static fn(array $g): bool => (string) ($g['approval_statut'] ?? '') === 'approuve'
             ));
             $this->view('BackOffice/admin/sl_discussions_create', [
@@ -1290,18 +1015,18 @@ class AdminController extends BaseController {
                 return;
             }
 
-            $ok = $discussionModel->createForGroup(
+            $ok = $discussionRepository->createForGroup(
                 $groupId,
                 (int) $_SESSION['user_id'],
                 htmlspecialchars($titre, ENT_QUOTES, 'UTF-8'),
                 htmlspecialchars($contenu, ENT_QUOTES, 'UTF-8')
             );
             if ($ok && $approval !== 'en_cours') {
-                $inserted = $discussionModel->getByAuthor((int) $_SESSION['user_id']);
+                $inserted = $discussionRepository->getByAuthor((int) $_SESSION['user_id']);
                 if (!empty($inserted)) {
                     $latestId = (int) ($inserted[0]['id_discussion'] ?? $inserted[0]['id'] ?? 0);
                     if ($latestId > 0) {
-                        $discussionModel->setApprovalStatus($latestId, $approval);
+                        $discussionRepository->setApprovalStatus($latestId, $approval);
                     }
                 }
             }
@@ -1311,14 +1036,14 @@ class AdminController extends BaseController {
         }
 
         if ($id > 0 && $second === 'edit') {
-            $discussion = $discussionModel->getRowByPk($id);
+            $discussion = $discussionRepository->getRowByPk($id);
             if (!$discussion) {
                 $this->setFlash('error', 'Discussion not found.');
                 $this->redirect('admin/sl-discussions');
                 return;
             }
             $groups = array_values(array_filter(
-                $groupeModel->getAllWithCreator(500, 0),
+                $groupeRepository->getAllWithCreator(500, 0),
                 static fn(array $g): bool => (string) ($g['approval_statut'] ?? '') === 'approuve'
             ));
             $this->view('BackOffice/admin/sl_discussions_edit', [
@@ -1336,7 +1061,7 @@ class AdminController extends BaseController {
         }
 
         if ($id > 0 && $second === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $discussion = $discussionModel->getRowByPk($id);
+            $discussion = $discussionRepository->getRowByPk($id);
             if (!$discussion) {
                 $this->setFlash('error', 'Discussion not found.');
                 $this->redirect('admin/sl-discussions');
@@ -1371,7 +1096,7 @@ class AdminController extends BaseController {
             }
 
             $authorId = (int) ($discussion['id_auteur'] ?? $discussion['created_by'] ?? 0);
-            $ok = $discussionModel->updateOwned(
+            $ok = $discussionRepository->updateOwned(
                 $id,
                 $authorId,
                 htmlspecialchars($titre, ENT_QUOTES, 'UTF-8'),
@@ -1379,7 +1104,7 @@ class AdminController extends BaseController {
                 $groupId
             );
             if ($ok) {
-                $discussionModel->setApprovalStatus($id, $approval);
+                $discussionRepository->setApprovalStatus($id, $approval);
             }
             $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion updated successfully.' : 'Failed to update discussion.');
             $this->redirect('admin/sl-discussions');
@@ -1387,34 +1112,28 @@ class AdminController extends BaseController {
         }
 
         if ($id > 0 && $second === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $ok = $discussionModel->deleteByPrimaryKey($id);
+            $ok = $discussionRepository->deleteByPrimaryKey($id);
             $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion deleted.' : 'Failed to delete discussion.');
             $this->redirect('admin/sl-discussions');
             return;
         }
 
         if ($id > 0 && $second === 'approve' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $ok = $discussionModel->setApprovalStatus($id, 'approuve');
+            $ok = $discussionRepository->setApprovalStatus($id, 'approuve');
             $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion approuvee.' : 'Echec de l approbation.');
             $this->redirect('admin/sl-discussions');
             return;
         }
         if ($id > 0 && $second === 'reject' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $ok = $discussionModel->setApprovalStatus($id, 'rejete');
+            $ok = $discussionRepository->setApprovalStatus($id, 'rejete');
             $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion rejetee.' : 'Echec du rejet.');
             $this->redirect('admin/sl-discussions');
             return;
         }
         if ($id > 0 && $second === 'chat') {
-            $discussion = $discussionModel->getRowByPk($id);
+            $discussion = $discussionRepository->getRowByPk($id);
             if (!$discussion) {
                 $this->setFlash('error', 'Discussion not found.');
-                $this->redirect('admin/sl-discussions');
-                return;
-            }
-            $approval = (string) ($discussion['approval_statut'] ?? $discussion['approval_status'] ?? 'en_cours');
-            if ($approval !== 'approuve') {
-                $this->setFlash('error', 'Live chat is available only for approved discussions.');
                 $this->redirect('admin/sl-discussions');
                 return;
             }
@@ -1432,28 +1151,24 @@ class AdminController extends BaseController {
             return;
         }
         if ($id > 0 && $second === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->adminDiscussionUploadAttachment($discussionModel, $id);
+            $this->adminDiscussionUploadAttachment($discussionRepository, $id);
             return;
         }
 
         $this->view('BackOffice/admin/sl_discussions', [
             'title' => 'Admin Discussions - APPOLIOS',
             'description' => 'Validation des discussions',
-            'discussions' => $discussionModel->getAllForAdmin(400),
+            'discussions' => $discussionRepository->getAllForAdmin(400),
             'adminSidebarActive' => 'sl-discussions',
             'flash' => $this->getFlash(),
         ]);
     }
 
-    private function adminDiscussionUploadAttachment($discussionModel, int $discussionId): void
+    private function adminDiscussionUploadAttachment($discussionRepository, int $discussionId): void
     {
-        $discussion = $discussionModel->getRowByPk($discussionId);
+        $discussion = $discussionRepository->getRowByPk($discussionId);
         if (!$discussion) {
             $this->jsonResponse(['ok' => false, 'error' => 'Discussion not found.'], 404);
-        }
-        $approval = (string) ($discussion['approval_statut'] ?? $discussion['approval_status'] ?? 'en_cours');
-        if ($approval !== 'approuve') {
-            $this->jsonResponse(['ok' => false, 'error' => 'Discussion must be approved first.'], 403);
         }
 
         $upload = $this->handleChatAttachmentUpload('attachment');

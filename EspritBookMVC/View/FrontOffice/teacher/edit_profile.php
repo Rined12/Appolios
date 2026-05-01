@@ -4,6 +4,7 @@
  */
 
 $teacherSidebarActive = 'courses';
+$flash_banner = $flash_banner ?? null;
 ?>
 
 <div class="dashboard">
@@ -16,11 +17,10 @@ $teacherSidebarActive = 'courses';
                     <p>Update your account information</p>
                 </div>
 
-                <?php if (isset($_SESSION['flash'])): ?>
-                    <div class="alert alert-<?= $_SESSION['flash']['type'] === 'error' ? 'danger' : 'success' ?>" style="margin-bottom: 20px; padding: 12px 20px; border-radius: 8px; background: <?= $_SESSION['flash']['type'] === 'error' ? 'rgba(220, 53, 69, 0.1)' : 'rgba(25, 135, 84, 0.1)' ?>; border: 1px solid <?= $_SESSION['flash']['type'] === 'error' ? 'rgba(220, 53, 69, 0.3)' : 'rgba(25, 135, 84, 0.3)' ?>; color: <?= $_SESSION['flash']['type'] === 'error' ? '#dc3545' : '#198754' ?>;">
-                        <?= htmlspecialchars($_SESSION['flash']['message']) ?>
+                <?php if (!empty($flash_banner)): ?>
+                    <div class="alert alert-<?= htmlspecialchars($flash_banner['alert_class']) ?>" style="margin-bottom: 20px; padding: 12px 20px; border-radius: 8px; white-space: pre-line; <?= $flash_banner['inner_style'] ?>">
+                        <?= htmlspecialchars($flash_banner['message']) ?>
                     </div>
-                    <?php unset($_SESSION['flash']); ?>
                 <?php endif; ?>
 
                 <div style="max-width: 600px;">
@@ -32,12 +32,12 @@ $teacherSidebarActive = 'courses';
                             <form action="<?= APP_ENTRY ?>?url=teacher/update-profile" method="POST" novalidate>
                                 <div style="margin-bottom: 25px;">
                                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--primary-color);">Full Name *</label>
-                                    <input type="text" name="name" value="<?= htmlspecialchars($user['name'] ?? '') ?>" data-js-required="1" style="width: 100%; padding: 12px 16px; border: 2px solid var(--gray); border-radius: var(--border-radius-sm); font-size: 1rem; box-sizing: border-box;">
+                                    <input type="text" name="name" value="<?= htmlspecialchars($profile_user->getName()) ?>" data-js-required="1" style="width: 100%; padding: 12px 16px; border: 2px solid var(--gray); border-radius: var(--border-radius-sm); font-size: 1rem; box-sizing: border-box;">
                                 </div>
 
                                 <div style="margin-bottom: 25px;">
                                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--primary-color);">Email Address *</label>
-                                    <input type="text" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" data-js-required="1" style="width: 100%; padding: 12px 16px; border: 2px solid var(--gray); border-radius: var(--border-radius-sm); font-size: 1rem; box-sizing: border-box;">
+                                    <input type="text" name="email" value="<?= htmlspecialchars($profile_user->getEmail()) ?>" data-js-required="1" style="width: 100%; padding: 12px 16px; border: 2px solid var(--gray); border-radius: var(--border-radius-sm); font-size: 1rem; box-sizing: border-box;">
                                 </div>
 
                                 <div style="margin-bottom: 25px;">

@@ -2,26 +2,10 @@
 /**
  * APPOLIOS - Teacher Edit Evenement (neo theme)
  */
-
-$old = $_SESSION['old'] ?? [];
-unset($_SESSION['old']);
-
-$minDate = date('Y-m-d', strtotime('+1 day'));
-
-$form = [
-    'title' => $old['title'] ?? ($evenement['titre'] ?? $evenement['title'] ?? ''),
-    'description' => $old['description'] ?? ($evenement['description'] ?? ''),
-    'date_debut' => $old['date_debut'] ?? ($evenement['date_debut'] ?? ''),
-    'date_fin' => $old['date_fin'] ?? ($evenement['date_fin'] ?? ''),
-    'heure_debut' => $old['heure_debut'] ?? (isset($evenement['heure_debut']) ? substr((string) $evenement['heure_debut'], 0, 5) : ''),
-    'heure_fin' => $old['heure_fin'] ?? (isset($evenement['heure_fin']) ? substr((string) $evenement['heure_fin'], 0, 5) : ''),
-    'lieu' => $old['lieu'] ?? (($evenement['lieu'] ?? '') ?: ($evenement['location'] ?? '')),
-    'capacite_max' => $old['capacite_max'] ?? ($evenement['capacite_max'] ?? ''),
-    'type' => $old['type'] ?? ($evenement['type'] ?? 'general'),
-    'statut' => $old['statut'] ?? ($evenement['statut'] ?? 'planifie')
-];
-
-$approval = (string) ($evenement['approval_status'] ?? 'approved');
+$form = $form ?? [];
+$evenement_min_date = $evenement_min_date ?? '';
+$evenement_approval_label = $evenement_approval_label ?? 'approved';
+$evenement_approval_heading_color = $evenement_approval_heading_color ?? '#22c55e';
 
 $teacherSidebarActive = 'evenements';
 ?>
@@ -55,8 +39,8 @@ $teacherSidebarActive = 'evenements';
                                 </p>
                                 <div style="display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #eef2f6; padding: 8px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
                                     <span style="color: #94a3b8;">Current Status:</span>
-                                    <strong style="color: <?= $approval === 'approved' ? '#22c55e' : ($approval === 'rejected' ? '#ef4444' : '#f97316') ?>; font-size: 1.05rem; text-transform: uppercase;">
-                                        <?= htmlspecialchars($approval) ?>
+                                    <strong style="color: <?= htmlspecialchars($evenement_approval_heading_color) ?>; font-size: 1.05rem; text-transform: uppercase;">
+                                        <?= htmlspecialchars($evenement_approval_label) ?>
                                     </strong>
                                 </div>
                             </div>
@@ -84,7 +68,7 @@ $teacherSidebarActive = 'evenements';
 
                                 <div class="neo-form-group">
                                     <label for="date_debut">Date Debut *</label>
-                                    <input type="date" id="date_debut" name="date_debut" data-js-min="<?= htmlspecialchars($minDate) ?>" value="<?= htmlspecialchars($form['date_debut']) ?>" class="neo-input <?= isset($errors['date_debut']) ? 'neo-error-input' : '' ?>">
+                                    <input type="date" id="date_debut" name="date_debut" data-js-min="<?= htmlspecialchars($evenement_min_date) ?>" value="<?= htmlspecialchars($form['date_debut']) ?>" class="neo-input <?= isset($errors['date_debut']) ? 'neo-error-input' : '' ?>">
                                     <?php if (isset($errors['date_debut'])): ?>
                                         <div class="neo-error-text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><?= htmlspecialchars($errors['date_debut']) ?></div>
                                     <?php endif; ?>

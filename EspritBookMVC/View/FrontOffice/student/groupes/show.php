@@ -92,16 +92,9 @@ $isGroupCreatorViewer = (int) ($groupe['id_createur'] ?? $groupe['created_by'] ?
                     <?php if (!empty($discussions)): ?>
                         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:12px;">
                             <?php foreach ($discussions as $d): ?>
-                                <?php
-                                    $dap = (string) ($d['approval_statut'] ?? $d['approval_status'] ?? 'approuve');
-                                    $dapLabel = $dap === 'approuve' ? 'Approved' : ($dap === 'rejete' ? 'Rejected' : 'In progress (admin)');
-                                    $dapBg = $dap === 'approuve' ? '#dcfce7' : ($dap === 'rejete' ? '#fee2e2' : '#ffedd5');
-                                    $dapColor = $dap === 'approuve' ? '#166534' : ($dap === 'rejete' ? '#991b1b' : '#9a3412');
-                                ?>
                                 <article style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:12px;">
                                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                                         <h4 style="margin:0; color:#1e293b;"><?= htmlspecialchars($d['titre'] ?? 'Discussion') ?></h4>
-                                        <span style="font-size:11px;padding:3px 8px;border-radius:999px;background:<?= $dapBg ?>;color:<?= $dapColor ?>;"><?= htmlspecialchars($dapLabel) ?></span>
                                     </div>
                                     <p style="margin:0 0 10px 0; color:#64748b;"><?= htmlspecialchars(substr((string) ($d['contenu'] ?? ''), 0, 180)) ?></p>
                                     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
@@ -111,6 +104,9 @@ $isGroupCreatorViewer = (int) ($groupe['id_createur'] ?? $groupe['created_by'] ?
                                             $discAuthorId = (int) ($d['id_auteur'] ?? $d['created_by'] ?? 0);
                                             $canDelDisc = $discId > 0 && ($discAuthorId === $viewerId || $isGroupCreatorViewer);
                                         ?>
+                                        <?php if ($discId > 0): ?>
+                                            <a class="btn btn-primary" style="padding:4px 10px;font-size:12px;" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions/<?= $discId ?>/chat">Live Chat</a>
+                                        <?php endif; ?>
                                         <?php if ($canDelDisc): ?>
                                             <a class="btn action-btn danger" style="padding:4px 10px;font-size:12px;" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $groupe['id_groupe'] ?>/discussions/<?= $discId ?>/delete" onclick="return confirm('Supprimer cette discussion ?');">Delete</a>
                                         <?php endif; ?>

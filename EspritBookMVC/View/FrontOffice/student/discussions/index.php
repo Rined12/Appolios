@@ -23,13 +23,6 @@ $studentSidebarActive = $studentSidebarActive ?? 'discussions';
                                 <h3 style="margin:0 0 6px 0;color:#1e293b;"><?= htmlspecialchars($discussion['titre'] ?? 'Discussion') ?></h3>
                                 <p style="margin:0 0 10px 0;color:#64748b;min-height:42px;"><?= htmlspecialchars(substr((string) ($discussion['contenu'] ?? ''), 0, 180)) ?></p>
                                 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                                    <?php
-                                        $dap = (string) ($discussion['approval_statut'] ?? $discussion['approval_status'] ?? 'approuve');
-                                        $dapLabel = $dap === 'approuve' ? 'Approved' : ($dap === 'rejete' ? 'Rejected' : 'In progress (admin)');
-                                        $dapBg = $dap === 'approuve' ? '#dcfce7' : ($dap === 'rejete' ? '#fee2e2' : '#ffedd5');
-                                        $dapColor = $dap === 'approuve' ? '#166534' : ($dap === 'rejete' ? '#991b1b' : '#9a3412');
-                                    ?>
-                                    <span style="font-size:12px;padding:4px 8px;border-radius:999px;background:<?= $dapBg ?>;color:<?= $dapColor ?>;"><?= htmlspecialchars($dapLabel) ?></span>
                                     <span style="font-size:12px;padding:4px 8px;border-radius:999px;background:#f1f5f9;color:#475569;">Group: <?= htmlspecialchars($discussion['nom_groupe'] ?? 'N/A') ?></span>
                                 </div>
                                 <div style="display:flex;gap:8px;">

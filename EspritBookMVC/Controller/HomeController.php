@@ -5,7 +5,8 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Model/Course.php';
+require_once __DIR__ . '/../Repository/CourseRepository.php';
+require_once __DIR__ . '/../Presentation/FlashBannerPresenter.php';
 
 class HomeController extends BaseController {
 
@@ -51,10 +52,11 @@ class HomeController extends BaseController {
      * Contact page
      */
     public function contact() {
+        $flash = $this->getFlash();
         $data = [
             'title' => 'Contact Us',
             'description' => 'Get in touch with APPOLIOS',
-            'flash' => $this->getFlash()
+            'flash_banner' => FlashBannerPresenter::fromSessionFlash($flash),
         ];
 
         $this->view('FrontOffice/home/contact', $data);
@@ -98,10 +100,10 @@ class HomeController extends BaseController {
         }
 
         // Save to database
-        require_once __DIR__ . '/../Model/ContactMessage.php';
-        $contactModel = $this->model('ContactMessage');
+        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
+        $contactRepository = $this->model('ContactMessageRepository');
 
-        $result = $contactModel->createMessage([
+        $result = $contactRepository->createMessage([
             'name' => $name,
             'email' => $email,
             'subject' => $subject,
@@ -158,8 +160,8 @@ class HomeController extends BaseController {
             // Students can view courses
         }
 
-        $courseModel = $this->model('Course');
-        $courses = $courseModel->getAllWithCreator();
+        $courseRepository = $this->model('CourseRepository');
+        $courses = $courseRepository->getAllWithCreator();
 
         $data = [
             'title' => 'All Courses',

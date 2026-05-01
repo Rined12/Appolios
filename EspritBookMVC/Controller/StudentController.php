@@ -5,77 +5,13 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Model/Course.php';
-require_once __DIR__ . '/../Model/Enrollment.php';
-require_once __DIR__ . '/../Model/Groupe.php';
-require_once __DIR__ . '/../Model/Discussion.php';
+require_once __DIR__ . '/../Repository/CourseRepository.php';
+require_once __DIR__ . '/../Repository/EnrollmentRepository.php';
+require_once __DIR__ . '/../Repository/GroupeRepository.php';
+require_once __DIR__ . '/../Repository/DiscussionRepository.php';
+require_once __DIR__ . '/../Presentation/DiscussionPresentation.php';
 
 class StudentController extends BaseController {
-    private ?bool $hasEvenementRessourcesTable = null;
-
-    private function getDb(): PDO {
-        static $pdo = null;
-        if ($pdo === null) {
-            $pdo = new PDO(
-                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET,
-                DB_USER, DB_PASS,
-                [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
-        }
-        return $pdo;
-    }
-
-    private function queryApprovedEvenements(): array {
-        return $this->getDb()->query(
-            "SELECT e.*, u.name as creator_name
-             FROM evenements e
-             JOIN users u ON e.created_by = u.id
-             WHERE e.approval_status = 'approved'
-             ORDER BY COALESCE(CONCAT(e.date_debut,' ',e.heure_debut), e.event_date) ASC"
-        )->fetchAll();
-    }
-
-    private function queryEvenementWithCreator(int $id): array|false {
-        $st = $this->getDb()->prepare(
-            "SELECT e.*, u.name as creator_name, u.role as creator_role
-             FROM evenements e
-             JOIN users u ON u.id = e.created_by
-             WHERE e.id = ? LIMIT 1"
-        );
-        $st->execute([$id]);
-        return $st->fetch();
-    }
-
-    private function queryRessourcesByType(string $type, int $evenementId): array {
-        if (!$this->hasEvenementRessourcesTable()) {
-            return [];
-        }
-
-        $st = $this->getDb()->prepare(
-            "SELECT r.*, u.name as creator_name
-             FROM evenement_ressources r
-             JOIN users u ON r.created_by = u.id
-             WHERE r.type = ? AND r.evenement_id = ?
-             ORDER BY r.created_at DESC"
-        );
-        $st->execute([$type, $evenementId]);
-        return $st->fetchAll();
-    }
-
-    private function hasEvenementRessourcesTable(): bool {
-        if ($this->hasEvenementRessourcesTable !== null) {
-            return $this->hasEvenementRessourcesTable;
-        }
-
-        try {
-            $st = $this->getDb()->query("SHOW TABLES LIKE 'evenement_ressources'");
-            $this->hasEvenementRessourcesTable = $st->fetch() !== false;
-        } catch (PDOException $e) {
-            $this->hasEvenementRessourcesTable = false;
-        }
-
-        return $this->hasEvenementRessourcesTable;
-    }
 
     private function withFoContext(array $data, string $teacherNav): array
     {
@@ -91,9 +27,9 @@ class StudentController extends BaseController {
         $this->redirect($this->frontOfficeRoutePrefix() . '/' . ltrim($path, '/'));
     }
 
-    private function getApprovedOwnedGroups($groupeModel): array
+    private function getApprovedOwnedGroups($groupeRepository): array
     {
-        $groups = $groupeModel->getByCreator((int) $_SESSION['user_id']);
+        $groups = $groupeRepository->getByCreator((int) $_SESSION['user_id']);
         return array_values(array_filter(
             $groups,
             static function (array $g): bool {
@@ -110,15 +46,15 @@ class StudentController extends BaseController {
             return;
         }
 
-        $discussionModel = $this->model('Discussion');
-        $groupeModel = $this->model('Groupe');
+        $discussionRepository = $this->model('DiscussionRepository');
+        $groupeRepository = $this->model('GroupeRepository');
         $first = $params[0] ?? null;
         $second = $params[1] ?? null;
 
         if ($first === 'create') {
             $old = $_SESSION['discussion_old'] ?? [];
             unset($_SESSION['discussion_old']);
-            $approvedOwnedGroups = $this->getApprovedOwnedGroups($groupeModel);
+            $approvedOwnedGroups = $this->getApprovedOwnedGroups($groupeRepository);
             $data = $this->withFoContext([
                 'title' => 'Create Discussion - APPOLIOS',
                 'studentSidebarActive' => 'discussions',
@@ -133,39 +69,56 @@ class StudentController extends BaseController {
         }
 
         if ($first === 'store' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->studentDiscussionsStore($discussionModel, $groupeModel);
+            $this->studentDiscussionsStore($discussionRepository, $groupeRepository);
             return;
         }
 
         $id = (int) $first;
         if ($id > 0 && $second === 'edit') {
-            $this->studentDiscussionsEdit($discussionModel, $groupeModel, $id);
+            $this->studentDiscussionsEdit($discussionRepository, $groupeRepository, $id);
             return;
         }
         if ($id > 0 && $second === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->studentDiscussionsUpdate($discussionModel, $groupeModel, $id);
+            $this->studentDiscussionsUpdate($discussionRepository, $groupeRepository, $id);
             return;
         }
         if ($id > 0 && $second === 'chat') {
-            $this->studentDiscussionsChat($discussionModel, $groupeModel, $id);
+            $this->studentDiscussionsChat($discussionRepository, $groupeRepository, $id);
             return;
         }
         if ($id > 0 && $second === 'upload' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->studentDiscussionsUploadAttachment($discussionModel, $groupeModel, $id);
+            $this->studentDiscussionsUploadAttachment($discussionRepository, $groupeRepository, $id);
             return;
         }
         if ($id > 0 && $second === 'delete') {
-            $ok = $this->studentDiscussionDeleteAuthorized($discussionModel, $groupeModel, $id);
+            $ok = $this->studentDiscussionDeleteAuthorized($discussionRepository, $groupeRepository, $id);
             $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion supprimee.' : 'Suppression impossible (non autorisee).');
             $this->foRedirect('discussions');
             return;
         }
 
+        $listFilter = $this->parseStudentListQuery(200);
+        $q = $listFilter['q'];
+        $sort = $this->normalizeDiscussionListSort($listFilter['sort'] !== '' ? $listFilter['sort'] : 'newest');
+        $discussions = $discussionRepository->getVisibleForUser((int) $_SESSION['user_id']);
+        $discussions = array_values(array_filter(
+            $discussions,
+            function (array $d) use ($q): bool {
+                return $this->discussionRowMatchesQuery($d, $q);
+            }
+        ));
+        $this->sortDiscussionRows($discussions, $sort);
+
+        $prefix = $this->frontOfficeRoutePrefix();
+        $uid = (int) $_SESSION['user_id'];
         $data = $this->withFoContext([
             'title' => 'Discussions - APPOLIOS',
             'studentSidebarActive' => 'discussions',
-            'discussions' => $discussionModel->getVisibleForUser((int) $_SESSION['user_id']),
-            'currentUserId' => (int) $_SESSION['user_id'],
+            'discussion_cards' => DiscussionPresentation::studentIndexCards($discussions, $uid, $prefix, APP_ENTRY),
+            'listQ' => $q,
+            'listSort' => $sort,
+            'listQueryActive' => $q !== '',
+            'currentUserId' => $uid,
             'flash' => $this->getFlash()
         ], 'discussions');
         $this->view('FrontOffice/student/discussions_index', $data);
@@ -178,14 +131,14 @@ class StudentController extends BaseController {
             return;
         }
 
-        $groupeModel = $this->model('Groupe');
+        $groupeRepository = $this->model('GroupeRepository');
         $first = $params[0] ?? null;
         $second = $params[1] ?? null;
         $third = $params[2] ?? null;
         $fourth = $params[3] ?? null;
 
         if ($first === null) {
-            $this->studentGroupesIndex($groupeModel);
+            $this->studentGroupesIndex($groupeRepository);
             return;
         }
         if ($first === 'create') {
@@ -193,7 +146,7 @@ class StudentController extends BaseController {
             return;
         }
         if ($first === 'store' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->studentGroupesStore($groupeModel);
+            $this->studentGroupesStore($groupeRepository);
             return;
         }
 
@@ -204,33 +157,37 @@ class StudentController extends BaseController {
             return;
         }
         if ($second === null) {
-            $this->studentGroupesShow($groupeModel, $id);
+            $this->studentGroupesShow($groupeRepository, $id);
             return;
         }
         if ($second === 'edit') {
-            $this->studentGroupesEdit($groupeModel, $id);
+            $this->studentGroupesEdit($groupeRepository, $id);
             return;
         }
         if ($second === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->studentGroupesUpdate($groupeModel, $id);
+            $this->studentGroupesUpdate($groupeRepository, $id);
             return;
         }
         if ($second === 'join') {
-            $this->studentGroupesJoin($groupeModel, $id);
+            $this->studentGroupesJoin($groupeRepository, $id);
+            return;
+        }
+        if ($second === 'quit') {
+            $this->studentGroupesQuit($groupeRepository, $id);
             return;
         }
         if ($second === 'delete') {
-            $discussionModel = $this->model('Discussion');
-            $this->studentGroupesDelete($groupeModel, $discussionModel, $id);
+            $discussionRepository = $this->model('DiscussionRepository');
+            $this->studentGroupesDelete($groupeRepository, $discussionRepository, $id);
             return;
         }
         if ($second === 'discussions' && $third === 'store' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->studentGroupesDiscussionStore($groupeModel, $id);
+            $this->studentGroupesDiscussionStore($groupeRepository, $id);
             return;
         }
         if ($second === 'discussions' && $fourth === 'delete' && ctype_digit((string) $third) && (int) $third > 0) {
-            $discussionModel = $this->model('Discussion');
-            $this->studentGroupDiscussionDeleteFromPage($groupeModel, $discussionModel, $id, (int) $third);
+            $discussionRepository = $this->model('DiscussionRepository');
+            $this->studentGroupDiscussionDeleteFromPage($groupeRepository, $discussionRepository, $id, (int) $third);
             return;
         }
 
@@ -263,15 +220,15 @@ class StudentController extends BaseController {
             return;
         }
 
-        $evenements = $this->queryApprovedEvenements();
+        $evenements = $this->model('EvenementRepository')->findApprovedWithCreators();
 
         $data = [
             'title'            => 'My Dashboard - APPOLIOS',
             'description'      => 'Student evenement dashboard',
             'userName'         => $_SESSION['user_name'],
             'evenements'       => $evenements,
-            'participationMap' => $this->queryParticipationMap((int)$_SESSION['user_id']),
-            'participations'   => $this->queryMyParticipations((int)$_SESSION['user_id']),
+            'participationMap' => $this->model('EvenementRessourceRepository')->getParticipationMapForStudent((int)$_SESSION['user_id']),
+            'participations'   => $this->model('EvenementRessourceRepository')->findMyParticipations((int)$_SESSION['user_id']),
             'flash'            => $this->getFlash()
         ];
 
@@ -292,9 +249,9 @@ class StudentController extends BaseController {
             'title'            => 'Evenements - APPOLIOS',
             'description'      => 'Browse upcoming evenements',
             'userName'         => $_SESSION['user_name'],
-            'evenements'       => $this->queryApprovedEvenements(),
-            'participationMap' => $this->queryParticipationMap((int)$_SESSION['user_id']),
-            'participations'   => $this->queryMyParticipations((int)$_SESSION['user_id']),
+            'evenements'       => $this->model('EvenementRepository')->findApprovedWithCreators(),
+            'participationMap' => $this->model('EvenementRessourceRepository')->getParticipationMapForStudent((int)$_SESSION['user_id']),
+            'participations'   => $this->model('EvenementRessourceRepository')->findMyParticipations((int)$_SESSION['user_id']),
             'flash'            => $this->getFlash()
         ];
 
@@ -311,7 +268,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $evenement = $this->queryEvenementWithCreator((int)$id);
+        $evenement = $this->model('EvenementRepository')->findWithCreatorById((int)$id);
         if (!$evenement) {
             $this->setFlash('error', 'Evenement not found.');
             $this->redirect('student/evenements');
@@ -325,9 +282,9 @@ class StudentController extends BaseController {
         }
 
         $grouped = [
-            'rules'     => $this->queryRessourcesByType('rule',     (int)$id),
-            'materiels' => $this->queryRessourcesByType('materiel', (int)$id),
-            'plans'     => $this->queryRessourcesByType('plan',     (int)$id),
+            'rules'     => $this->model('EvenementRessourceRepository')->findByTypeAndEventForStudent('rule',     (int)$id),
+            'materiels' => $this->model('EvenementRessourceRepository')->findByTypeAndEventForStudent('materiel', (int)$id),
+            'plans'     => $this->model('EvenementRessourceRepository')->findByTypeAndEventForStudent('plan',     (int)$id),
         ];
 
         $data = [
@@ -337,7 +294,7 @@ class StudentController extends BaseController {
             'rules' => $grouped['rules'],
             'materiels' => $grouped['materiels'],
             'plans' => $grouped['plans'],
-            'participation' => $this->queryFindParticipation((int)$id, (int)$_SESSION['user_id']),
+            'participation' => $this->model('EvenementRessourceRepository')->findStudentParticipation((int)$id, (int)$_SESSION['user_id']),
             'flash' => $this->getFlash()
         ];
 
@@ -362,14 +319,14 @@ class StudentController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
-        $enrollmentModel = $this->model('Enrollment');
+        $courseRepository = $this->model('CourseRepository');
+        $enrollmentRepository = $this->model('EnrollmentRepository');
 
         // Get all courses
-        $allCourses = $courseModel->getAllWithCreator();
+        $allCourses = $courseRepository->getAllWithCreator();
 
         // Get enrolled course IDs to mark them
-        $enrollments = $enrollmentModel->getUserEnrollments($_SESSION['user_id']);
+        $enrollments = $enrollmentRepository->getUserEnrollments($_SESSION['user_id']);
         $enrolledIds = array_column($enrollments, 'course_id');
 
         $data = [
@@ -393,10 +350,10 @@ class StudentController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
-        $enrollmentModel = $this->model('Enrollment');
+        $courseRepository = $this->model('CourseRepository');
+        $enrollmentRepository = $this->model('EnrollmentRepository');
 
-        $course = $courseModel->getWithCreator($id);
+        $course = $courseRepository->getWithCreator($id);
 
         if (!$course) {
             $this->setFlash('error', 'Course not found.');
@@ -404,7 +361,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $isEnrolled = $enrollmentModel->isEnrolled($_SESSION['user_id'], $id);
+        $isEnrolled = $enrollmentRepository->isEnrolled($_SESSION['user_id'], $id);
 
         $data = [
             'title' => $course['title'] . ' - APPOLIOS',
@@ -427,17 +384,17 @@ class StudentController extends BaseController {
             return;
         }
 
-        $enrollmentModel = $this->model('Enrollment');
+        $enrollmentRepository = $this->model('EnrollmentRepository');
 
         // Check if already enrolled
-        if ($enrollmentModel->isEnrolled($_SESSION['user_id'], $id)) {
+        if ($enrollmentRepository->isEnrolled($_SESSION['user_id'], $id)) {
             $this->setFlash('info', 'You are already enrolled in this course.');
             $this->redirect('student/course/' . $id);
             return;
         }
 
         // Enroll user
-        if ($enrollmentModel->enroll($_SESSION['user_id'], $id)) {
+        if ($enrollmentRepository->enroll($_SESSION['user_id'], $id)) {
             $this->setFlash('success', 'Successfully enrolled in the course!');
         } else {
             $this->setFlash('error', 'Failed to enroll. Please try again.');
@@ -456,8 +413,8 @@ class StudentController extends BaseController {
             return;
         }
 
-        $enrollmentModel = $this->model('Enrollment');
-        $enrollments = $enrollmentModel->getUserEnrollments($_SESSION['user_id']);
+        $enrollmentRepository = $this->model('EnrollmentRepository');
+        $enrollments = $enrollmentRepository->getUserEnrollments($_SESSION['user_id']);
 
         $data = [
             'title' => 'My Courses - APPOLIOS',
@@ -480,7 +437,7 @@ class StudentController extends BaseController {
         }
 
         $studentId = (int) $_SESSION['user_id'];
-        $participations = $this->queryMyParticipations($studentId);
+        $participations = $this->model('EvenementRessourceRepository')->findMyParticipations($studentId);
 
         $data = [
             'title'          => 'My Events - APPOLIOS',
@@ -503,9 +460,9 @@ class StudentController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/User.php';
-        $userModel = $this->model('User');
-        $user = $userModel->findById($_SESSION['user_id']);
+        require_once __DIR__ . '/../Repository/UserRepository.php';
+        $userRepository = $this->model('UserRepository');
+        $user = $userRepository->findById($_SESSION['user_id']);
 
         $data = [
             'title' => 'My Profile - APPOLIOS',
@@ -527,9 +484,9 @@ class StudentController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/User.php';
-        $userModel = $this->model('User');
-        $user = $userModel->findById($_SESSION['user_id']);
+        require_once __DIR__ . '/../Repository/UserRepository.php';
+        $userRepository = $this->model('UserRepository');
+        $user = $userRepository->findById($_SESSION['user_id']);
 
         $data = [
             'title' => 'Edit Profile - APPOLIOS',
@@ -576,13 +533,13 @@ class StudentController extends BaseController {
             $errors[] = 'Please enter a valid email address.';
         }
 
-        require_once __DIR__ . '/../Model/User.php';
-        $userModel = $this->model('User');
-        $currentUser = $userModel->findById($_SESSION['user_id']);
+        require_once __DIR__ . '/../Repository/UserRepository.php';
+        $userRepository = $this->model('UserRepository');
+        $currentUser = $userRepository->findById($_SESSION['user_id']);
 
         // Check if email is taken by another user
         if ($email !== $currentUser['email']) {
-            if ($userModel->emailExists($email)) {
+            if ($userRepository->emailExists($email)) {
                 $errors[] = 'This email is already taken.';
             }
         }
@@ -619,7 +576,7 @@ class StudentController extends BaseController {
             $updateData['password'] = password_hash($newPassword, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
         }
 
-        if ($userModel->update($_SESSION['user_id'], $updateData)) {
+        if ($userRepository->update($_SESSION['user_id'], $updateData)) {
             // Update session data
             $_SESSION['user_name'] = $name;
             $_SESSION['user_email'] = $email;
@@ -632,10 +589,14 @@ class StudentController extends BaseController {
         $this->redirect('student/profile');
     }
 
-    private function studentGroupesIndex($groupeModel): void
+    private function studentGroupesIndex($groupeRepository): void
     {
         $uid = (int) $_SESSION['user_id'];
-        $mesGroupes = $groupeModel->getByCreator($uid);
+        $listFilter = $this->parseStudentListQuery(200);
+        $q = $listFilter['q'];
+        $sort = $this->normalizeGroupListSort($listFilter['sort'] !== '' ? $listFilter['sort'] : 'name_asc');
+
+        $mesGroupes = $groupeRepository->getByCreator($uid);
         $mesGroupesEnApprobation = array_values(array_filter(
             $mesGroupes,
             static function (array $g): bool {
@@ -644,7 +605,7 @@ class StudentController extends BaseController {
             }
         ));
 
-        $rawPublic = $groupeModel->getAllWithCreatorPublic(100, 0);
+        $rawPublic = $groupeRepository->getAllWithCreatorPublic(100, 0);
         $groupes = array_values(array_filter(
             $rawPublic,
             static function (array $g): bool {
@@ -653,10 +614,33 @@ class StudentController extends BaseController {
             }
         ));
 
+        $mesGroupesEnApprobation = array_values(array_filter(
+            $mesGroupesEnApprobation,
+            function (array $g) use ($q): bool {
+                return $this->groupRowMatchesQuery($g, $q);
+            }
+        ));
+        $groupes = array_values(array_filter(
+            $groupes,
+            function (array $g) use ($q): bool {
+                return $this->groupRowMatchesQuery($g, $q);
+            }
+        ));
+        $groupes = array_map(function (array $g) use ($groupeRepository, $uid): array {
+            $groupId = (int) ($g['id_groupe'] ?? 0);
+            $g['is_member_viewer'] = $groupId > 0 ? $groupeRepository->estMembre($groupId, $uid) : false;
+            return $g;
+        }, $groupes);
+        $this->sortGroupRows($mesGroupesEnApprobation, $sort);
+        $this->sortGroupRows($groupes, $sort);
+
         $data = $this->withFoContext([
             'title' => 'Groupes - APPOLIOS',
             'groupes' => $groupes,
             'mesGroupesEnApprobation' => $mesGroupesEnApprobation,
+            'listQ' => $q,
+            'listSort' => $sort,
+            'listQueryActive' => $q !== '',
             'flash' => $this->getFlash(),
             'studentSidebarActive' => 'groupes',
         ], 'groupes');
@@ -677,7 +661,7 @@ class StudentController extends BaseController {
         $this->view('FrontOffice/student/groupes_create', $data);
     }
 
-    private function studentGroupesStore($groupeModel): void
+    private function studentGroupesStore($groupeRepository): void
     {
         $payload = $this->extractGroupePayload();
         $errors = $this->validateGroupePayload($payload);
@@ -688,7 +672,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $canStoreImg = $groupeModel->supportsStoredImage();
+        $canStoreImg = $groupeRepository->supportsStoredImage();
         $photo = ['url' => null, 'error' => null];
         if ($canStoreImg) {
             $photo = $this->handleGroupPhotoUpload('group_photo');
@@ -713,9 +697,9 @@ class StudentController extends BaseController {
             $createData['image_url'] = $photo['url'];
         }
 
-        $createdId = $groupeModel->create($createData);
+        $createdId = $groupeRepository->create($createData);
         if ($createdId) {
-            $groupeModel->ajouterMembre((int) $createdId, (int) $_SESSION['user_id'], 'admin');
+            $groupeRepository->ajouterMembre((int) $createdId, (int) $_SESSION['user_id'], 'admin');
             $this->setFlash('success', 'Groupe cree. Etat: en cours d approbation jusqu a la decision de l administrateur.');
             $this->foRedirect('groupes');
             return;
@@ -728,9 +712,9 @@ class StudentController extends BaseController {
         $this->foRedirect('groupes/create');
     }
 
-    private function studentGroupesShow($groupeModel, int $id): void
+    private function studentGroupesShow($groupeRepository, int $id): void
     {
-        $groupe = $groupeModel->findById($id);
+        $groupe = $groupeRepository->findById($id);
         if (!$groupe) {
             $this->setFlash('error', 'Groupe introuvable.');
             $this->foRedirect('groupes');
@@ -740,28 +724,32 @@ class StudentController extends BaseController {
         $uid = (int) $_SESSION['user_id'];
         $approval = (string) ($groupe['approval_statut'] ?? '');
         $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
+        $isGroupCreatorViewer = $isCreator;
         if ($approval !== 'approuve' && !$isCreator) {
             $this->setFlash('error', 'Ce groupe est encore en cours d approbation. Seul le createur peut le consulter.');
             $this->foRedirect('groupes');
             return;
         }
 
-        $discussionModel = $this->model('Discussion');
+        $discussionRepository = $this->model('DiscussionRepository');
         $discussionOld = $_SESSION['discussion_old'] ?? [];
         unset($_SESSION['discussion_old']);
+
+        $discussionRows = $discussionRepository->getByGroupForViewer(
+            $id,
+            $uid,
+            (int) ($groupe['id_createur'] ?? 0)
+        );
+        $prefix = $this->frontOfficeRoutePrefix();
 
         $data = $this->withFoContext([
             'title' => 'Detail groupe - APPOLIOS',
             'groupe' => $groupe,
-            'membres' => $groupeModel->getMembres($id),
-            'discussions' => $discussionModel->getByGroupForViewer(
-                $id,
-                (int) $_SESSION['user_id'],
-                (int) ($groupe['id_createur'] ?? 0)
-            ),
+            'membres' => $groupeRepository->getMembres($id),
+            'discussion_cards' => DiscussionPresentation::groupShowCards($discussionRows, $uid, $prefix, $id, $isGroupCreatorViewer, APP_ENTRY),
             'discussionOld' => $discussionOld,
             'discussionErrors' => $_SESSION['discussion_errors'] ?? [],
-            'isMembre' => $groupeModel->estMembre($id, (int) $_SESSION['user_id']),
+            'isMembre' => $groupeRepository->estMembre($id, (int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
             'studentSidebarActive' => 'groupes',
         ], 'groupes');
@@ -769,9 +757,9 @@ class StudentController extends BaseController {
         $this->view('FrontOffice/student/groupes_show', $data);
     }
 
-    private function studentGroupesDiscussionStore($groupeModel, int $groupId): void
+    private function studentGroupesDiscussionStore($groupeRepository, int $groupId): void
     {
-        $groupe = $groupeModel->findById($groupId);
+        $groupe = $groupeRepository->findById($groupId);
         if (!$groupe) {
             $this->setFlash('error', 'Group not found.');
             $this->foRedirect('groupes');
@@ -806,20 +794,21 @@ class StudentController extends BaseController {
             return;
         }
 
-        $discussionModel = $this->model('Discussion');
-        $ok = $discussionModel->createForGroup(
+        $discussionRepository = $this->model('DiscussionRepository');
+        $ok = $discussionRepository->createForGroup(
             $groupId,
             (int) $_SESSION['user_id'],
             htmlspecialchars($payload['titre'], ENT_QUOTES, 'UTF-8'),
-            htmlspecialchars($payload['contenu'], ENT_QUOTES, 'UTF-8')
+            htmlspecialchars($payload['contenu'], ENT_QUOTES, 'UTF-8'),
+            'approuve'
         );
-        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion creee. Statut: en cours — en attente de validation par l administrateur.' : 'Failed to create discussion.');
+        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion creee. Vous pouvez l utiliser tout de suite (chat, fichiers).' : 'Failed to create discussion.');
         $this->foRedirect('groupes/' . $groupId);
     }
 
-    private function studentGroupesEdit($groupeModel, int $id): void
+    private function studentGroupesEdit($groupeRepository, int $id): void
     {
-        $groupe = $groupeModel->findById($id);
+        $groupe = $groupeRepository->findById($id);
         if (!$groupe || (int) $groupe['id_createur'] !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Vous ne pouvez modifier que vos groupes.');
             $this->foRedirect('groupes');
@@ -838,9 +827,9 @@ class StudentController extends BaseController {
         $this->view('FrontOffice/student/groupes_edit', $data);
     }
 
-    private function studentGroupesUpdate($groupeModel, int $id): void
+    private function studentGroupesUpdate($groupeRepository, int $id): void
     {
-        $groupe = $groupeModel->findById($id);
+        $groupe = $groupeRepository->findById($id);
         if (!$groupe || (int) $groupe['id_createur'] !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Vous ne pouvez modifier que vos groupes.');
             $this->foRedirect('groupes');
@@ -860,7 +849,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $canStoreImg = $groupeModel->supportsStoredImage();
+        $canStoreImg = $groupeRepository->supportsStoredImage();
         $photo = ['url' => null, 'error' => null];
         if ($canStoreImg) {
             $photo = $this->handleGroupPhotoUpload('group_photo');
@@ -883,27 +872,52 @@ class StudentController extends BaseController {
             $this->deleteGroupPhotoFileIfManaged($existingImg);
             $updateData['image_url'] = $photo['url'];
         }
-        $ok = $groupeModel->updateGroupe($id, $updateData);
+        $ok = $groupeRepository->updateGroupe($id, $updateData);
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Groupe mis a jour.' : 'Echec de mise a jour.');
         $this->foRedirect('groupes/' . $id);
     }
 
-    private function studentGroupesJoin($groupeModel, int $id): void
+    private function studentGroupesJoin($groupeRepository, int $id): void
     {
-        $groupe = $groupeModel->findById($id);
+        $groupe = $groupeRepository->findById($id);
         if (!$groupe || ($groupe['approval_statut'] ?? '') !== 'approuve') {
             $this->setFlash('error', 'Groupe non disponible.');
             $this->foRedirect('groupes');
             return;
         }
         $uid = (int) $_SESSION['user_id'];
-        if (!$groupeModel->estMembre($id, $uid)) {
-            $groupeModel->ajouterMembre($id, $uid, 'membre');
+        if (!$groupeRepository->estMembre($id, $uid)) {
+            $groupeRepository->ajouterMembre($id, $uid, 'membre');
             $this->setFlash('success', 'Vous avez rejoint le groupe.');
         } else {
             $this->setFlash('error', 'Vous etes deja membre.');
         }
         $this->foRedirect('groupes/' . $id);
+    }
+
+    private function studentGroupesQuit($groupeRepository, int $id): void
+    {
+        $groupe = $groupeRepository->findById($id);
+        if (!$groupe || ($groupe['approval_statut'] ?? '') !== 'approuve') {
+            $this->setFlash('error', 'Groupe non disponible.');
+            $this->foRedirect('groupes');
+            return;
+        }
+        $uid = (int) $_SESSION['user_id'];
+        $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
+        if ($isCreator) {
+            $this->setFlash('error', 'Le createur du groupe ne peut pas quitter son propre groupe.');
+            $this->foRedirect('groupes/' . $id);
+            return;
+        }
+        if (!$groupeRepository->estMembre($id, $uid)) {
+            $this->setFlash('error', 'Vous n etes pas membre de ce groupe.');
+            $this->foRedirect('groupes/' . $id);
+            return;
+        }
+        $ok = $groupeRepository->retirerMembre($id, $uid);
+        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Vous avez quitte le groupe.' : 'Impossible de quitter le groupe pour le moment.');
+        $this->foRedirect('groupes');
     }
 
     private function extractGroupePayload(): array
@@ -934,14 +948,14 @@ class StudentController extends BaseController {
         return $errors;
     }
 
-    private function studentDiscussionsStore($discussionModel, $groupeModel): void
+    private function studentDiscussionsStore($discussionRepository, $groupeRepository): void
     {
         $payload = [
             'titre' => trim((string) ($_POST['titre'] ?? '')),
             'contenu' => trim((string) ($_POST['contenu'] ?? '')),
             'id_groupe' => (int) ($_POST['id_groupe'] ?? 0),
         ];
-        $groups = $this->getApprovedOwnedGroups($groupeModel);
+        $groups = $this->getApprovedOwnedGroups($groupeRepository);
         $ownedGroupIds = array_map(static fn($g) => (int) ($g['id_groupe'] ?? 0), $groups);
         $errors = [];
         if ($payload['id_groupe'] === 0 || !in_array($payload['id_groupe'], $ownedGroupIds, true)) {
@@ -963,33 +977,45 @@ class StudentController extends BaseController {
             $this->foRedirect('discussions/create');
             return;
         }
-        $ok = $discussionModel->createForGroup($payload['id_groupe'], (int) $_SESSION['user_id'], htmlspecialchars($payload['titre'], ENT_QUOTES, 'UTF-8'), htmlspecialchars($payload['contenu'], ENT_QUOTES, 'UTF-8'));
-        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion creee.' : 'Failed to create discussion.');
+        $ok = $discussionRepository->createForGroup(
+            $payload['id_groupe'],
+            (int) $_SESSION['user_id'],
+            htmlspecialchars($payload['titre'], ENT_QUOTES, 'UTF-8'),
+            htmlspecialchars($payload['contenu'], ENT_QUOTES, 'UTF-8'),
+            'approuve'
+        );
+        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion creee. Vous pouvez la modifier et ouvrir le chat tout de suite.' : 'Failed to create discussion.');
         $this->foRedirect('discussions');
     }
 
-    private function studentDiscussionsEdit($discussionModel, $groupeModel, int $discussionId): void
+    private function studentDiscussionsEdit($discussionRepository, $groupeRepository, int $discussionId): void
     {
-        $discussion = $discussionModel->findOwnedBy($discussionId, (int) $_SESSION['user_id']);
+        $discussion = $discussionRepository->findOwnedBy($discussionId, (int) $_SESSION['user_id']);
         if (!$discussion) {
             $this->setFlash('error', 'Discussion not found.');
             $this->foRedirect('discussions');
             return;
         }
-        $approval = (string) ($discussion['approval_statut'] ?? $discussion['approval_status'] ?? 'approuve');
-        if ($approval !== 'approuve') {
-            $this->setFlash('error', 'This discussion is not approved yet. You can use it after admin approval.');
-            $this->foRedirect('discussions');
-            return;
-        }
         $old = $_SESSION['discussion_old'] ?? [];
         unset($_SESSION['discussion_old']);
+        $prefix = $this->frontOfficeRoutePrefix();
+        $form = DiscussionPresentation::editForm($discussion, $prefix, APP_ENTRY);
+        if ($old !== []) {
+            if (isset($old['id_groupe'])) {
+                $form['selected_group_id'] = (int) $old['id_groupe'];
+            }
+            if (isset($old['titre'])) {
+                $form['title_value'] = (string) $old['titre'];
+            }
+            if (isset($old['contenu'])) {
+                $form['content_value'] = (string) $old['contenu'];
+            }
+        }
         $data = $this->withFoContext([
             'title' => 'Edit Discussion - APPOLIOS',
             'studentSidebarActive' => 'discussions',
-            'discussion' => $discussion,
-            'groups' => $this->getApprovedOwnedGroups($groupeModel),
-            'old' => $old,
+            'discussion_edit' => $form,
+            'groups' => $this->getApprovedOwnedGroups($groupeRepository),
             'errors' => $_SESSION['discussion_errors'] ?? [],
             'flash' => $this->getFlash()
         ], 'discussions');
@@ -997,17 +1023,11 @@ class StudentController extends BaseController {
         $this->view('FrontOffice/student/discussions_edit', $data);
     }
 
-    private function studentDiscussionsUpdate($discussionModel, $groupeModel, int $discussionId): void
+    private function studentDiscussionsUpdate($discussionRepository, $groupeRepository, int $discussionId): void
     {
-        $existing = $discussionModel->findOwnedBy($discussionId, (int) $_SESSION['user_id']);
+        $existing = $discussionRepository->findOwnedBy($discussionId, (int) $_SESSION['user_id']);
         if (!$existing) {
             $this->setFlash('error', 'Discussion not found.');
-            $this->foRedirect('discussions');
-            return;
-        }
-        $approval = (string) ($existing['approval_statut'] ?? $existing['approval_status'] ?? 'approuve');
-        if ($approval !== 'approuve') {
-            $this->setFlash('error', 'This discussion is not approved yet. You can use it after admin approval.');
             $this->foRedirect('discussions');
             return;
         }
@@ -1016,7 +1036,7 @@ class StudentController extends BaseController {
             'contenu' => trim((string) ($_POST['contenu'] ?? '')),
             'id_groupe' => (int) ($_POST['id_groupe'] ?? 0),
         ];
-        $groups = $this->getApprovedOwnedGroups($groupeModel);
+        $groups = $this->getApprovedOwnedGroups($groupeRepository);
         $ownedGroupIds = array_map(static fn($g) => (int) ($g['id_groupe'] ?? 0), $groups);
         $errors = [];
         if ($payload['id_groupe'] === 0 || !in_array($payload['id_groupe'], $ownedGroupIds, true)) {
@@ -1038,7 +1058,7 @@ class StudentController extends BaseController {
             $this->foRedirect('discussions/' . $discussionId . '/edit');
             return;
         }
-        $ok = $discussionModel->updateOwned(
+        $ok = $discussionRepository->updateOwned(
             $discussionId,
             (int) $_SESSION['user_id'],
             htmlspecialchars($payload['titre'], ENT_QUOTES, 'UTF-8'),
@@ -1049,44 +1069,46 @@ class StudentController extends BaseController {
         $this->foRedirect('discussions');
     }
 
-    private function studentDiscussionsChat($discussionModel, $groupeModel, int $discussionId): void
+    private function studentDiscussionsChat($discussionRepository, $groupeRepository, int $discussionId): void
     {
-        $discussion = $discussionModel->getRowByPk($discussionId);
+        $discussion = $discussionRepository->getRowByPk($discussionId);
         if (!$discussion) {
             $this->setFlash('error', 'Discussion not found.');
             $this->foRedirect('discussions');
             return;
         }
 
-        $approval = (string) ($discussion['approval_statut'] ?? $discussion['approval_status'] ?? 'approuve');
-        if ($approval !== 'approuve') {
-            $this->setFlash('error', 'Live chat is available only after discussion approval.');
-            $this->foRedirect('discussions');
-            return;
-        }
+        $uid = (int) ($_SESSION['user_id'] ?? 0);
 
         $groupId = (int) ($discussion['id_groupe'] ?? $discussion['group_id'] ?? 0);
-        $group = $groupeModel->findById($groupId);
+        $group = $groupeRepository->findById($groupId);
         if (!$group) {
             $this->setFlash('error', 'Parent group not found.');
             $this->foRedirect('discussions');
             return;
         }
 
-        $uid = (int) ($_SESSION['user_id'] ?? 0);
         $isOwner = (int) ($group['id_createur'] ?? $group['created_by'] ?? 0) === $uid;
-        $isMember = $groupeModel->estMembre($groupId, $uid);
-        if (!$isOwner && !$isMember) {
+        $isMember = $groupeRepository->estMembre($groupId, $uid);
+        $discAuthorId = (int) ($discussion['id_auteur'] ?? $discussion['created_by'] ?? 0);
+        $isDiscussionAuthor = $discAuthorId === $uid && $discAuthorId > 0;
+        if (!$isOwner && !$isMember && !$isDiscussionAuthor) {
             $this->setFlash('error', 'You must join the group to access live chat.');
             $this->foRedirect('groupes/' . $groupId);
             return;
         }
 
+        $prefix = $this->frontOfficeRoutePrefix();
+        $chatUrls = DiscussionPresentation::chatUrls($discussion, $prefix, APP_ENTRY);
         $data = $this->withFoContext([
             'title' => 'Live Chat - APPOLIOS',
             'studentSidebarActive' => 'discussions',
-            'discussion' => $discussion,
-            'group' => $group,
+            'discussion_chat' => [
+                'discussion_title' => (string) ($discussion['titre'] ?? $discussion['title'] ?? 'Discussion'),
+                'group_name' => (string) ($group['nom_groupe'] ?? 'N/A'),
+                'back_url' => $chatUrls['back_url'],
+                'upload_url' => $chatUrls['upload_url'],
+            ],
             'socketUrl' => SOCKET_IO_URL,
             'chatRoom' => 'discussion_' . $discussionId,
             'currentUserId' => $uid,
@@ -1096,28 +1118,26 @@ class StudentController extends BaseController {
         $this->view('FrontOffice/student/discussions_chat', $data);
     }
 
-    private function studentDiscussionsUploadAttachment($discussionModel, $groupeModel, int $discussionId): void
+    private function studentDiscussionsUploadAttachment($discussionRepository, $groupeRepository, int $discussionId): void
     {
-        $discussion = $discussionModel->getRowByPk($discussionId);
+        $discussion = $discussionRepository->getRowByPk($discussionId);
         if (!$discussion) {
             $this->jsonResponse(['ok' => false, 'error' => 'Discussion not found.'], 404);
         }
 
-        $approval = (string) ($discussion['approval_statut'] ?? $discussion['approval_status'] ?? 'approuve');
-        if ($approval !== 'approuve') {
-            $this->jsonResponse(['ok' => false, 'error' => 'Discussion is not approved yet.'], 403);
-        }
+        $uid = (int) ($_SESSION['user_id'] ?? 0);
 
         $groupId = (int) ($discussion['id_groupe'] ?? $discussion['group_id'] ?? 0);
-        $group = $groupeModel->findById($groupId);
+        $group = $groupeRepository->findById($groupId);
         if (!$group) {
             $this->jsonResponse(['ok' => false, 'error' => 'Parent group not found.'], 404);
         }
 
-        $uid = (int) ($_SESSION['user_id'] ?? 0);
         $isOwner = (int) ($group['id_createur'] ?? $group['created_by'] ?? 0) === $uid;
-        $isMember = $groupeModel->estMembre($groupId, $uid);
-        if (!$isOwner && !$isMember) {
+        $isMember = $groupeRepository->estMembre($groupId, $uid);
+        $discAuthorId = (int) ($discussion['id_auteur'] ?? $discussion['created_by'] ?? 0);
+        $isDiscussionAuthor = $discAuthorId === $uid && $discAuthorId > 0;
+        if (!$isOwner && !$isMember && !$isDiscussionAuthor) {
             $this->jsonResponse(['ok' => false, 'error' => 'You must join the group first.'], 403);
         }
 
@@ -1138,10 +1158,10 @@ class StudentController extends BaseController {
         ]);
     }
 
-    private function studentDiscussionDeleteAuthorized($discussionModel, $groupeModel, int $discussionId, ?int $mustBelongToGroupId = null): bool
+    private function studentDiscussionDeleteAuthorized($discussionRepository, $groupeRepository, int $discussionId, ?int $mustBelongToGroupId = null): bool
     {
         $uid = (int) $_SESSION['user_id'];
-        $row = $discussionModel->getRowByPk($discussionId);
+        $row = $discussionRepository->getRowByPk($discussionId);
         if (!$row) {
             return false;
         }
@@ -1154,7 +1174,7 @@ class StudentController extends BaseController {
         if ($mustBelongToGroupId !== null && $gid !== $mustBelongToGroupId) {
             return false;
         }
-        $groupe = $groupeModel->findById($gid);
+        $groupe = $groupeRepository->findById($gid);
         if (!$groupe) {
             return false;
         }
@@ -1164,20 +1184,20 @@ class StudentController extends BaseController {
         if (!$isAuthor && !$isGroupOwner) {
             return false;
         }
-        return $discussionModel->deleteByPrimaryKey($discussionId);
+        return $discussionRepository->deleteByPrimaryKey($discussionId);
     }
 
-    private function studentGroupDiscussionDeleteFromPage($groupeModel, $discussionModel, int $groupId, int $discussionId): void
+    private function studentGroupDiscussionDeleteFromPage($groupeRepository, $discussionRepository, int $groupId, int $discussionId): void
     {
-        $ok = $this->studentDiscussionDeleteAuthorized($discussionModel, $groupeModel, $discussionId, $groupId);
+        $ok = $this->studentDiscussionDeleteAuthorized($discussionRepository, $groupeRepository, $discussionId, $groupId);
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion supprimee.' : 'Suppression impossible (non autorisee).');
         $this->foRedirect('groupes/' . $groupId);
     }
 
-    private function studentGroupesDelete($groupeModel, $discussionModel, int $id): void
+    private function studentGroupesDelete($groupeRepository, $discussionRepository, int $id): void
     {
         $uid = (int) $_SESSION['user_id'];
-        $groupe = $groupeModel->findById($id);
+        $groupe = $groupeRepository->findById($id);
         if (!$groupe || (int) ($groupe['id_createur'] ?? $groupe['created_by'] ?? 0) !== $uid) {
             $this->setFlash('error', 'Suppression reservee au createur du groupe.');
             $this->foRedirect('groupes');
@@ -1185,9 +1205,9 @@ class StudentController extends BaseController {
         }
         $img = $this->groupeImageUrlFromRow($groupe);
         $this->deleteGroupPhotoFileIfManaged($img);
-        $discussionModel->deleteAllForGroup($id);
-        $groupeModel->deleteMembresForGroup($id);
-        $ok = $groupeModel->delete($id);
+        $discussionRepository->deleteAllForGroup($id);
+        $groupeRepository->deleteMembresForGroup($id);
+        $ok = $groupeRepository->delete($id);
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Groupe supprime.' : 'Impossible de supprimer le groupe.');
         $this->foRedirect('groupes');
     }
@@ -1212,21 +1232,25 @@ class StudentController extends BaseController {
         $eventId   = (int) $id;
         $studentId = (int) $_SESSION['user_id'];
 
-        $event = $this->queryApprovedEventById($eventId);
+        $event = $this->model('EvenementRepository')->findApprovedById($eventId);
         if (!$event) {
             $this->setFlash('error', 'Event not found or not available.');
             $this->redirect('student/evenements');
             return;
         }
 
-        $existing = $this->queryFindParticipation($eventId, $studentId);
+        $resRepo = $this->model('EvenementRessourceRepository');
+        $existing = $resRepo->findStudentParticipation($eventId, $studentId);
         if ($existing) {
             $this->setFlash('info', 'You already requested participation for this event.');
             $this->redirect('student/evenements');
             return;
         }
 
-        if ($this->queryCreateParticipation($eventId, $studentId)) {
+        $user = $this->model('UserRepository')->findById($studentId);
+        $studentName = $user['name'] ?? 'Student';
+
+        if ($resRepo->createPendingParticipation($eventId, $studentId, $studentName)) {
             $this->setFlash('success', 'Participation request sent! Waiting for teacher approval.');
         } else {
             $this->setFlash('error', 'Failed to send participation request.');
@@ -1251,14 +1275,15 @@ class StudentController extends BaseController {
         $eventId   = (int) $id;
         $studentId = (int) $_SESSION['user_id'];
 
-        $existing = $this->queryFindParticipation($eventId, $studentId);
+        $resRepo = $this->model('EvenementRessourceRepository');
+        $existing = $resRepo->findStudentParticipation($eventId, $studentId);
         if (!$existing || $existing['details'] !== 'pending') {
             $this->setFlash('error', 'Only pending participation requests can be cancelled.');
             $this->redirect('student/evenements');
             return;
         }
 
-        if ($this->queryCancelParticipation($eventId, $studentId)) {
+        if ($resRepo->cancelPendingParticipation($eventId, $studentId)) {
             $this->setFlash('success', 'Participation request cancelled.');
         } else {
             $this->setFlash('error', 'Failed to cancel participation.');
@@ -1267,201 +1292,211 @@ class StudentController extends BaseController {
         $this->redirect('student/evenements');
     }
 
-    // =========================================================================
-    // PRIVATE DB QUERY METHODS — Participation (via evenement_ressources)
-    // =========================================================================
-
     /**
-     * Returns [evenement_id => status] map for the student.
-     * Uses type='participation', details=status in evenement_ressources.
+     * @return array{q: string, sort: string}
      */
-    private function queryParticipationMap(int $studentId): array {
-        if (!$this->hasEvenementRessourcesTable()) {
-            return [];
+    private function parseStudentListQuery(int $qMaxLen): array
+    {
+        $q = isset($_GET['q']) ? trim((string) $_GET['q']) : '';
+        if (strlen($q) > $qMaxLen) {
+            $q = substr($q, 0, $qMaxLen);
         }
-
-        $st = $this->getDb()->prepare(
-            "SELECT evenement_id, details as status
-             FROM evenement_ressources
-             WHERE type = 'participation' AND created_by = ?"
-        );
-        $st->execute([$studentId]);
-        $map = [];
-        foreach ($st->fetchAll() as $row) {
-            $map[(int)$row['evenement_id']] = $row['status'];
-        }
-        return $map;
+        $sort = isset($_GET['sort']) ? trim((string) $_GET['sort']) : '';
+        return ['q' => $q, 'sort' => $sort];
     }
 
-    private function queryApprovedEventById(int $id): array|false {
-        $st = $this->getDb()->prepare(
-            "SELECT * FROM evenements WHERE id = ? AND approval_status = 'approved' LIMIT 1"
-        );
-        $st->execute([$id]);
-        return $st->fetch();
+    private function normalizeGroupListSort(string $sort): string
+    {
+        $allowed = ['name_asc', 'name_desc', 'newest', 'oldest'];
+        return in_array($sort, $allowed, true) ? $sort : 'name_asc';
     }
 
-    private function queryFindParticipation(int $eventId, int $studentId): array|false {
-        if (!$this->hasEvenementRessourcesTable()) {
-            return false;
-        }
-
-        $st = $this->getDb()->prepare(
-            "SELECT * FROM evenement_ressources
-             WHERE evenement_id = ? AND created_by = ? AND type = 'participation' LIMIT 1"
-        );
-        $st->execute([$eventId, $studentId]);
-        return $st->fetch();
+    private function normalizeDiscussionListSort(string $sort): string
+    {
+        $allowed = ['title_asc', 'title_desc', 'group_asc', 'group_desc', 'newest', 'oldest'];
+        return in_array($sort, $allowed, true) ? $sort : 'newest';
     }
 
-    private function queryCreateParticipation(int $eventId, int $studentId): bool {
-        if (!$this->hasEvenementRessourcesTable()) {
-            return false;
+    private function textMatchesQuery(string $value, string $q): bool
+    {
+        if ($q === '') {
+            return true;
         }
-
-        try {
-            $stUser = $this->getDb()->prepare("SELECT name FROM users WHERE id = ? LIMIT 1");
-            $stUser->execute([$studentId]);
-            $user = $stUser->fetch();
-            $studentName = $user['name'] ?? 'Student';
-
-            $st = $this->getDb()->prepare(
-                "INSERT INTO evenement_ressources (evenement_id, type, title, details, created_by, created_at)
-                 VALUES (?, 'participation', ?, 'pending', ?, NOW())"
-            );
-            return $st->execute([$eventId, $studentName, $studentId]);
-        } catch (PDOException $e) { return false; }
+        if (function_exists('mb_stripos')) {
+            return mb_stripos($value, $q, 0, 'UTF-8') !== false;
+        }
+        return stripos($value, $q) !== false;
     }
 
-    private function queryCancelParticipation(int $eventId, int $studentId): bool {
-        if (!$this->hasEvenementRessourcesTable()) {
-            return false;
+    private function groupRowMatchesQuery(array $g, string $q): bool
+    {
+        if ($q === '') {
+            return true;
         }
+        $name = (string) ($g['nom_groupe'] ?? '');
+        $desc = (string) ($g['description'] ?? '');
+        return $this->textMatchesQuery($name, $q) || $this->textMatchesQuery($desc, $q);
+    }
 
-        $st = $this->getDb()->prepare(
-            "DELETE FROM evenement_ressources
-             WHERE evenement_id = ? AND created_by = ? AND type = 'participation' AND details = 'pending'"
-        );
-        return $st->execute([$eventId, $studentId]);
+    private function getGroupIdForSort(array $g): int
+    {
+        return (int) ($g['id_groupe'] ?? $g['id'] ?? 0);
     }
 
     /**
-     * Fetch events where the student has a participation record.
+     * @param array<int, array<string, mixed>> $rows
      */
-    private function queryMyParticipations(int $studentId): array {
-        if (!$this->hasEvenementRessourcesTable()) {
-            return [];
+    private function sortGroupRows(array &$rows, string $sort): void
+    {
+        $nameCmp = static function (array $a, array $b): int {
+            $ta = (string) ($a['nom_groupe'] ?? '');
+            $tb = (string) ($b['nom_groupe'] ?? '');
+            if (function_exists('mb_strtolower')) {
+                $ta = mb_strtolower($ta, 'UTF-8');
+                $tb = mb_strtolower($tb, 'UTF-8');
+            } else {
+                $ta = strtolower($ta);
+                $tb = strtolower($tb);
+            }
+            return $ta <=> $tb;
+        };
+        switch ($sort) {
+            case 'name_desc':
+                usort($rows, static function (array $a, array $b) use ($nameCmp): int {
+                    return -$nameCmp($a, $b);
+                });
+                return;
+            case 'newest':
+                usort($rows, function (array $a, array $b): int {
+                    return $this->getGroupIdForSort($b) <=> $this->getGroupIdForSort($a);
+                });
+                return;
+            case 'oldest':
+                usort($rows, function (array $a, array $b): int {
+                    return $this->getGroupIdForSort($a) <=> $this->getGroupIdForSort($b);
+                });
+                return;
+            case 'name_asc':
+            default:
+                usort($rows, $nameCmp);
         }
+    }
 
-        $st = $this->getDb()->prepare(
-            "SELECT e.*, er.id as p_id, er.details as p_status, er.rejection_reason, er.created_at as p_date, er.updated_at as p_update_date, u.name as creator_name
-             FROM evenements e
-             JOIN evenement_ressources er ON e.id = er.evenement_id
-             JOIN users u ON e.created_by = u.id
-             WHERE er.type = 'participation' AND er.created_by = ?
-             ORDER BY er.created_at DESC"
-        );
-        $st->execute([$studentId]);
-        return $st->fetchAll();
+    private function discussionRowMatchesQuery(array $d, string $q): bool
+    {
+        if ($q === '') {
+            return true;
+        }
+        $titre = (string) ($d['titre'] ?? $d['title'] ?? '');
+        $contenu = (string) ($d['contenu'] ?? $d['content'] ?? '');
+        $groupe = (string) ($d['nom_groupe'] ?? '');
+        return $this->textMatchesQuery($titre, $q)
+            || $this->textMatchesQuery($contenu, $q)
+            || $this->textMatchesQuery($groupe, $q);
+    }
+
+    private function getDiscussionIdForSort(array $d): int
+    {
+        return (int) ($d['id_discussion'] ?? $d['id'] ?? 0);
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     */
+    private function sortDiscussionRows(array &$rows, string $sort): void
+    {
+        $titleCmp = static function (array $a, array $b): int {
+            $ta = (string) ($a['titre'] ?? $a['title'] ?? '');
+            $tb = (string) ($b['titre'] ?? $b['title'] ?? '');
+            if (function_exists('mb_strtolower')) {
+                $ta = mb_strtolower($ta, 'UTF-8');
+                $tb = mb_strtolower($tb, 'UTF-8');
+            } else {
+                $ta = strtolower($ta);
+                $tb = strtolower($tb);
+            }
+            return $ta <=> $tb;
+        };
+        $groupCmp = static function (array $a, array $b): int {
+            $ga = (string) ($a['nom_groupe'] ?? '');
+            $gb = (string) ($b['nom_groupe'] ?? '');
+            if (function_exists('mb_strtolower')) {
+                $ga = mb_strtolower($ga, 'UTF-8');
+                $gb = mb_strtolower($gb, 'UTF-8');
+            } else {
+                $ga = strtolower($ga);
+                $gb = strtolower($gb);
+            }
+            return $ga <=> $gb;
+        };
+        switch ($sort) {
+            case 'title_asc':
+                usort($rows, $titleCmp);
+                return;
+            case 'title_desc':
+                usort($rows, static function (array $a, array $b) use ($titleCmp): int {
+                    return -$titleCmp($a, $b);
+                });
+                return;
+            case 'group_asc':
+                usort($rows, $groupCmp);
+                return;
+            case 'group_desc':
+                usort($rows, static function (array $a, array $b) use ($groupCmp): int {
+                    return -$groupCmp($a, $b);
+                });
+                return;
+            case 'oldest':
+                usort($rows, function (array $a, array $b): int {
+                    return $this->getDiscussionIdForSort($a) <=> $this->getDiscussionIdForSort($b);
+                });
+                return;
+            case 'newest':
+            default:
+                usort($rows, function (array $a, array $b): int {
+                    return $this->getDiscussionIdForSort($b) <=> $this->getDiscussionIdForSort($a);
+                });
+        }
     }
 
     public function downloadTicket($pId) {
         if (!$this->isLoggedIn()) { $this->redirect('auth/login'); return; }
-        if (!$this->hasEvenementRessourcesTable()) {
+        $resRepo = $this->model('EvenementRessourceRepository');
+        if (!$resRepo->ressourcesTableExists()) {
             $this->setFlash('error', 'Ticket system is not available yet.');
             $this->redirect('student/my-events');
             return;
         }
         $pId = (int)$pId;
-        $studentId = $_SESSION['user_id'];
-        $st = $this->getDb()->prepare(
-            "SELECT er.*, e.title as event_title, e.location as event_location, 
-                    COALESCE(CONCAT(e.date_debut, ' ', e.heure_debut), e.event_date) as event_full_date,
-                    u.name as student_name, u.email as student_email
-             FROM evenement_ressources er
-             JOIN evenements e ON er.evenement_id = e.id
-             JOIN users u ON er.created_by = u.id
-             WHERE er.id = ? AND er.created_by = ? AND er.type = 'participation' AND er.details = 'approved'
-             LIMIT 1"
-        );
-        $st->execute([$pId, $studentId]);
-        $ticket = $st->fetch();
+        $studentId = (int) $_SESSION['user_id'];
+        $ticket = $resRepo->findApprovedTicketForStudent($pId, $studentId);
         if (!$ticket) {
             $this->setFlash('error', 'Ticket not found or not approved yet.');
             $this->redirect('student/my-participations');
             return;
         }
 
-        // Create QR Data
-        $qrData = "Ticket ID: " . str_pad($ticket['id'], 6, '0', STR_PAD_LEFT) . "\n"
-                . "Event: " . $ticket['event_title'] . "\n"
-                . "Attendee: " . $ticket['student_name'] . "\n"
-                . "Status: Approved by Appolios";
-        $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($qrData);
+        $ticketIdPadded = str_pad((string) $ticket['id'], 6, '0', STR_PAD_LEFT);
+        $qrData = 'Ticket ID: ' . $ticketIdPadded . "\n"
+            . 'Event: ' . (string) ($ticket['event_title'] ?? '') . "\n"
+            . 'Attendee: ' . (string) ($ticket['student_name'] ?? '') . "\n"
+            . 'Status: Approved by Appolios';
+        $qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' . rawurlencode($qrData);
+
+        $eventTs = strtotime((string) ($ticket['event_full_date'] ?? ''));
+        $eventDateDisplay = $eventTs !== false
+            ? date('M d, Y - H:i', $eventTs)
+            : '';
+        $loc = trim((string) ($ticket['event_location'] ?? ''));
+        $locationDisplay = $loc !== '' ? $loc : 'To be announced';
 
         header('Content-Type: text/html; charset=utf-8');
-        ?>
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Event Ticket - <?= htmlspecialchars($ticket['event_title']) ?></title>
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-                * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-                body { background: #f1f5f9; padding: 40px; display: flex; justify-content: center; min-height: 100vh; align-items: center; }
-                .ticket-container { background: white; width: 700px; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.1); display: flex; position: relative; }
-                .ticket-left { flex: 1; padding: 40px; border-right: 2px dashed #e2e8f0; }
-                .ticket-right { width: 220px; background: #2B4865; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-                .brand { color: #548CA8; font-weight: 800; font-size: 1.2rem; margin-bottom: 30px; display: block; }
-                .event-badge { background: #e0f2fe; color: #0369a1; padding: 6px 14px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; margin-bottom: 15px; display: inline-block; }
-                h1 { font-size: 2rem; color: #1e293b; line-height: 1.2; margin-bottom: 25px; }
-                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
-                .info-item label { display: block; font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 5px; }
-                .info-item span { display: block; font-size: 1rem; color: #334155; font-weight: 600; }
-                .qr-box { width: 140px; height: 140px; background: white; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 6px solid #355C7D; }
-                .qr-box img { width: 100%; height: 100%; object-fit: contain; }
-                .status-approved { color: #10b981; font-weight: 800; font-size: 1.2rem; transform: rotate(-15deg); border: 3px solid #10b981; padding: 5px 15px; border-radius: 8px; margin-top: 20px; text-transform: uppercase; }
-                .ticket-id { font-size: 0.6rem; color: rgba(255,255,255,0.5); margin-top: auto; font-family: monospace; }
-                .ticket-container::before, .ticket-container::after { content: ''; position: absolute; width: 30px; height: 30px; background: #f1f5f9; border-radius: 50%; left: 465px; }
-                .ticket-container::before { top: -15px; }
-                .ticket-container::after { bottom: -15px; }
-                @media print { body { background: white; padding: 0; } .ticket-container { box-shadow: none; border: 1px solid #e2e8f0; margin: 0 auto; } .no-print { display: none; } }
-                .no-print-btn { position: fixed; top: 20px; right: 20px; background: #2B4865; color: white; border: none; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: 700; box-shadow: 0 10px 20px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 10px; z-index: 100; transition: all 0.2s; }
-                .no-print-btn:hover { background: #548CA8; transform: translateY(-2px); }
-            </style>
-        </head>
-        <body>
-            <button class="no-print-btn no-print" onclick="window.print()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                Print / Download PDF
-            </button>
-            <div class="ticket-container">
-                <div class="ticket-left">
-                    <span class="brand">APPOLIOS</span>
-                    <div class="event-badge">Official Event Pass</div>
-                    <h1><?= htmlspecialchars($ticket['event_title']) ?></h1>
-                    <div class="info-grid">
-                        <div class="info-item" style="grid-column: 1 / -1;"><label>Event</label><span><?= htmlspecialchars($ticket['event_title']) ?></span></div>
-                        <div class="info-item"><label>Attendee</label><span><?= htmlspecialchars($ticket['student_name']) ?></span></div>
-                        <div class="info-item"><label>Date & Time</label><span><?= date('M d, Y - H:i', strtotime($ticket['event_full_date'])) ?></span></div>
-                        <div class="info-item"><label>Location</label><span><?= htmlspecialchars($ticket['event_location'] ?: 'To be announced') ?></span></div>
-                        <div class="info-item"><label>Ticket Type</label><span>Student Pass</span></div>
-                    </div>
-                </div>
-                <div class="ticket-right">
-                    <div class="qr-box">
-                        <img src="<?= $qrUrl ?>" alt="Ticket QR Code">
-                    </div>
-                    <div style="font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; color: #94a3b8; margin-top: -10px;">SCAN TO VALIDATE</div>
-                    <div class="status-approved">Approved</div>
-                    <div class="ticket-id">#ID-<?= str_pad($ticket['id'], 6, '0', STR_PAD_LEFT) ?></div>
-                </div>
-            </div>
-            <script>window.onload = function() { setTimeout(() => { window.print(); }, 800); }</script>
-        </body>
-        </html>
-        <?php
-        exit;
+        $this->renderStandaloneView('student/ticket', [
+            'ticket' => $ticket,
+            'qrUrl' => $qrUrl,
+            'eventDateDisplay' => $eventDateDisplay,
+            'ticketIdPadded' => $ticketIdPadded,
+            'locationDisplay' => $locationDisplay,
+        ]);
     }
 }

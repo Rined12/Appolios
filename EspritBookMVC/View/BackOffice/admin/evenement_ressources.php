@@ -8,6 +8,9 @@ unset($_SESSION['old']);
 $selectedEvenementId = (int) ($selectedEvenementId ?? 0);
 $selectedEvenementTitle = $selectedEvenement['title'] ?? $selectedEvenement['titre'] ?? '';
 $editResource = $editResource ?? null;
+$participations = $participations ?? [];
+$participation_pending_count = (int) ($participation_pending_count ?? 0);
+$admin_is_creator = (bool) ($admin_is_creator ?? false);
 
 ?>
 
@@ -46,20 +49,14 @@ $editResource = $editResource ?? null;
                                     <strong style="color: #2B4865; font-size: 1.05rem;"><?= htmlspecialchars($selectedEvenementTitle) ?></strong>
                                 </div>
 
-                                <?php
-                                    $participations   = $participations ?? [];
-                                    $pendingCount     = count(array_filter($participations, fn($p) => ($p['status'] ?? '') === 'pending'));
-                                    // Admin can approve/reject only on events THEY created
-                                    $adminIsCreator   = isset($_SESSION['user_id']) && (int)($selectedEvenement['created_by'] ?? -1) === (int)$_SESSION['user_id'];
-                                ?>
                                 <div style="margin-top: 1.2rem;">
                                     <button type="button" onclick="document.getElementById('partModal').classList.add('active')"
                                         style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#2B4865,#548CA8);color:#fff;border:none;padding:12px 24px;border-radius:12px;font-weight:700;font-size:0.95rem;cursor:pointer;box-shadow:0 6px 20px rgba(43,72,101,0.15);transition:all 0.25s;"
                                         onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path></svg>
                                         Liste des Participations
-                                        <?php if ($pendingCount > 0): ?>
-                                            <span style="background:#f97316;color:#fff;padding:2px 8px;border-radius:50px;font-size:0.75rem;font-weight:800;"><?= $pendingCount ?> pending</span>
+                                        <?php if ($participation_pending_count > 0): ?>
+                                            <span style="background:#f97316;color:#fff;padding:2px 8px;border-radius:50px;font-size:0.75rem;font-weight:800;"><?= (int) $participation_pending_count ?> pending</span>
                                         <?php else: ?>
                                             <span style="background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:50px;font-size:0.75rem;"><?= count($participations) ?></span>
                                         <?php endif; ?>
@@ -116,7 +113,7 @@ $editResource = $editResource ?? null;
                                         </div>
 
                                         <div style="display:flex;align-items:center;gap:10px;flex:0 0 auto;">
-                                             <?php if ($s === 'pending' && $adminIsCreator): ?>
+                                             <?php if ($s === 'pending' && $admin_is_creator): ?>
                                                  <!-- Approve Form -->
                                                  <form method="POST" action="<?= APP_ENTRY ?>?url=ressource/approve-participation/<?= (int)$p['id'] ?>" style="margin:0;">
                                                      <input type="hidden" name="from_evenement_id" value="<?= (int)$selectedEvenementId ?>">
@@ -132,13 +129,13 @@ $editResource = $editResource ?? null;
                                                      <input type="text" name="reason" placeholder="Reason..." style="background: #fff; border: 1.5px solid #fecaca; border-radius: 10px; padding: 7px 12px; font-size: 0.8rem; width: 140px; outline: none; transition: all 0.2s;" onfocus="this.style.borderColor='#ef4444'" onblur="this.style.borderColor='#fecaca'">
                                                      <button type="submit" style="background:#fef2f2;color:#ef4444;border:1.5px solid #fecaca;padding:9px 15px;border-radius:10px;font-weight:700;font-size:0.8rem;cursor:pointer;" onmouseover="this.style.background='#fee2e2'" onclick="return this.form.reason.value.trim() !== '' || (alert('Please provide a reason') && false)">Reject</button>
                                                  </form>
-                                             <?php elseif ($s === 'pending' && !$adminIsCreator): ?>
+                                             <?php elseif ($s === 'pending' && !$admin_is_creator): ?>
                                                  <span style="background:#f1f5f9;color:#94a3b8;padding:6px 12px;border-radius:8px;font-size:0.75rem;font-weight:700;border:1px solid #e2e8f0;">
                                                      View Only
                                                  </span>
                                              <?php endif; ?>
 
-                                             <?php if ($adminIsCreator): ?>
+                                             <?php if ($admin_is_creator): ?>
                                                  <form method="POST" action="<?= APP_ENTRY ?>?url=ressource/delete-participation/<?= (int)$p['id'] ?>" style="margin:0;">
                                                      <input type="hidden" name="from_evenement_id" value="<?= (int)$selectedEvenementId ?>">
                                                      <button type="submit"

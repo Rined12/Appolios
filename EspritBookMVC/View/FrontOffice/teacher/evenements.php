@@ -138,21 +138,16 @@ $teacherSidebarActive = 'evenements';
                                 <?php if (!empty($evenements)): ?>
                                     <?php foreach ($evenements as $evenement): ?>
                                         <?php
-                                        $approval = strtolower((string) ($evenement['approval_status'] ?? 'approved'));
-                                        if ($approval === 'pending') {
-                                            $pillBg = '#fff7ed'; $pillColor = '#f97316';
-                                        } elseif ($approval === 'rejected') {
-                                            $pillBg = '#fef2f2'; $pillColor = '#ef4444';
-                                        } else {
-                                            $pillBg = '#f0fdf4'; $pillColor = '#22c55e';
-                                        }
+                                        $approval = (string) ($evenement['display_approval_lower'] ?? 'approved');
+                                        $pillBg = (string) ($evenement['display_approval_pill_bg'] ?? '#f0fdf4');
+                                        $pillColor = (string) ($evenement['display_approval_pill_color'] ?? '#22c55e');
                                         ?>
                                         <tr style="border-bottom: 1px solid #eef2f6; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
                                             <td style="padding: 1.2rem 1rem; color: #64748b; font-size: 0.9rem; font-weight: 500;">#<?= (int) $evenement['id'] ?></td>
                                             <td style="padding: 1.2rem 1rem; color: #1e293b; font-weight: 700; font-size: 0.95rem;"><?= htmlspecialchars(($evenement['titre'] ?? '') ?: ($evenement['title'] ?? '')) ?></td>
                                             <td style="padding: 1.2rem 1rem; color: #475569; font-size: 0.9rem;">
-                                                <div style="font-weight: 600; color: #2B4865;"><?= htmlspecialchars((string) (($evenement['date_debut'] ?? '') ?: (!empty($evenement['event_date']) ? date('M d, Y', strtotime((string) $evenement['event_date'])) : 'N/A'))) ?></div>
-                                                <div style="font-size: 0.8rem; color: #94a3b8;"><?= htmlspecialchars((string) (($evenement['heure_debut'] ?? '') ?: (!empty($evenement['event_date']) ? date('H:i', strtotime((string) $evenement['event_date'])) : '—'))) ?></div>
+                                                <div style="font-weight: 600; color: #2B4865;"><?= htmlspecialchars((string) ($evenement['display_date_primary'] ?? 'N/A')) ?></div>
+                                                <div style="font-size: 0.8rem; color: #94a3b8;"><?= htmlspecialchars((string) ($evenement['display_time_primary'] ?? '—')) ?></div>
                                             </td>
                                             <td style="padding: 1.2rem 1rem; color: #475569; font-size: 0.9rem; font-weight: 500;">
                                                 <div style="display: flex; align-items: center; gap: 6px;">
@@ -163,7 +158,7 @@ $teacherSidebarActive = 'evenements';
                                             <td style="padding: 1.2rem 1rem;">
                                                 <?php if ($approval === 'rejected'): ?>
                                                     <button type="button" 
-                                                            onclick="showRejectionModal('<?= htmlspecialchars(addslashes($evenement['rejection_reason'] ?? 'No specific reason provided.')) ?>', '<?= htmlspecialchars(addslashes(!empty($evenement['approved_at']) ? date('d M Y \a\t H:i', strtotime($evenement['approved_at'])) : 'Unknown date')) ?>')"
+                                                            onclick="showRejectionModal('<?= (string) ($evenement['display_rejection_modal_reason_js'] ?? '') ?>', '<?= (string) ($evenement['display_rejection_modal_date_js'] ?? '') ?>')"
                                                             style="background: <?= $pillBg ?>; color: <?= $pillColor ?>; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: all 0.2s; outline: none;"
                                                             onmouseover="this.style.boxShadow='0 4px 10px rgba(239,68,68,0.2)'; this.style.transform='translateY(-1px)'; this.style.background='#fee2e2';"
                                                             onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'; this.style.background='<?= $pillBg ?>';">

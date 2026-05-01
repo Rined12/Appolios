@@ -1,50 +1,47 @@
-<?php $studentSidebarActive = 'discussions'; ?>
-<div class="dashboard student-events-page">
+<?php
+$studentSidebarActive = 'discussions';
+$dc = $discussion_chat ?? ['discussion_title' => '', 'group_name' => '', 'back_url' => '#', 'upload_url' => ''];
+?>
+<div class="dashboard student-events-page collab-hub collab-chat-root">
     <div class="container admin-dashboard-container">
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
             <div class="admin-main">
-                <div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <h1>Live Discussion Chat</h1>
-                        <p>
-                            Group: <strong><?= htmlspecialchars((string) ($group['nom_groupe'] ?? 'N/A')) ?></strong>
-                            - Discussion: <strong><?= htmlspecialchars((string) ($discussion['titre'] ?? 'Discussion')) ?></strong>
-                        </p>
-                    </div>
-                    <a class="btn btn-secondary" href="<?= APP_ENTRY ?>?url=student/discussions">Back</a>
-                </div>
+                <?php require __DIR__ . '/partials/collab_hub_styles.php'; ?>
 
-                <style>
-                    .chat-shell { background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; }
-                    .chat-messages { height:420px; overflow-y:auto; padding:14px; background:#f8fafc; }
-                    .chat-row { margin-bottom:10px; display:flex; }
-                    .chat-row.self { justify-content:flex-end; }
-                    .chat-bubble { max-width:70%; border-radius:12px; padding:10px 12px; background:#fff; border:1px solid #e2e8f0; }
-                    .chat-row.self .chat-bubble { background:#dbeafe; border-color:#bfdbfe; }
-                    .chat-author { font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; }
-                    .chat-text { color:#0f172a; white-space:pre-wrap; word-break:break-word; }
-                    .chat-meta { font-size:11px; color:#64748b; margin-top:4px; }
-                    .chat-input-wrap { border-top:1px solid #e2e8f0; padding:12px; display:flex; gap:10px; align-items:center; }
-                    .chat-input-wrap input { flex:1; border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; }
-                    .chat-attach-btn { border:1px solid #cbd5e1; border-radius:10px; background:#fff; width:38px; height:38px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; transition:all .2s ease; }
-                    .chat-attach-btn:hover { border-color:#94a3b8; background:#f8fafc; transform:translateY(-1px); }
-                    .chat-attach-btn.recording { background:#fee2e2; border-color:#ef4444; color:#991b1b; }
-                    .chat-uploading { font-size:12px; color:#64748b; margin-left:6px; }
-                </style>
+                <div class="collab-chat-layout">
+                    <header class="collab-chat-head">
+                        <div>
+                            <div class="collab-chat-live"><span class="collab-chat-dot" aria-hidden="true"></span> Realtime room</div>
+                            <h2>Live discussion</h2>
+                            <p class="collab-chat-sub">
+                                <strong><?= htmlspecialchars((string) ($group['nom_groupe'] ?? 'Group')) ?></strong>
+                                <span style="opacity:.65;"> · </span>
+                                <?= htmlspecialchars((string) ($discussion['titre'] ?? 'Discussion')) ?>
+                            </p>
+                        </div>
+                        <a class="collab-btn-ghost" href="<?= htmlspecialchars((string) ($dc['back_url'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>">
+                            <i class="bi bi-arrow-left" aria-hidden="true"></i> Back
+                        </a>
+                    </header>
 
-                <div class="chat-shell">
-                    <div id="chatMessages" class="chat-messages"></div>
-                    <form id="chatForm" class="chat-input-wrap" data-skip-validation="1" novalidate>
+                    <div id="chatMessages" class="collab-chat-stream chat-messages"></div>
+
+                    <form id="chatForm" class="collab-chat-composer chat-input-wrap" data-skip-validation="1" novalidate>
                         <input id="chatFileInput" type="file" style="display:none;" />
                         <button id="pickImageBtn" class="chat-attach-btn" type="button" title="Send image" aria-label="Send image"><i class="bi bi-image"></i></button>
                         <button id="pickFileBtn" class="chat-attach-btn" type="button" title="Send attachment" aria-label="Send attachment"><i class="bi bi-paperclip"></i></button>
                         <button id="recordBtn" class="chat-attach-btn" type="button" title="Record voice note" aria-label="Record voice note"><i class="bi bi-mic-fill"></i></button>
-                        <input id="chatInput" type="text" placeholder="Type your message..." autocomplete="off" />
+                        <input id="chatInput" type="text" placeholder="Write something…" autocomplete="off" />
                         <button class="btn btn-primary" type="submit">Send</button>
                         <span id="chatUploadState" class="chat-uploading"></span>
                     </form>
                 </div>
+                <style>
+                    .collab-chat-root .chat-attach-btn.recording { background:#fee2e2; border-color:#ef4444; color:#991b1b; }
+                    .collab-chat-root .chat-uploading { font-size:12px; color:#64748b; margin-left:6px; flex:1 1 100%; }
+                    @media (min-width:520px){ .collab-chat-root .chat-uploading { flex:0 0 auto; } }
+                </style>
             </div>
         </div>
     </div>
@@ -65,13 +62,27 @@
     const pickFileBtn = document.getElementById('pickFileBtn');
     const recordBtn = document.getElementById('recordBtn');
     const uploadState = document.getElementById('chatUploadState');
-    const uploadUrl = <?= json_encode((string) (APP_ENTRY . '?url=student/discussions/' . (int) ($discussion['id_discussion'] ?? 0) . '/upload')) ?>;
+    const uploadUrl = <?= json_encode((string) ($dc['upload_url'] ?? '')) ?>;
     let mediaRecorder = null;
     let mediaChunks = [];
 
     const appendMessage = (payload) => {
         const row = document.createElement('div');
-        row.className = 'chat-row' + ((Number(payload.userId) === Number(userId)) ? ' self' : '');
+        const isSelf = Number(payload.userId) === Number(userId);
+        row.className = 'chat-row' + (isSelf ? ' self' : '');
+
+        const wrap = document.createElement('div');
+        wrap.className = 'collab-chat-msg-wrap';
+
+        if (!isSelf) {
+            const av = document.createElement('div');
+            av.className = 'collab-chat-avatar';
+            const n = String(payload.userName || 'User').trim();
+            av.textContent = n ? n.charAt(0).toUpperCase() : '?';
+            av.setAttribute('aria-hidden', 'true');
+            wrap.appendChild(av);
+        }
+
         const bubble = document.createElement('div');
         bubble.className = 'chat-bubble';
         const author = document.createElement('div');
@@ -85,7 +96,7 @@
             img.src = payload.fileUrl;
             img.alt = payload.fileName || 'Image';
             img.style.maxWidth = '100%';
-            img.style.borderRadius = '8px';
+            img.style.borderRadius = '10px';
             img.style.border = '1px solid #e2e8f0';
             text.appendChild(img);
         } else if (type === 'audio' && payload.fileUrl) {
@@ -108,11 +119,12 @@
         meta.className = 'chat-meta';
         const parts = [new Date(payload.ts || Date.now()).toLocaleTimeString()];
         if (payload.fileName && type !== 'text') parts.push(payload.fileName);
-        meta.textContent = parts.join(' - ');
+        meta.textContent = parts.join(' · ');
         bubble.appendChild(author);
         bubble.appendChild(text);
         bubble.appendChild(meta);
-        row.appendChild(bubble);
+        wrap.appendChild(bubble);
+        row.appendChild(wrap);
         messagesEl.appendChild(row);
         messagesEl.scrollTop = messagesEl.scrollHeight;
     };
@@ -137,7 +149,7 @@
 
     const sendAttachment = async (file) => {
         if (!file) return;
-        uploadState.textContent = 'Uploading...';
+        uploadState.textContent = 'Uploading…';
         const fd = new FormData();
         fd.append('attachment', file);
         try {

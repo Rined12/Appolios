@@ -4,63 +4,12 @@
  * Handles course-related database operations
  */
 
-require_once __DIR__ . '/../Model/BaseModel.php';
+require_once __DIR__ . '/BaseRepository.php';
 
-class Course extends BaseModel {
+class CourseRepository extends BaseRepository {
     protected string $table = 'courses';
 
-    // ==========================================
-    // ENCAPSULATION: Private Properties
-    // ==========================================
-    private ?int $id;
-    private ?string $title;
-    private ?string $description;
-    private ?string $video_url;
-    private ?int $created_by;
-    private ?string $created_at;
-
-    // ==========================================
-    // CONSTRUCTOR
-    // ==========================================
-    public function __construct(
-        ?int $id = null,
-        ?string $title = null,
-        ?string $description = null,
-        ?string $video_url = null,
-        ?int $created_by = null,
-        ?string $created_at = null
-    ) {
-        parent::__construct();
-        
-        $this->id = $id;
-        $this->title = $title;
-        $this->description = $description;
-        $this->video_url = $video_url;
-        $this->created_by = $created_by;
-        $this->created_at = $created_at;
-    }
-
-    // ==========================================
-    // GETTERS & SETTERS
-    // ==========================================
-    public function getId(): ?int { return $this->id; }
-    public function setId(?int $id): self { $this->id = $id; return $this; }
-
-    public function getTitle(): ?string { return $this->title; }
-    public function setTitle(?string $title): self { $this->title = $title; return $this; }
-
-    public function getDescription(): ?string { return $this->description; }
-    public function setDescription(?string $description): self { $this->description = $description; return $this; }
-
-    public function getVideoUrl(): ?string { return $this->video_url; }
-    public function setVideoUrl(?string $video_url): self { $this->video_url = $video_url; return $this; }
-
-    public function getCreatedBy(): ?int { return $this->created_by; }
-    public function setCreatedBy(?int $created_by): self { $this->created_by = $created_by; return $this; }
-
-    public function getCreatedAt(): ?string { return $this->created_at; }
-    public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
-
+    
     /**
      * Get all courses with creator info
      * @return array

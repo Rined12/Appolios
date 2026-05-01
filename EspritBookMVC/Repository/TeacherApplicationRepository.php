@@ -4,9 +4,9 @@
  * Handles teacher registration requests with CV
  */
 
-require_once __DIR__ . '/../Model/BaseModel.php';
+require_once __DIR__ . '/BaseRepository.php';
 
-class TeacherApplication extends BaseModel {
+class TeacherApplicationRepository extends BaseRepository {
     protected string $table = 'teacher_applications';
 
     /**

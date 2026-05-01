@@ -1,11 +1,10 @@
 <?php
 /**
- * APPOLIOS Evenement Model
- * Data class only - properties, constructor, getters & setters
- * All database logic is in EventController
+ * Evenement domain entity (attributes, constructor, getters/setters).
+ * Database access stays in controllers / future EvenementRepository.
  */
 
-class Evenement {
+class EvenementEntity {
 
     private ?int    $id;
     private ?string $title;

@@ -2,11 +2,9 @@
 /**
  * APPOLIOS - Teacher Add Evenement (neo theme)
  */
-
-$old = $_SESSION['old'] ?? [];
-unset($_SESSION['old']);
-
-$minDate = date('Y-m-d', strtotime('+1 day'));
+$evenement_old = $evenement_old ?? [];
+$evenement_min_date = $evenement_min_date ?? '';
+$old = $evenement_old;
 
 $teacherSidebarActive = 'evenements';
 ?>
@@ -63,7 +61,7 @@ $teacherSidebarActive = 'evenements';
 
                                 <div class="neo-form-group">
                                     <label for="date_debut">Date Debut *</label>
-                                    <input type="date" id="date_debut" name="date_debut" data-js-min="<?= htmlspecialchars($minDate) ?>" value="<?= htmlspecialchars($old['date_debut'] ?? '') ?>" class="neo-input <?= isset($errors['date_debut']) ? 'neo-error-input' : '' ?>">
+                                    <input type="date" id="date_debut" name="date_debut" data-js-min="<?= htmlspecialchars($evenement_min_date) ?>" value="<?= htmlspecialchars($old['date_debut'] ?? '') ?>" class="neo-input <?= isset($errors['date_debut']) ? 'neo-error-input' : '' ?>">
                                     <?php if (isset($errors['date_debut'])): ?>
                                         <div class="neo-error-text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><?= htmlspecialchars($errors['date_debut']) ?></div>
                                     <?php endif; ?>

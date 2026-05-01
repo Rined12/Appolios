@@ -2,10 +2,6 @@
 /**
  * APPOLIOS - Admin Login Page
  */
-
-// Get flash messages
-$flash = $_SESSION['flash'] ?? null;
-unset($_SESSION['flash']);
 ?>
 
 <div style="padding-top: 120px; padding-bottom: 80px; min-height: 100vh; background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);">

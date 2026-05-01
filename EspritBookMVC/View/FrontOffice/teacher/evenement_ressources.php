@@ -3,8 +3,10 @@
  * APPOLIOS - Teacher Evenement Resources (premium neo theme)
  */
 
-$old = $_SESSION['old'] ?? [];
-unset($_SESSION['old']);
+$ressource_old = $ressource_old ?? [];
+$old = $ressource_old;
+$participation_rollup = $participation_rollup ?? ['total' => 0, 'pending_count' => 0, 'approved_count' => 0, 'rejected_count' => 0];
+$participation_modal_open = $participation_modal_open ?? false;
 $selectedEvenementId = (int) ($selectedEvenementId ?? 0);
 $selectedEvenementTitle = $selectedEvenement['title'] ?? $selectedEvenement['titre'] ?? '';
 $editResource = $editResource ?? null;
@@ -51,7 +53,7 @@ $teacherSidebarActive = 'evenements';
                                 </div>
 
                                 <!-- RIGHT: Participation button -->
-                                <?php $participations = $participations ?? []; $pendingCount = count(array_filter($participations, fn($p) => ($p['status'] ?? '') === 'pending')); ?>
+                                <?php $participations = $participations ?? []; $pendingCount = (int) ($participation_rollup['pending_count'] ?? 0); ?>
                                 <div style="display: flex; align-items: flex-start; padding-top: 3.5rem;">
                                     <button type="button" onclick="document.getElementById('partModal').classList.add('active')"
                                         style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#2B4865 0%,#548CA8 100%);color:#fff;border:none;padding:13px 22px;border-radius:12px;font-weight:700;font-size:0.95rem;cursor:pointer;box-shadow:0 6px 20px rgba(43,72,101,0.25);transition:all 0.25s;white-space:nowrap;"
@@ -81,36 +83,35 @@ $teacherSidebarActive = 'evenements';
                                     </div>
                                     <div>
                                         <h2 style="margin:0;font-size:1.2rem;font-weight:800;color:#0f172a;">Participation Requests</h2>
-                                        <p style="margin:0;font-size:0.82rem;color:#64748b;"><?= count($participations) ?> total &mdash; <?= $pendingCount ?> pending</p>
+                                        <p style="margin:0;font-size:0.82rem;color:#64748b;"><?= (int) ($participation_rollup['total'] ?? 0) ?> total &mdash; <?= $pendingCount ?> pending</p>
                                     </div>
                                 </div>
                                 <button onclick="document.getElementById('partModal').classList.remove('active')" style="background:#f8fafc;border:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#64748b;cursor:pointer;">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                                 </button>
                             </div>
-                            <?php $pA = count(array_filter($participations, fn($p) => ($p['status'] ?? '') === 'approved')); $pR = count(array_filter($participations, fn($p) => ($p['status'] ?? '') === 'rejected')); ?>
                             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.8rem;padding:1rem 2rem;border-bottom:1px solid #eef2f6;">
                                 <div style="text-align:center;padding:0.7rem;background:#fff7ed;border-radius:10px;"><div style="font-size:1.4rem;font-weight:800;color:#f97316;"><?= $pendingCount ?></div><div style="font-size:0.75rem;color:#64748b;font-weight:600;">Pending</div></div>
-                                <div style="text-align:center;padding:0.7rem;background:#f0fdf4;border-radius:10px;"><div style="font-size:1.4rem;font-weight:800;color:#22c55e;"><?= $pA ?></div><div style="font-size:0.75rem;color:#64748b;font-weight:600;">Approved</div></div>
-                                <div style="text-align:center;padding:0.7rem;background:#fef2f2;border-radius:10px;"><div style="font-size:1.4rem;font-weight:800;color:#ef4444;"><?= $pR ?></div><div style="font-size:0.75rem;color:#64748b;font-weight:600;">Rejected</div></div>
+                                <div style="text-align:center;padding:0.7rem;background:#f0fdf4;border-radius:10px;"><div style="font-size:1.4rem;font-weight:800;color:#22c55e;"><?= (int) ($participation_rollup['approved_count'] ?? 0) ?></div><div style="font-size:0.75rem;color:#64748b;font-weight:600;">Approved</div></div>
+                                <div style="text-align:center;padding:0.7rem;background:#fef2f2;border-radius:10px;"><div style="font-size:1.4rem;font-weight:800;color:#ef4444;"><?= (int) ($participation_rollup['rejected_count'] ?? 0) ?></div><div style="font-size:0.75rem;color:#64748b;font-weight:600;">Rejected</div></div>
                             </div>
                             <div style="overflow-y:auto;flex:1;padding:1.2rem 2rem 1.8rem;">
                                 <?php if (!empty($participations)): ?>
                                     <?php foreach ($participations as $p):
-                                        $s  = $p['status'] ?? 'pending';
-                                        $sc = $s === 'approved' ? '#22c55e' : ($s === 'rejected' ? '#ef4444' : '#f97316');
-                                        $sb = $s === 'approved' ? '#f0fdf4' : ($s === 'rejected' ? '#fef2f2' : '#fff7ed');
+                                        $s = (string) ($p['display_status'] ?? 'pending');
+                                        $sc = (string) ($p['display_status_color'] ?? '#f97316');
+                                        $sb = (string) ($p['display_status_bg'] ?? '#fff7ed');
                                     ?>
                                     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:0.9rem 1rem;border-radius:12px;border:1px solid #eef2f6;margin-bottom:0.7rem;background:#fafbfc;transition:background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#fafbfc'">
                                         <div style="display:flex;align-items:center;gap:10px;">
-                                            <div style="background:#e9f1fa;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#548CA8;font-weight:800;flex-shrink:0;"><?= strtoupper(substr($p['student_name'] ?? 'S', 0, 1)) ?></div>
+                                            <div style="background:#e9f1fa;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#548CA8;font-weight:800;flex-shrink:0;"><?= htmlspecialchars((string) ($p['display_student_initial'] ?? 'S')) ?></div>
                                             <div>
-                                                <div style="font-weight:700;color:#1e293b;"><?= htmlspecialchars($p['student_name'] ?? '') ?></div>
+                                                <div style="font-weight:700;color:#1e293b;"><?= htmlspecialchars((string) ($p['display_student_name'] ?? '')) ?></div>
                                                 <div style="font-size:0.78rem;color:#94a3b8;"><?= htmlspecialchars($p['student_email'] ?? '') ?></div>
                                             </div>
                                         </div>
                                         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                                            <span style="background:<?= $sb ?>;color:<?= $sc ?>;padding:3px 10px;border-radius:50px;font-size:0.72rem;font-weight:700;text-transform:uppercase;"><?= htmlspecialchars($s) ?></span>
+                                            <span style="background:<?= htmlspecialchars($sb) ?>;color:<?= htmlspecialchars($sc) ?>;padding:3px 10px;border-radius:50px;font-size:0.72rem;font-weight:700;text-transform:uppercase;"><?= htmlspecialchars($s) ?></span>
                                             <?php if ($s === 'pending'): ?>
                                                 <form method="POST" action="<?= APP_ENTRY ?>?url=teacher/approve-participation/<?= (int)$p['id'] ?>" style="margin:0;">
                                                     <input type="hidden" name="from_evenement_id" value="<?= (int)$selectedEvenementId ?>">
@@ -157,7 +158,7 @@ $teacherSidebarActive = 'evenements';
                             else { m.style.opacity='0';m.style.visibility='hidden';card.style.transform='translateY(24px) scale(0.96)'; }
                         });
                         mo.observe(m,{attributes:true,attributeFilter:['class']});
-                        <?php if (!empty($flash)): ?>m.classList.add('active');<?php endif; ?>
+                        <?php if (!empty($participation_modal_open)): ?>m.classList.add('active');<?php endif; ?>
                     })();
                     </script>
 
@@ -241,7 +242,17 @@ $teacherSidebarActive = 'evenements';
                                                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
                                                                 <div>
                                                                     <strong style="color: #1e293b; font-size: 1.1rem; display: block; margin-bottom: 4px;"><?= htmlspecialchars($item['title']) ?></strong>
-                                                                    <?php if (!empty($item['details'])): ?>
+                                                                    <?php if (($groupConfig['type'] ?? '') === 'materiel'): ?>
+                                                                        <?php if (($item['materiel_qty_badge'] ?? '') !== ''): ?>
+                                                                            <span style="display: inline-block; background: #fef9c3; color: #854d0e; font-size: 0.75rem; font-weight: 800; padding: 3px 10px; border-radius: 50px; margin-bottom: 6px;">Qty <?= htmlspecialchars((string) $item['materiel_qty_badge']) ?></span>
+                                                                        <?php endif; ?>
+                                                                        <?php
+                                                                        $mDetail = trim((string) ($item['materiel_details_plain'] ?? ''));
+                                                                        ?>
+                                                                        <?php if ($mDetail !== ''): ?>
+                                                                            <p style="color: #64748b; font-size: 0.95rem; margin: 0; line-height: 1.5;"><?= nl2br(htmlspecialchars($mDetail)) ?></p>
+                                                                        <?php endif; ?>
+                                                                    <?php elseif (!empty($item['details'])): ?>
                                                                         <p style="color: #64748b; font-size: 0.95rem; margin: 0; line-height: 1.5;"><?= nl2br(htmlspecialchars($item['details'])) ?></p>
                                                                     <?php endif; ?>
                                                                 </div>

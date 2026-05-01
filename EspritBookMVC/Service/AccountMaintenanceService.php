@@ -6,7 +6,7 @@ require_once __DIR__ . '/../config/database.php';
 /**
  * Account / user table maintenance (used by MaintenanceController + CLI).
  */
-class AccountMaintenance
+class AccountMaintenanceService
 {
     private function pdo(): PDO
     {

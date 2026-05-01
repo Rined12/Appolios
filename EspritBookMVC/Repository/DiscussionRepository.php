@@ -1,8 +1,11 @@
 <?php
 
-require_once __DIR__ . '/../Model/BaseModel.php';
+require_once __DIR__ . '/BaseRepository.php';
 
-class Discussion extends BaseModel
+/**
+ * Persistence layer for discussions (PDO / SQL only — no HTML).
+ */
+class DiscussionRepository extends BaseRepository
 {
     protected string $table = 'discussion';
     private ?array $columns = null;
@@ -103,14 +106,9 @@ class Discussion extends BaseModel
                  FROM {$this->table} d
                  LEFT JOIN users u ON u.id = d.{$authorCol}
                  WHERE d.{$groupCol} = ?
-                 AND (
-                    d.{$approvalCol} = 'approuve'
-                    OR d.{$authorCol} = ?
-                    OR ? = ?
-                 )
                  ORDER BY d.{$dateCol} DESC"
             );
-            $stmt->execute([$groupId, $viewerUserId, $viewerUserId, $groupCreatorId]);
+            $stmt->execute([$groupId]);
             return $stmt->fetchAll();
         } catch (PDOException $e) {
             return [];
@@ -190,10 +188,9 @@ class Discussion extends BaseModel
                      INNER JOIN groupe_user gu ON gu.id_groupe = d.{$groupCol}
                      LEFT JOIN groupe g ON g.id_groupe = d.{$groupCol}
                      WHERE gu.id_user = ?
-                       AND (d.{$approvalCol} = 'approuve' OR d.{$authorCol} = ?)
                      ORDER BY d.{$dateCol} DESC"
                 );
-                $stmt->execute([$userId, $userId]);
+                $stmt->execute([$userId]);
                 return $stmt->fetchAll();
             }
 
@@ -241,7 +238,7 @@ class Discussion extends BaseModel
         }
     }
 
-    public function createForGroup(int $groupId, int $authorId, string $title, string $content): bool
+    public function createForGroup(int $groupId, int $authorId, string $title, string $content, ?string $initialApproval = null): bool
     {
         $this->ensureApprovalSchema();
         $groupCol = $this->groupCol();
@@ -253,11 +250,15 @@ class Discussion extends BaseModel
 
         try {
             if ($approvalCol !== '') {
+                $approvalValue = 'approuve';
+                if ($initialApproval !== null && in_array($initialApproval, ['en_cours', 'approuve', 'rejete'], true)) {
+                    $approvalValue = $initialApproval;
+                }
                 $stmt = $this->db->prepare(
                     "INSERT INTO {$this->table} ({$titleCol}, {$contentCol}, {$dateCol}, {$groupCol}, {$authorCol}, {$approvalCol})
-                     VALUES (?, ?, NOW(), ?, ?, 'en_cours')"
+                     VALUES (?, ?, NOW(), ?, ?, ?)"
                 );
-                return $stmt->execute([$title, $content, $groupId, $authorId]);
+                return $stmt->execute([$title, $content, $groupId, $authorId, $approvalValue]);
             }
             $stmt = $this->db->prepare(
                 "INSERT INTO {$this->table} ({$titleCol}, {$contentCol}, {$dateCol}, {$groupCol}, {$authorCol})
@@ -283,7 +284,7 @@ class Discussion extends BaseModel
             if ($approvalCol !== '') {
                 $stmt = $this->db->prepare(
                     "UPDATE {$this->table}
-                     SET {$titleCol} = ?, {$contentCol} = ?, {$groupCol} = ?, {$approvalCol} = 'en_cours'
+                     SET {$titleCol} = ?, {$contentCol} = ?, {$groupCol} = ?
                      WHERE {$idCol} = ? AND {$authorCol} = ?"
                 );
                 return $stmt->execute([$title, $content, $groupId, $discussionId, $authorId]);

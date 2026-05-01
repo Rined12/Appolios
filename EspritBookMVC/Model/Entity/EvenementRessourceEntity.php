@@ -1,11 +1,10 @@
 <?php
 /**
- * APPOLIOS Evenement Resource Model
- * Data class only - properties, constructor, getters & setters
- * All database logic is in RessourceController
+ * Evenement resource domain entity (attributes, constructor, getters/setters).
+ * Persistence remains in RessourceController until an EvenementRessourceRepository is introduced.
  */
 
-class EvenementRessource {
+class EvenementRessourceEntity {
 
     private ?int    $id;
     private ?int    $evenement_id;

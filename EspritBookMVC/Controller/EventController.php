@@ -1,132 +1,30 @@
 <?php
 /**
- * APPOLIOS Event Controller
- * SQL + business logic here. Model = getters/setters only.
+ * APPOLIOS Event Controller — routing, validation, and business rules.
+ * Persistence: EvenementRepository, EvenementRessourceRepository.
  */
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Model/Evenement.php';
 
 class EventController extends BaseController {
 
-    private function getDb(): PDO {
-        static $pdo = null;
-        if ($pdo === null) {
-            $pdo = new PDO(
-                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET,
-                DB_USER, DB_PASS,
-                [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
-        }
-        return $pdo;
+    /**
+     * @return array{0: EvenementRepository, 1: EvenementRessourceRepository}
+     */
+    private function evenementServices(): array
+    {
+        return [
+            $this->model('EvenementRepository'),
+            $this->model('EvenementRessourceRepository'),
+        ];
     }
-
-    private function queryAllEvenements(): array {
-        return $this->getDb()->query(
-            "SELECT e.*, u.name as creator_name, u.role as creator_role, COUNT(r.id) as resource_count
-             FROM evenements e
-             JOIN users u ON e.created_by = u.id
-             LEFT JOIN evenement_ressources r ON r.evenement_id = e.id
-             GROUP BY e.id
-             ORDER BY COALESCE(CONCAT(e.date_debut,' ',e.heure_debut), e.event_date) ASC"
-        )->fetchAll();
-    }
-
-    private function queryFindById(int $id): array|false {
-        $st = $this->getDb()->prepare("SELECT * FROM evenements WHERE id = ? LIMIT 1");
-        $st->execute([$id]);
-        return $st->fetch();
-    }
-
-    private function queryCreate(array $d): int|false {
-        try {
-            $st = $this->getDb()->prepare(
-                "INSERT INTO evenements
-                 (title,titre,description,date_debut,date_fin,heure_debut,heure_fin,
-                  lieu,capacite_max,type,statut,approval_status,location,event_date,created_by,created_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())"
-            );
-            $st->execute([
-                $d['title'],$d['titre'],$d['description'],$d['date_debut'],$d['date_fin'],
-                $d['heure_debut'],$d['heure_fin'],$d['lieu'],$d['capacite_max'],
-                $d['type'],$d['statut'],$d['approval_status']??'approved',
-                $d['location'],$d['event_date'],$d['created_by']
-            ]);
-            return (int)$this->getDb()->lastInsertId();
-        } catch (PDOException $e) { return false; }
-    }
-
-    private function queryUpdate(int $id, array $d): bool {
-        $st = $this->getDb()->prepare(
-            "UPDATE evenements
-             SET title=?,titre=?,description=?,date_debut=?,date_fin=?,
-                 heure_debut=?,heure_fin=?,lieu=?,capacite_max=?,type=?,
-                 statut=?,location=?,event_date=?,updated_at=CURRENT_TIMESTAMP
-             WHERE id=?"
-        );
-        return $st->execute([
-            $d['title'],$d['titre'],$d['description'],$d['date_debut'],$d['date_fin'],
-            $d['heure_debut'],$d['heure_fin'],$d['lieu'],$d['capacite_max'],
-            $d['type'],$d['statut'],$d['location'],$d['event_date'],$id
-        ]);
-    }
-
-    private function queryDelete(int $id): bool {
-        $st = $this->getDb()->prepare("DELETE FROM evenements WHERE id=?");
-        return $st->execute([$id]);
-    }
-
-    private function queryPendingRequests(): array {
-        return $this->getDb()->query(
-            "SELECT e.*,u.name as creator_name,u.email as creator_email
-             FROM evenements e JOIN users u ON u.id=e.created_by
-             WHERE e.approval_status='pending' AND u.role='teacher'
-             ORDER BY e.created_at DESC"
-        )->fetchAll();
-    }
-
-    private function queryRejectedRequests(): array {
-        return $this->getDb()->query(
-            "SELECT e.*,u.name as creator_name,u.email as creator_email
-             FROM evenements e JOIN users u ON u.id=e.created_by
-             WHERE e.approval_status='rejected' AND u.role='teacher'
-             ORDER BY e.updated_at DESC"
-        )->fetchAll();
-    }
-
-    private function queryRessourcesByEvent(int $id): array {
-        $st = $this->getDb()->prepare(
-            "SELECT type, title, details FROM evenement_ressources
-             WHERE evenement_id = ? AND type IN ('rule','materiel','plan')
-             ORDER BY type, created_at ASC"
-        );
-        $st->execute([$id]);
-        $rows = $st->fetchAll();
-        $grouped = ['rule' => [], 'materiel' => [], 'plan' => []];
-        foreach ($rows as $r) {
-            $grouped[$r['type']][] = ['title' => $r['title'], 'details' => $r['details'] ?? ''];
-        }
-        return $grouped;
-    }
-
-    private function queryUpdateApproval(int $id, string $status, ?int $adminId, ?string $reason): bool {
-        $s = strtolower($status) === 'approved' ? 'approved' : 'rejected';
-        $st = $this->getDb()->prepare(
-            "UPDATE evenements
-             SET approval_status=?,approved_by=?,approved_at=NOW(),
-                 rejection_reason=?,updated_at=CURRENT_TIMESTAMP
-             WHERE id=?"
-        );
-        return $st->execute([$s, $adminId, $s==='rejected'?$reason:null, $id]);
-    }
-
-    // ─── ACTIONS ──────────────────────────────────────────────────────────────
 
     public function evenements() {
         if (!$this->isAdmin()) { $this->setFlash('error','Access denied.'); $this->redirect('admin/login'); return; }
+        [$evenementRepo] = $this->evenementServices();
         $this->view('BackOffice/admin/evenements', [
             'title'      => 'Manage Evenements - APPOLIOS',
             'description'=> 'Evenement management panel',
-            'evenements' => $this->queryAllEvenements(),
+            'evenements' => $evenementRepo->findAllWithCreatorAndResourceCount(),
             'flash'      => $this->getFlash(),
         ]);
     }
@@ -172,7 +70,8 @@ class EventController extends BaseController {
             $this->redirect('event/add-evenement'); return;
         }
 
-        $result = $this->queryCreate([
+        [$evenementRepo] = $this->evenementServices();
+        $result = $evenementRepo->create([
             'title'=>$title, 'titre'=>$title, 'description'=>$description,
             'date_debut'=>$dateDebut, 'date_fin'=>$dateFin?:null,
             'heure_debut'=>$heureDebut?:null, 'heure_fin'=>$heureFin?:null,
@@ -195,7 +94,8 @@ class EventController extends BaseController {
 
     public function editEvenement($id) {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
-        $evenement = $this->queryFindById((int)$id);
+        [$evenementRepo] = $this->evenementServices();
+        $evenement = $evenementRepo->findById((int)$id);
         if (!$evenement) { $this->setFlash('error','Evenement not found.'); $this->redirect('event/evenements'); return; }
         $this->view('BackOffice/admin/edit_evenement', [
             'title'=>'Edit Evenement - APPOLIOS','description'=>'Update evenement details',
@@ -235,7 +135,8 @@ class EventController extends BaseController {
             $this->redirect('event/edit-evenement/'.(int)$id); return;
         }
 
-        $result = $this->queryUpdate((int)$id, [
+        [$evenementRepo] = $this->evenementServices();
+        $result = $evenementRepo->update((int)$id, [
             'title'=>$title,'titre'=>$title,'description'=>$description,
             'date_debut'=>$dateDebut,'date_fin'=>$dateFin?:null,
             'heure_debut'=>$heureDebut?:null,'heure_fin'=>$heureFin?:null,
@@ -250,13 +151,14 @@ class EventController extends BaseController {
 
     public function deleteEvenement($id) {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
-        $ev = $this->queryFindById((int)$id);
+        [$evenementRepo] = $this->evenementServices();
+        $ev = $evenementRepo->findById((int)$id);
         if (!$ev) { $this->setFlash('error','Not found.'); $this->redirect('event/evenements'); return; }
         if ($ev['created_by'] != $_SESSION['user_id']) {
             $this->setFlash('error','You can only delete events you created.');
             $this->redirect('event/evenements'); return;
         }
-        $this->queryDelete((int)$id)
+        $evenementRepo->delete((int)$id)
             ? $this->setFlash('success','Evenement deleted!')
             : $this->setFlash('error','Failed to delete.');
         $this->redirect('event/evenements');
@@ -265,12 +167,12 @@ class EventController extends BaseController {
     public function evenementRequests() {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
 
-        $pending  = $this->queryPendingRequests();
-        $rejected = $this->queryRejectedRequests();
+        [$evenementRepo, $resRepo] = $this->evenementServices();
+        $pending  = $evenementRepo->findPendingTeacherRequests();
+        $rejected = $evenementRepo->findRejectedTeacherRequests();
 
-        // Attach resources to each event
-        foreach ($pending  as &$ev) { $ev['ressources'] = $this->queryRessourcesByEvent((int)$ev['id']); }
-        foreach ($rejected as &$ev) { $ev['ressources'] = $this->queryRessourcesByEvent((int)$ev['id']); }
+        foreach ($pending  as &$ev) { $ev['ressources'] = $resRepo->getGroupedPublicRessources((int)$ev['id']); }
+        foreach ($rejected as &$ev) { $ev['ressources'] = $resRepo->getGroupedPublicRessources((int)$ev['id']); }
         unset($ev);
 
         $this->view('BackOffice/admin/evenement_requests', [
@@ -285,10 +187,11 @@ class EventController extends BaseController {
     public function approveEvenement($id) {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
         if ($_SERVER['REQUEST_METHOD']!=='POST') { $this->redirect('event/evenement-requests'); return; }
-        if (!$this->queryFindById((int)$id)) {
+        [$evenementRepo] = $this->evenementServices();
+        if (!$evenementRepo->findById((int)$id)) {
             $this->setFlash('error','Not found.'); $this->redirect('event/evenement-requests'); return;
         }
-        $this->queryUpdateApproval((int)$id,'approved',(int)$_SESSION['user_id'],null)
+        $evenementRepo->updateApproval((int)$id,'approved',(int)$_SESSION['user_id'],null)
             ? $this->setFlash('success','Request approved.')
             : $this->setFlash('error','Failed to approve.');
         $this->redirect('event/evenement-requests');
@@ -302,10 +205,11 @@ class EventController extends BaseController {
             $this->setErrors(['rejection_reason_'.$id=>'Veuillez renseigner ce champ.']);
             $this->redirect('event/evenement-requests'); return;
         }
-        if (!$this->queryFindById((int)$id)) {
+        [$evenementRepo] = $this->evenementServices();
+        if (!$evenementRepo->findById((int)$id)) {
             $this->setFlash('error','Not found.'); $this->redirect('event/evenement-requests'); return;
         }
-        $this->queryUpdateApproval((int)$id,'rejected',(int)$_SESSION['user_id'],$reason)
+        $evenementRepo->updateApproval((int)$id,'rejected',(int)$_SESSION['user_id'],$reason)
             ? $this->setFlash('success','Request rejected.')
             : $this->setFlash('error','Failed to reject.');
         $this->redirect('event/evenement-requests');
