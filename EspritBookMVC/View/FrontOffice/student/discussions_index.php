@@ -5,6 +5,21 @@ $discussion_cards = $discussion_cards ?? [];
 $listQ = (string) ($listQ ?? '');
 $listSort = (string) ($listSort ?? 'newest');
 $listQueryActive = (bool) ($listQueryActive ?? false);
+$searchSuggestions = [];
+foreach ($discussion_cards as $card) {
+    $title = trim((string) ($card['title'] ?? ''));
+    $group = trim((string) ($card['group_name'] ?? ''));
+    if ($title !== '') {
+        $searchSuggestions[$title] = true;
+    }
+    if ($group !== '') {
+        $searchSuggestions[$group] = true;
+    }
+}
+$searchSuggestions = array_values(array_filter(array_keys($searchSuggestions), static function (string $v): bool {
+    return mb_strlen(trim($v)) >= 2;
+}));
+$searchSuggestions = array_slice($searchSuggestions, 0, 80);
 ?>
 <div class="dashboard student-events-page collab-hub">
     <div class="container admin-dashboard-container">
@@ -31,13 +46,76 @@ $listQueryActive = (bool) ($listQueryActive ?? false);
                     </div>
                 </header>
 
-                <form class="collab-toolbar" method="get" action="<?= APP_ENTRY ?>" novalidate>
+                <style>
+                    .discussions-toolbar-boost {
+                        border: 1px solid rgba(148, 163, 184, 0.25);
+                        box-shadow: 0 12px 36px rgba(15, 23, 42, 0.07);
+                    }
+                    .discussion-search-wrap {
+                        position: relative;
+                    }
+                    .discussion-search-wrap .search-magnifier {
+                        position: absolute;
+                        left: 12px;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        color: #94a3b8;
+                        font-size: 0.95rem;
+                        pointer-events: none;
+                    }
+                    .discussion-search-wrap input {
+                        padding-left: 2.25rem !important;
+                    }
+                    .discussion-suggest-box {
+                        position: absolute;
+                        left: 0;
+                        right: 5.25rem;
+                        top: calc(100% + 8px);
+                        z-index: 30;
+                        border: 1px solid rgba(226, 232, 240, 0.95);
+                        border-radius: 12px;
+                        background: #ffffff;
+                        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+                        overflow: hidden;
+                        display: none;
+                        max-height: 230px;
+                        overflow-y: auto;
+                    }
+                    .discussion-suggest-item {
+                        display: block;
+                        width: 100%;
+                        border: 0;
+                        background: transparent;
+                        text-align: left;
+                        padding: 0.62rem 0.85rem;
+                        font-size: 0.88rem;
+                        font-weight: 600;
+                        color: #1e293b;
+                        cursor: pointer;
+                    }
+                    .discussion-suggest-item + .discussion-suggest-item {
+                        border-top: 1px solid #f1f5f9;
+                    }
+                    .discussion-suggest-item:hover,
+                    .discussion-suggest-item.active {
+                        background: #eff6ff;
+                        color: #1d4ed8;
+                    }
+                    .discussion-suggest-empty {
+                        padding: 0.6rem 0.85rem;
+                        font-size: 0.82rem;
+                        color: #94a3b8;
+                    }
+                </style>
+                <form class="collab-toolbar discussions-toolbar-boost" method="get" action="<?= APP_ENTRY ?>" novalidate>
                     <input type="hidden" name="url" value="<?= htmlspecialchars($foPrefix . '/discussions', ENT_QUOTES, 'UTF-8') ?>">
                     <div style="flex:1 1 320px; min-width:0;">
                         <label for="fo_disc_search">Find a thread</label>
-                        <div class="collab-search-row">
+                        <div class="collab-search-row discussion-search-wrap">
+                            <span class="search-magnifier"><i class="bi bi-search"></i></span>
                             <input id="fo_disc_search" type="text" name="q" value="<?= htmlspecialchars($listQ) ?>" placeholder="Title, message text, group name…" autocomplete="off">
                             <button type="submit" title="Search" aria-label="Search"><i class="bi bi-search" aria-hidden="true"></i></button>
+                            <div id="fo_disc_suggest" class="discussion-suggest-box"></div>
                         </div>
                     </div>
                     <div style="flex:0 0 auto;">
@@ -95,3 +173,117 @@ $listQueryActive = (bool) ($listQueryActive ?? false);
         </div>
     </div>
 </div>
+<script>
+(function () {
+    var input = document.getElementById('fo_disc_search');
+    var suggestBox = document.getElementById('fo_disc_suggest');
+    if (!input || !suggestBox) { return; }
+
+    var suggestions = <?= json_encode($searchSuggestions) ?> || [];
+    var activeIndex = -1;
+    var visibleItems = [];
+
+    function closeSuggest() {
+        suggestBox.style.display = 'none';
+        suggestBox.innerHTML = '';
+        activeIndex = -1;
+        visibleItems = [];
+    }
+
+    function openSuggest() {
+        if (visibleItems.length === 0) {
+            closeSuggest();
+            return;
+        }
+        suggestBox.style.display = 'block';
+    }
+
+    function renderList(filtered) {
+        suggestBox.innerHTML = '';
+        visibleItems = filtered.slice(0, 7);
+        if (visibleItems.length === 0) {
+            var empty = document.createElement('div');
+            empty.className = 'discussion-suggest-empty';
+            empty.textContent = 'No suggestions';
+            suggestBox.appendChild(empty);
+            suggestBox.style.display = input.value.trim() !== '' ? 'block' : 'none';
+            return;
+        }
+
+        for (var i = 0; i < visibleItems.length; i++) {
+            (function (idx) {
+                var item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'discussion-suggest-item';
+                item.textContent = visibleItems[idx];
+                item.addEventListener('mouseenter', function () { setActive(idx); });
+                item.addEventListener('mousedown', function (e) {
+                    e.preventDefault();
+                    input.value = visibleItems[idx];
+                    input.form.submit();
+                });
+                suggestBox.appendChild(item);
+            })(i);
+        }
+        openSuggest();
+    }
+
+    function setActive(idx) {
+        var nodes = suggestBox.querySelectorAll('.discussion-suggest-item');
+        for (var i = 0; i < nodes.length; i++) {
+            nodes[i].classList.remove('active');
+        }
+        activeIndex = idx;
+        if (nodes[activeIndex]) {
+            nodes[activeIndex].classList.add('active');
+        }
+    }
+
+    input.addEventListener('input', function () {
+        var q = input.value.toLowerCase().trim();
+        if (q === '') {
+            closeSuggest();
+            return;
+        }
+        var filtered = [];
+        for (var i = 0; i < suggestions.length; i++) {
+            var s = String(suggestions[i] || '');
+            if (s.toLowerCase().indexOf(q) !== -1) {
+                filtered.push(s);
+            }
+        }
+        renderList(filtered);
+        activeIndex = -1;
+    });
+
+    input.addEventListener('focus', function () {
+        if (input.value.trim() === '') { return; }
+        input.dispatchEvent(new Event('input'));
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (visibleItems.length === 0 || suggestBox.style.display !== 'block') { return; }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActive(activeIndex < visibleItems.length - 1 ? activeIndex + 1 : 0);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActive(activeIndex > 0 ? activeIndex - 1 : visibleItems.length - 1);
+        } else if (e.key === 'Enter') {
+            if (activeIndex >= 0 && visibleItems[activeIndex]) {
+                e.preventDefault();
+                input.value = visibleItems[activeIndex];
+                input.form.submit();
+            }
+        } else if (e.key === 'Escape') {
+            closeSuggest();
+        }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!suggestBox.contains(e.target) && e.target !== input) {
+            closeSuggest();
+        }
+    });
+})();
+</script>
