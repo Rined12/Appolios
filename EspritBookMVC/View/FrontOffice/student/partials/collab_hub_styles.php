@@ -526,6 +526,16 @@
     transform: scale(1.03);
 }
 
+.collab-hub .approved-group-grid .collab-group-card {
+    background: rgba(255, 255, 255, 0.99);
+    border-color: rgba(134, 239, 172, 0.65);
+    box-shadow: 0 16px 44px rgba(34, 197, 94, 0.18), 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.collab-hub .approved-group-grid .collab-group-card .collab-group-card__body {
+    background: rgba(255, 255, 255, 1);
+}
+
 /* Focus-on-hover: blur/dim sibling cards in groups and discussions */
 @media (hover: hover) and (pointer: fine) {
     .collab-hub .collab-group-grid:hover .collab-group-card:not(:hover),
