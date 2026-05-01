@@ -605,4 +605,139 @@ class EventController extends BaseController {
         }
         $this->redirect('event/evenements');
     }
+
+    /**
+     * API Endpoint to predict Top 3 Events with the most participants using AI.
+     */
+    public function predictTopEvents() {
+        header('Content-Type: application/json');
+        try {
+            $db = $this->getDb();
+            // If the user requesting is a teacher, limit to their own events.
+            $role = $_GET['role'] ?? 'admin';
+            $where = "WHERE e.approval_status = 'approved'";
+            $params = [];
+            
+            if ($role === 'teacher' && isset($_SESSION['user_id'])) {
+                $where .= " AND e.created_by = ?";
+                $params[] = $_SESSION['user_id'];
+            }
+
+            $st = $db->prepare("
+                SELECT e.id, e.title, e.capacite_max, e.event_date, e.date_debut, e.description,
+                       (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as current_participants
+                FROM evenements e
+                $where
+                ORDER BY COALESCE(e.date_debut, e.event_date, e.created_at) ASC
+            ");
+            $st->execute($params);
+            $events = $st->fetchAll();
+
+            if(empty($events) || count($events) < 1) {
+                echo json_encode(['success' => false, 'message' => 'Not enough events to generate prediction.']);
+                exit;
+            }
+
+            // PREPARE DATA FOR GEMINI
+            $promptEvents = [];
+            foreach ($events as $e) {
+                $promptEvents[] = [
+                    'title' => $e['title'],
+                    'capacity' => (int)$e['capacite_max'] > 0 ? (int)$e['capacite_max'] : 'Unlimited',
+                    'current_participants' => (int)$e['current_participants'],
+                    'date' => !empty($e['event_date']) ? $e['event_date'] : $e['date_debut'],
+                    'description' => substr(strip_tags((string)$e['description']), 0, 150) // truncate to save tokens
+                ];
+            }
+
+            $prompt = "As an AI event analyst, predict the top 3 events that will have the highest final attendance based on momentum, topic, and capacity.\n\n";
+            $prompt .= "Events Data:\n" . json_encode($promptEvents) . "\n\n";
+            $prompt .= "Return ONLY a valid JSON array containing exactly 3 objects. Each object MUST have the following keys strictly named:\n";
+            $prompt .= "- 'title' (string: exact title from the data)\n";
+            $prompt .= "- 'predicted' (integer: predicted final participant count, must be >= current and <= capacity if not Unlimited)\n";
+            $prompt .= "- 'capacity' (string/integer: exactly as given in the data)\n";
+            $prompt .= "- 'current' (integer: exactly as given in the data)\n";
+            $prompt .= "- 'reason' (string: professional 1-sentence reasoning for why this event will perform so well)\n";
+            $prompt .= "Do not include markdown blocks like ```json. Return raw JSON directly.";
+
+            // LOAD API KEY FROM .ENV IF AVAILABLE
+            $envPath = __DIR__ . '/../.env';
+            if (file_exists($envPath)) {
+                $envVars = parse_ini_file($envPath);
+                $apiKey = isset($envVars['GEMINI_API_KEY']) ? $envVars['GEMINI_API_KEY'] : '';
+            } else {
+                $apiKey = ''; // fallback
+            }
+
+            if (empty($apiKey)) {
+                throw new Exception("API Key not configured in .env file.");
+            }
+
+            // Using gemini-flash-latest which is the correct model format available for your API key
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+
+            $data = [
+                "contents" => [
+                    ["parts" => [ ["text" => $prompt] ]]
+                ],
+                "generationConfig" => [
+                    "temperature" => 0.7,
+                    "responseMimeType" => "application/json"
+                ]
+            ];
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode !== 200 || !$response) {
+                // Fallback decode to see the error message from google
+                $err = json_decode($response, true);
+                $errMsg = $err['error']['message'] ?? 'Unknown Error';
+                throw new Exception("Gemini API failed ($httpCode): " . $errMsg);
+            }
+
+            $responseData = json_decode($response, true);
+            if (!isset($responseData['candidates'][0]['content']['parts'][0]['text'])) {
+                throw new Exception("Unexpected response format from Gemini API.");
+            }
+
+            $aiText = $responseData['candidates'][0]['content']['parts'][0]['text'];
+            
+            // Clean up possible markdown tags just in case
+            $aiText = trim(str_replace(['```json', '```'], '', $aiText));
+            $predictedEvents = json_decode($aiText, true);
+
+            if (!is_array($predictedEvents) || empty($predictedEvents)) {
+                throw new Exception("Failed to parse Gemini AI JSON response.");
+            }
+
+            $results = [];
+            foreach ($predictedEvents as $index => $pe) {
+                if ($index >= 3) break;
+                $results[] = [
+                    'rank' => $index + 1,
+                    'title' => $pe['title'] ?? 'Unknown Event',
+                    'predicted' => (int)($pe['predicted'] ?? 0),
+                    'capacity' => $pe['capacity'] ?? 'Unlimited',
+                    'current' => (int)($pe['current'] ?? 0),
+                    'reason' => $pe['reason'] ?? 'AI predicted high engagement based on historical data.'
+                ];
+            }
+
+            echo json_encode(['success' => true, 'events' => $results]);
+            exit;
+
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'API Error: ' . $e->getMessage()]);
+            exit;
+        }
+    }
 }

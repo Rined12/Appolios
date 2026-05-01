@@ -23,9 +23,13 @@ $teacherSidebarActive = 'evenements';
                             <h1 style="font-size: 2.5rem; font-weight: 800; margin: 0 0 0.5rem 0; color: #ffffff;">My Events</h1>
                             <p style="font-size: 1.1rem; margin: 0; opacity: 0.9; max-width: 600px; color: #f8fafc;">Create and manage your event proposals for admin approval. Build unforgettable experiences for your students.</p>
                         </div>
-                        <div style="display: flex; gap: 12px;">
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                             <a href="<?= APP_ENTRY ?>?url=teacher/dashboard" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; backdrop-filter: blur(5px); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">Back to Dashboard</a>
                             <a href="<?= APP_ENTRY ?>?url=teacher/add-evenement" style="background: #E19864; color: white; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-weight: 600; box-shadow: 0 4px 15px rgba(225, 152, 100, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(225, 152, 100, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(225, 152, 100, 0.3)'">Propose Event</a>
+                            <button onclick="aiPredictEvents('teacher')" style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: #fff; padding: 12px 24px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(168, 85, 247, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(168, 85, 247, 0.3)'">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg> 
+                                AI Prediction
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -695,3 +699,191 @@ $teacherSidebarActive = 'evenements';
         </div>
     </div>
 </div>
+<!-- AI Prediction Modal -->
+<div id="aiPredictionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; backdrop-filter: blur(8px); background: rgba(15, 23, 42, 0.6); align-items: center; justify-content: center; font-family: 'Inter', sans-serif; opacity: 0; transition: opacity 0.3s ease;">
+    <div class="ai-modal-scrollbar" style="background: white; border-radius: 24px; padding: 2.5rem; width: 95%; max-width: 800px; max-height: 85vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); position: relative; transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        
+        <!-- Close Button -->
+        <button onclick="closeAiModal()" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#0f172a'" onmouseout="this.style.background='#f1f5f9'; this.style.color='#64748b'">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+
+        <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #e0e7ff 0%, #fae8ff 100%); border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#paint0_linear)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                        <linearGradient id="paint0_linear" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#6366f1"/>
+                            <stop offset="1" stop-color="#a855f7"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                </svg>
+            </div>
+            <h2 style="font-size: 1.8rem; font-weight: 800; color: #0f172a; margin: 0 0 0.5rem 0;">AI Event Predictions</h2>
+            <p style="color: #64748b; margin: 0; font-size: 1rem;">Top 3 events likely to have the highest attendance based on algorithmic insights.</p>
+        </div>
+
+        <div id="aiPredictionContent" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+            <!-- Loader -->
+            <div id="aiLoader" style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #8b5cf6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <p style="color: #64748b; font-weight: 500; margin: 0;">Analyzing event data...</p>
+            </div>
+            
+            <!-- Results Container -->
+            <div id="aiResults" style="display: none; width: 100%; display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Custom Scrollbar */
+.ai-modal-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.ai-modal-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 2rem 0; /* adds margin at top and bottom of scrollbar track inside modal */
+}
+.ai-modal-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+.ai-modal-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.ai-rank-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    gap: 1.5rem;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+.ai-rank-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+    background: white;
+}
+.ai-rank-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: transparent;
+}
+.ai-rank-card[data-rank="1"]::before { background: linear-gradient(to bottom, #fbbf24, #f59e0b); }
+.ai-rank-card[data-rank="2"]::before { background: linear-gradient(to bottom, #94a3b8, #64748b); }
+.ai-rank-card[data-rank="3"]::before { background: linear-gradient(to bottom, #b45309, #d97706); }
+
+.ai-rank-badge {
+    width: 40px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: white;
+}
+.ai-rank-badge[data-rank="1"] { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }
+.ai-rank-badge[data-rank="2"] { background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%); }
+.ai-rank-badge[data-rank="3"] { background: linear-gradient(135deg, #b45309 0%, #d97706 100%); }
+</style>
+
+<script>
+function aiPredictEvents(role) {
+    const modal = document.getElementById('aiPredictionModal');
+    const modalInner = modal.querySelector('div');
+    const loader = document.getElementById('aiLoader');
+    const resultsContainer = document.getElementById('aiResults');
+    
+    // Reset view
+    resultsContainer.style.display = 'none';
+    resultsContainer.innerHTML = '';
+    loader.style.display = 'flex';
+    
+    // Show modal
+    modal.style.display = 'flex';
+    // Small delay to trigger animation
+    setTimeout(() => {
+        modal.style.opacity = '1';
+        modalInner.style.transform = 'translateY(0)';
+    }, 10);
+
+    // Call API
+    fetch('<?= APP_ENTRY ?>?url=event/predict-top-events&role=' + role)
+        .then(response => response.json())
+        .then(data => {
+            loader.style.display = 'none';
+            resultsContainer.style.display = 'flex';
+            
+            if(!data.success) {
+                resultsContainer.innerHTML = '<div style="text-align:center; padding: 2rem; color: #dc2626; background: #fef2f2; border-radius: 12px;">' + (data.message || 'Unable to generate predictions.') + '</div>';
+                return;
+            }
+
+            let html = '';
+            data.events.forEach(ev => {
+                html += `
+                    <div class="ai-rank-card" data-rank="${ev.rank}">
+                        <div class="ai-rank-badge" data-rank="${ev.rank}">${ev.rank}</div>
+                        <div style="flex: 1;">
+                            <h4 style="margin: 0 0 0.25rem 0; font-size: 1.1rem; font-weight: 700; color: #1e293b;">${ev.title}</h4>
+                            <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
+                                <span style="font-size: 0.85rem; color: #64748b; display: flex; align-items: center; gap: 4px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                                    Predicted: <strong style="color: #6366f1; margin-left: 2px;">${ev.predicted}</strong>
+                                </span>
+                                <span style="font-size: 0.85rem; color: #64748b; display: flex; align-items: center; gap: 4px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                    Capacity: <strong style="color: #0f172a; margin-left: 2px;">${ev.capacity}</strong>
+                                </span>
+                            </div>
+                            <p style="margin: 0; font-size: 0.85rem; color: #475569; background: #f1f5f9; padding: 6px 10px; border-radius: 8px; border-left: 2px solid #8b5cf6;">
+                                <i>"${ev.reason}"</i>
+                            </p>
+                        </div>
+                    </div>
+                `;
+            });
+            resultsContainer.innerHTML = html;
+        })
+        .catch(err => {
+            loader.style.display = 'none';
+            resultsContainer.style.display = 'flex';
+            resultsContainer.innerHTML = '<div style="text-align:center; padding: 2rem; color: #dc2626; background: #fef2f2; border-radius: 12px;">An error occurred while fetching predictions: ' + err.message + '</div>';
+        });
+}
+
+function closeAiModal() {
+    const modal = document.getElementById('aiPredictionModal');
+    const modalInner = modal.querySelector('div');
+    
+    modal.style.opacity = '0';
+    modalInner.style.transform = 'translateY(20px)';
+    
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300); // match transition duration
+}
+
+// Close on background click
+document.getElementById('aiPredictionModal')?.addEventListener('click', function(e) {
+    if(e.target === this) {
+        closeAiModal();
+    }
+});
+</script>
