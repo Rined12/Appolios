@@ -307,6 +307,227 @@ class EventController extends BaseController {
         $this->redirect('event/evenements');
     }
 
+    public function statsEvenements() {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+
+        // Get basic participation stats for the radar/line charts
+        $st = $this->getDb()->query(
+            "SELECT e.title, e.capacite_max, e.event_date, e.date_debut,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as participant_count
+             FROM evenements e
+             ORDER BY COALESCE(e.date_debut, e.event_date, e.created_at) ASC"
+        );
+        $eventStats = $st->fetchAll();
+
+        // Get type counts for pie/doughnut/bar
+        $stTypes = $this->getDb()->query("SELECT type, COUNT(*) as count FROM evenements GROUP BY type");
+        $typeStats = $stTypes->fetchAll();
+
+        $data = [
+            'title' => 'Event Statistics - APPOLIOS',
+            'description' => 'Dashboard for event statistics, participation and insights',
+            'eventStats' => $eventStats,
+            'typeStats' => $typeStats
+        ];
+
+        $this->view('BackOffice/admin/stat_evenement', $data);
+    }
+
+    public function exportStatsPdf() {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        // Get Event Stats
+        $st = $this->getDb()->query(
+            "SELECT e.title, e.capacite_max, e.event_date, e.date_debut,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as participant_count
+             FROM evenements e
+             ORDER BY COALESCE(e.date_debut, e.event_date, e.created_at) ASC"
+        );
+        $eventStats = $st->fetchAll();
+
+        // Get Type Stats
+        $stTypes = $this->getDb()->query("SELECT type, COUNT(*) as count FROM evenements GROUP BY type");
+        $typeStats = $stTypes->fetchAll();
+
+        // Generate Simple PDF/Printable HTML
+        header('Content-Type: text/html; charset=utf-8');
+        ?>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Event Statistics Export - APPOLIOS</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #333;
+                    padding: 40px;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 40px;
+                    padding-bottom: 20px;
+                    border-bottom: 3px solid #548CA8;
+                }
+                .header h1 {
+                    color: #2B4865;
+                    font-size: 28px;
+                    margin-bottom: 10px;
+                }
+                .header p {
+                    color: #666;
+                }
+                h2 {
+                    color: #548CA8;
+                    font-size: 20px;
+                    margin-top: 30px;
+                    margin-bottom: 15px;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 30px;
+                }
+                th, td {
+                    border: 1px solid #ccc;
+                    padding: 12px;
+                    text-align: left;
+                }
+                th {
+                    background-color: #f8fafc;
+                    color: #2B4865;
+                    font-weight: bold;
+                }
+                tr:nth-child(even) {
+                    background-color: #fafafa;
+                }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                .footer {
+                    text-align: center;
+                    margin-top: 50px;
+                    font-size: 12px;
+                    color: #999;
+                    border-top: 1px solid #eee;
+                    padding-top: 20px;
+                }
+                @media print {
+                    body { padding: 0; }
+                    .no-print { display: none; }
+                }
+            </style>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        </head>
+        <body>
+            <div class="no-print" style="margin-bottom: 20px; text-align: center;">
+                <p style="font-size: 16px; color: #548CA8; font-weight: bold;">Generating your PDF, please wait...</p>
+                <p style="font-size: 12px; color: #666;">This tab will automatically close once the download begins.</p>
+            </div>
+
+            <div id="pdf-content" style="padding: 20px;">
+                <div class="header">
+                    <h1>APPOLIOS - Event Statistics Export</h1>
+                    <p>Generated on <?= date('Y-m-d H:i:s') ?></p>
+                </div>
+
+                <h2>1. Participation by Scheduled Event</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event Title</th>
+                            <th>Date</th>
+                            <th class="text-right">Max Capacity</th>
+                            <th class="text-right">Total Participants</th>
+                            <th class="text-right">Fill Rate (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($eventStats)): ?>
+                            <tr><td colspan="5" class="text-center">No event data available.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($eventStats as $stat): 
+                                $date = !empty($stat['event_date']) ? $stat['event_date'] : $stat['date_debut'];
+                                $capMax = (int)$stat['capacite_max'];
+                                $parts = (int)$stat['participant_count'];
+                                $fillRate = $capMax > 0 ? round(($parts / $capMax) * 100, 2) : 0;
+                            ?>
+                            <tr>
+                                <td><strong><?= htmlspecialchars($stat['title']) ?></strong></td>
+                                <td><?= $date ? date('M d, Y', strtotime($date)) : 'N/A' ?></td>
+                                <td class="text-right"><?= $capMax > 0 ? $capMax : 'Unlimited' ?></td>
+                                <td class="text-right"><?= $parts ?></td>
+                                <td class="text-right">
+                                    <?php if ($fillRate >= 100): ?>
+                                        <span style="color: #dc3545; font-weight: bold;"><?= $fillRate ?>% (Full)</span>
+                                    <?php elseif ($fillRate >= 75): ?>
+                                        <span style="color: #fd7e14;"><?= $fillRate ?>%</span>
+                                    <?php else: ?>
+                                        <span style="color: #28a745;"><?= $fillRate ?>%</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <h2>2. Events Distribution by Category (Type)</h2>
+                <table style="width: 50%;">
+                    <thead>
+                        <tr>
+                            <th>Event Type</th>
+                            <th class="text-right">Total Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($typeStats)): ?>
+                            <tr><td colspan="2" class="text-center">No data available.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($typeStats as $ts): ?>
+                            <tr>
+                                <td><?= htmlspecialchars(ucfirst($ts['type'])) ?></td>
+                                <td class="text-right"><?= (int)$ts['count'] ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <div class="footer">
+                    &copy; <?= date('Y') ?> APPOLIOS Educational Platform. All rights reserved.
+                </div>
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var element = document.getElementById('pdf-content');
+                    var opt = {
+                        margin:       0.5,
+                        filename:     'APPOLIOS_Event_Statistics.pdf',
+                        image:        { type: 'jpeg', quality: 0.98 },
+                        html2canvas:  { scale: 2 },
+                        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+                    };
+
+                    // Generate PDF and then close the window
+                    html2pdf().set(opt).from(element).save().then(function() {
+                        setTimeout(function() {
+                            window.close();
+                        }, 1000);
+                    });
+                });
+            </script>
+        </body>
+        </html>
+        <?php
+    }
+
     public function evenementRequests() {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
 

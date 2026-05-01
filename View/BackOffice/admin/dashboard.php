@@ -173,21 +173,11 @@
                         <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden;">
                             <div style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
                                 <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; font-weight: 700;">Event Statistics (Participants)</h3>
-                                <a href="<?= APP_ENTRY ?>?url=event/evenements" style="color: #548CA8; text-decoration: none; font-size: 0.9rem; font-weight: 600; padding: 6px 12px; border-radius: 6px; background: #e9f1fa; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">View All Events</a>
+                                <a href="<?= APP_ENTRY ?>?url=event/stats-evenements" style="color: #548CA8; text-decoration: none; font-size: 0.9rem; font-weight: 600; padding: 6px 12px; border-radius: 6px; background: #e9f1fa; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">View Event Stats</a>
                             </div>
                             <div style="overflow-x: auto;">
                                 <?php if (!empty($evenementsStats)): ?>
-                                    <?php
-                                    $chartLabelsAdmin = [];
-                                    $chartDataAdmin = [];
-                                    foreach (array_slice($evenementsStats, 0, 10) as $stat) {
-                                        $chartLabelsAdmin[] = (strlen($stat['title']) > 20) ? substr($stat['title'], 0, 20) . '...' : $stat['title'];
-                                        $chartDataAdmin[] = (int)$stat['participant_count'];
-                                    }
-                                    ?>
-                                    <div style="height: 300px; margin: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 12px;">
-                                        <canvas id="adminEventChart"></canvas>
-                                    </div>
+                                    
                                 <?php endif; ?>
                                 <table style="width: 100%; border-collapse: collapse; text-align: left;">
                                     <thead>
