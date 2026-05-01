@@ -54,6 +54,8 @@ $bodyClassAttr = implode(' ', $bodyClasses);
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/mvc-pro.css">
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/neo-ui.css">
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/dark-mode.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="<?= htmlspecialchars($bodyClassAttr) ?>">
 <?php if (!$isAuthPage): ?>

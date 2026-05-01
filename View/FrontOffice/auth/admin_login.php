@@ -34,12 +34,6 @@ unset($_SESSION['flash']);
                 <p style="color:var(--gray-dark);margin:0;font-size:.95rem;">Sign in with credentials or Face ID</p>
             </div>
 
-            <?php if ($flash): ?>
-                <div
-                    style="padding:12px 16px;border-radius:8px;margin-bottom:20px;font-size:.9rem;<?= $flash['type'] === 'error' ? 'background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;' : 'background:#d4edda;color:#155724;border:1px solid #c3e6cb;' ?>">
-                    <?= htmlspecialchars($flash['message']) ?>
-                </div>
-            <?php endif; ?>
 
             <form action="<?= APP_ENTRY ?>?url=authenticate" method="POST">
                 <input type="hidden" name="admin_login" value="1">

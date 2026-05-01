@@ -47,6 +47,23 @@ class AuthController extends BaseController
         $password = $_POST['password'] ?? '';
         $isAdminLogin = isset($_POST['admin_login']) && $_POST['admin_login'] === '1';
 
+// Validate reCAPTCHA v2
+        $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
+        if (empty($recaptchaResponse)) {
+            $this->setFlash('error', 'Please complete the reCAPTCHA verification.');
+            $this->redirect('login');
+            return;
+        }
+
+        $recaptchaResult = $this->verifyRecaptchaV2($recaptchaResponse);
+        if (!$recaptchaResult['valid']) {
+            error_log('reCAPTCHA v2 login failed: ' . $recaptchaResult['message']);
+            $this->setFlash('error', 'reCAPTCHA verification failed. Please try again.');
+            $this->redirect('login');
+            return;
+        }
+
+
         // Validation - Business Logic
         if (empty($email) || empty($password)) {
             $this->setFlash('error', 'Please fill in all fields');
@@ -146,6 +163,24 @@ class AuthController extends BaseController
     public function signup()
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('register');
+            return;
+        }
+
+        // Validate reCAPTCHA v2
+        $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
+        if (empty($recaptchaResponse)) {
+            $this->setFlash('error', 'Please complete the reCAPTCHA verification.');
+            $_SESSION['old'] = $_POST;
+            $this->redirect('register');
+            return;
+        }
+
+        $recaptchaResult = $this->verifyRecaptchaV2($recaptchaResponse);
+        if (!$recaptchaResult['valid']) {
+            error_log('reCAPTCHA v2 register failed: ' . $recaptchaResult['message']);
+            $this->setFlash('error', 'reCAPTCHA verification failed. Please try again.');
+            $_SESSION['old'] = $_POST;
             $this->redirect('register');
             return;
         }
@@ -498,6 +533,145 @@ class AuthController extends BaseController
         }
 
         echo json_encode(['unique' => true, 'message' => 'Face is unique.']);
+    }
+
+    /**
+     * Verify Google reCAPTCHA v3 response using cURL
+     * @param string $recaptchaResponse
+     * @param string $action Expected action name (login, register)
+     * @return array ['valid' => bool, 'score' => float, 'message' => string]
+     */
+    private function verifyRecaptcha($recaptchaResponse, $action = 'login')
+    {
+        $secretKey = RECAPTCHA_SECRET_KEY;
+        $remoteIp = $_SERVER['REMOTE_ADDR'] ?? '';
+
+        // Build POST data
+        $postData = http_build_query([
+            'secret' => $secretKey,
+            'response' => $recaptchaResponse,
+            'remoteip' => $remoteIp
+        ]);
+
+        // Initialize cURL
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, RECAPTCHA_VERIFY_URL);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        // Log cURL errors
+        if ($result === false || $httpCode !== 200) {
+            error_log('reCAPTCHA v3 cURL error: ' . $curlError . ' (HTTP: ' . $httpCode . ')');
+            return [
+                'valid' => false,
+                'score' => 0,
+                'message' => 'reCAPTCHA service unavailable'
+            ];
+        }
+
+        $response = json_decode($result, true);
+
+        // Log raw response for debugging
+        error_log('reCAPTCHA v3 response: ' . print_r($response, true));
+
+        if (!isset($response['success']) || !$response['success']) {
+            $errorCodes = isset($response['error-codes']) ? implode(', ', $response['error-codes']) : 'unknown';
+            error_log('reCAPTCHA v3 failed with errors: ' . $errorCodes);
+            return [
+                'valid' => false,
+                'score' => $response['score'] ?? 0,
+                'message' => 'reCAPTCHA verification failed: ' . $errorCodes
+            ];
+        }
+
+        // Check action matches
+        if (isset($response['action']) && $response['action'] !== $action) {
+            return [
+                'valid' => false,
+                'score' => $response['score'] ?? 0,
+                'message' => 'reCAPTCHA action mismatch (expected: ' . $action . ', got: ' . ($response['action'] ?? 'none') . ')'
+            ];
+        }
+
+        // Check score threshold
+        $minScore = defined('RECAPTCHA_MIN_SCORE') ? RECAPTCHA_MIN_SCORE : 0.5;
+        $score = $response['score'] ?? 0;
+
+        if ($score < $minScore) {
+            return [
+                'valid' => false,
+                'score' => $score,
+                'message' => 'reCAPTCHA score too low (' . round($score, 2) . ' < ' . $minScore . ')'
+            ];
+        }
+
+        return [
+            'valid' => true,
+            'score' => $score,
+            'message' => 'reCAPTCHA passed with score ' . round($score, 2)
+        ];
+    }
+
+    /**
+     * Verify Google reCAPTCHA v2 response
+     * @param string $recaptchaResponse
+     * @return array ['valid' => bool, 'message' => string]
+     */
+    private function verifyRecaptchaV2($recaptchaResponse)
+    {
+        $secretKey = RECAPTCHA_SECRET_KEY;
+        $remoteIp = $_SERVER['REMOTE_ADDR'] ?? '';
+
+        $postData = http_build_query([
+            'secret' => $secretKey,
+            'response' => $recaptchaResponse,
+            'remoteip' => $remoteIp
+        ]);
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://www.google.com/recaptcha/api/siteverify');
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($result === false || $httpCode !== 200) {
+            error_log('reCAPTCHA v2 cURL error: ' . $curlError . ' (HTTP: ' . $httpCode . ')');
+            return [
+                'valid' => false,
+                'message' => 'reCAPTCHA service unavailable'
+            ];
+        }
+
+        $response = json_decode($result, true);
+
+        if (!isset($response['success']) || !$response['success']) {
+            $errorCodes = isset($response['error-codes']) ? implode(', ', $response['error-codes']) : 'unknown';
+            error_log('reCAPTCHA v2 failed with errors: ' . $errorCodes);
+            return [
+                'valid' => false,
+                'message' => 'reCAPTCHA verification failed: ' . $errorCodes
+            ];
+        }
+
+        return [
+            'valid' => true,
+            'message' => 'reCAPTCHA v2 passed'
+        ];
     }
 
     /**

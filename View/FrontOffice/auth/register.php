@@ -44,21 +44,9 @@ unset($_SESSION['errors']);
             <h2>Register</h2>
             <p class="neo-muted" style="margin-top: 0.45rem;">Create your account and start your first track.</p>
 
-            <?php if ($flash): ?>
-                <div class="neo-alert <?= $flash['type'] === 'error' ? 'error' : 'success' ?>">
-                    <?= htmlspecialchars($flash['message']) ?>
-                </div>
-            <?php endif; ?>
 
-            <?php if (!empty($errors)): ?>
-                <div class="neo-alert error">
-                    <?php foreach ($errors as $error): ?>
-                        <div>• <?= htmlspecialchars($error) ?></div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
 
-            <form action="<?= APP_ENTRY ?>?url=signup" method="POST" enctype="multipart/form-data">
+            <form action="<?= APP_ENTRY ?>?url=signup" method="POST" enctype="multipart/form-data" onsubmit="return validateRecaptcha()">
                 <div class="neo-field">
                     <label for="name">Full Name</label>
                     <input type="text" id="name" name="name" placeholder="Your full name"
@@ -329,6 +317,9 @@ unset($_SESSION['errors']);
                     </div>
                 </div>
 
+                <!-- Google reCAPTCHA v2 -->
+                <div class="g-recaptcha" data-sitekey="<?= RECAPTCHA_SITE_KEY ?>" style="margin: 1rem 0;"></div>
+
                 <button type="submit" id="create-account-btn" class="neo-btn neo-btn-primary"
                     style="margin-top: 0.95rem; width: 100%;">Create Account</button>
             </form>
@@ -383,6 +374,20 @@ unset($_SESSION['errors']);
                         generateBtn.innerHTML = originalContent;
                         generateBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
                     }, 1500);
+                }
+
+                function validateRecaptcha() {
+                    var response = grecaptcha.getResponse();
+                    if (response.length == 0) {
+                        Swal.fire({
+                            icon: "warning",
+                            title: "reCAPTCHA",
+                            text: "Veuillez cocher la case 'Je ne suis pas un robot' avant de continuer.",
+                            draggable: true
+                        });
+                        return false;
+                    }
+                    return true;
                 }
             </script>
 
@@ -696,3 +701,6 @@ unset($_SESSION['errors']);
         };
     })();
 </script>
+
+<!-- Google reCAPTCHA v2 Script -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>

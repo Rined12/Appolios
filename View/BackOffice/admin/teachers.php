@@ -10,6 +10,74 @@
             <?php $adminSidebarActive = 'teachers'; require __DIR__ . '/partials/sidebar.php'; ?>
 
             <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
+                <style>
+                    /* Design de Tableau Modern "Floating Rows" */
+                    .neo-table-modern {
+                        border-collapse: separate !important;
+                        border-spacing: 0 12px !important;
+                        background: transparent !important;
+                        border: none !important;
+                        width: 100% !important;
+                    }
+                    .neo-table-modern thead th {
+                        background: #f1f5f9 !important;
+                        color: #2B4865 !important;
+                        border: none !important;
+                        padding: 12px 20px !important;
+                        font-weight: 700 !important;
+                        text-transform: uppercase !important;
+                        font-size: 0.75rem !important;
+                        letter-spacing: 0.05em !important;
+                    }
+                    .neo-table-modern thead th:first-child {
+                        border-top-left-radius: 12px !important;
+                        border-bottom-left-radius: 12px !important;
+                    }
+                    .neo-table-modern thead th:last-child {
+                        border-top-right-radius: 12px !important;
+                        border-bottom-right-radius: 12px !important;
+                    }
+                    .neo-table-modern tbody tr {
+                        background: transparent !important;
+                        transition: all 0.25s ease !important;
+                    }
+                    .neo-table-modern tbody td {
+                        border: 1px solid #eef2f6 !important;
+                        padding: 18px 20px !important;
+                        background: #ffffff !important;
+                        box-shadow: 0 4px 12px rgba(43, 72, 101, 0.04) !important;
+                        vertical-align: middle !important;
+                        transition: all 0.2s ease !important;
+                    }
+                    .neo-table-modern tbody td:first-child {
+                        border-top-left-radius: 15px !important;
+                        border-bottom-left-radius: 15px !important;
+                    }
+                    .neo-table-modern tbody td:last-child {
+                        border-top-right-radius: 15px !important;
+                        border-bottom-right-radius: 15px !important;
+                    }
+                    .neo-table-modern tbody tr:hover td {
+                        transform: translateY(-3px) !important;
+                        box-shadow: 0 12px 24px rgba(43, 72, 101, 0.12) !important;
+                        background: #fff !important;
+                    }
+                    .table-container {
+                        background: transparent !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                    }
+                    .table-header {
+                        padding: 1rem 0 !important;
+                        background: transparent !important;
+                        border-bottom: none !important;
+                    }
+                    .table-header h3 {
+                        font-size: 1.6rem !important;
+                        color: #2B4865 !important;
+                        font-weight: 800 !important;
+                    }
+                </style>
                 <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <h1>Manage Teachers</h1>
@@ -235,7 +303,7 @@
                 <h3 style="margin: 0;">All Teachers</h3>
             </div>
             <div class="table-responsive">
-                <table>
+                <table class="neo-table-modern">
                     <thead>
                         <tr>
                             <th>ID</th>

@@ -40,13 +40,8 @@
             <h2>Sign In</h2>
             <p class="neo-muted" style="margin-top: 0.45rem;">Use your APPOLIOS account credentials.</p>
 
-            <?php if ($flash): ?>
-                <div class="neo-alert <?= $flash['type'] === 'error' ? 'error' : 'success' ?>">
-                    <?= htmlspecialchars($flash['message']) ?>
-                </div>
-            <?php endif; ?>
 
-            <form action="<?= APP_ENTRY ?>?url=authenticate" method="POST">
+            <form id="loginForm" action="<?= APP_ENTRY ?>?url=authenticate" method="POST" onsubmit="return validateRecaptcha()">
                 <div class="neo-field">
                     <label for="email">Email Address</label>
                     <input type="email" id="email" name="email" placeholder="you@example.com" required>
@@ -78,6 +73,9 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Google reCAPTCHA v2 -->
+                <div class="g-recaptcha" data-sitekey="<?= RECAPTCHA_SITE_KEY ?>" style="margin: 1rem 0;"></div>
 
                 <button type="submit" class="neo-btn neo-btn-primary" style="margin-top: 0.95rem; width: 100%;">Sign
                     In</button>
@@ -126,9 +124,26 @@
                     eyeOffIcon.style.display = 'none';
                 }
             }
+
+            function validateRecaptcha() {
+                var response = grecaptcha.getResponse();
+                if (response.length == 0) {
+                    Swal.fire({
+                        icon: "warning",
+                        title: "reCAPTCHA",
+                        text: "Veuillez cocher la case 'Je ne suis pas un robot' avant de continuer.",
+                        draggable: true
+                    });
+                    return false;
+                }
+                return true;
+            }
         </script>
     </div>
 </section>
+
+<!-- Google reCAPTCHA v2 Script -->
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 <!-- Forgot Password Modal -->
 <div id="forgot-modal"
