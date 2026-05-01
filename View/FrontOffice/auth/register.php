@@ -73,9 +73,22 @@ unset($_SESSION['errors']);
 
                 <div class="neo-field">
                     <label for="password">Password</label>
-                    <div style="position: relative;">
-                        <input type="password" id="password" name="password" placeholder="Minimum 6 characters" required
-                            style="padding-right: 50px; width: 100%;">
+                    <div style="position: relative; display: flex; align-items: center; gap: 8px;">
+                        <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required
+                            style="padding-right: 80px; width: 100%;">
+                        <!-- Generate Password Button -->
+                        <button type="button" onclick="generatePassword()"
+                            style="position: absolute; right: 44px; top: 50%; transform: translateY(-50%); background: linear-gradient(135deg, #10b981, #059669); border: none; cursor: pointer; padding: 8px 12px; border-radius: 8px; color: white; font-size: 0.75rem; font-weight: 700; transition: all 0.2s; box-shadow: 0 2px 8px rgba(16,185,129,0.3);"
+                            onmouseover="this.style.transform='translateY(-50%) scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)';"
+                            onmouseout="this.style.transform='translateY(-50%)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)';"
+                            title="Generate strong password">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline; margin-right: 4px;">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            GEN
+                        </button>
                         <button type="button" onclick="togglePassword('password')"
                             style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 8px; color: #64748b; transition: color 0.2s;"
                             onmouseover="this.style.color='#2B4865'" onmouseout="this.style.color='#64748b'">
@@ -93,6 +106,31 @@ unset($_SESSION['errors']);
                                 <line x1="1" y1="1" x2="23" y2="23"></line>
                             </svg>
                         </button>
+                    </div>
+
+                    <!-- Password Strength Checker UI -->
+                    <div class="password-strength-checker" style="margin-top: 12px; padding: 12px; background: rgba(15, 23, 42, 0.2); border-radius: 12px; border: 1px solid rgba(84, 140, 168, 0.2);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Strength</span>
+                            <span id="strength-text" style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Too Weak</span>
+                        </div>
+                        <div style="height: 6px; background: rgba(226, 232, 240, 0.1); border-radius: 10px; overflow: hidden; margin-bottom: 12px;">
+                            <div id="strength-bar" style="height: 100%; width: 0%; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: #ef4444;"></div>
+                        </div>
+                        <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: 6px;">
+                            <li id="req-length" style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                                <div class="req-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></div>
+                                At least 8 characters
+                            </li>
+                            <li id="req-number" style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                                <div class="req-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></div>
+                                Contains a number
+                            </li>
+                            <li id="req-special" style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                                <div class="req-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></div>
+                                Contains a special character
+                            </li>
+                        </ul>
                     </div>
                 </div>
 
@@ -311,6 +349,103 @@ unset($_SESSION['errors']);
                         eyeOffIcon.style.display = 'none';
                     }
                 }
+
+                // Generate Strong Password - Local Crypto Secure (No API, Works Offline)
+                function generatePassword() {
+                    const passwordField = document.getElementById('password');
+                    const confirmPasswordField = document.getElementById('confirm_password');
+                    const generateBtn = document.querySelector('button[onclick="generatePassword()"]');
+
+                    // Generate password using crypto-secure random
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(),.?":{}|<>';
+                    const array = new Uint32Array(16);
+                    crypto.getRandomValues(array);
+
+                    let password = '';
+                    for (let i = 0; i < 16; i++) {
+                        password += chars[array[i] % chars.length];
+                    }
+
+                    // Set password to both fields
+                    passwordField.value = password;
+                    confirmPasswordField.value = password;
+
+                    // Trigger input events for strength checker and validation
+                    passwordField.dispatchEvent(new Event('input'));
+                    confirmPasswordField.dispatchEvent(new Event('input'));
+
+                    // Show success feedback
+                    const originalContent = generateBtn.innerHTML;
+                    generateBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> OK';
+                    generateBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+
+                    setTimeout(() => {
+                        generateBtn.innerHTML = originalContent;
+                        generateBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                    }, 1500);
+                }
+            </script>
+
+            <script>
+                // Password Strength Logic
+                (function() {
+                    const pwd = document.getElementById('password');
+                    const bar = document.getElementById('strength-bar');
+                    const text = document.getElementById('strength-text');
+                    const reqLen = document.getElementById('req-length');
+                    const reqNum = document.getElementById('req-number');
+                    const reqSpec = document.getElementById('req-special');
+
+                    pwd.addEventListener('input', () => {
+                        const val = pwd.value;
+                        let strength = 0;
+                        
+                        const hasLen = val.length >= 8;
+                        const hasNum = /\d/.test(val);
+                        const hasSpec = /[!@#$%^&*(),.?":{}|<>]/.test(val);
+
+                        if (hasLen) strength += 33.33;
+                        if (hasNum) strength += 33.33;
+                        if (hasSpec) strength += 33.34;
+
+                        bar.style.width = strength + '%';
+                        
+                        // Update UI colors and text
+                        updateReq(reqLen, hasLen);
+                        updateReq(reqNum, hasNum);
+                        updateReq(reqSpec, hasSpec);
+
+                        if (strength === 0) {
+                            bar.style.background = '#ef4444';
+                            text.textContent = 'Too Weak';
+                            text.style.color = '#ef4444';
+                        } else if (strength < 34) {
+                            bar.style.background = '#ef4444';
+                            text.textContent = 'Weak';
+                            text.style.color = '#ef4444';
+                        } else if (strength < 67) {
+                            bar.style.background = '#f59e0b';
+                            text.textContent = 'Medium';
+                            text.style.color = '#f59e0b';
+                        } else if (strength < 100) {
+                            bar.style.background = '#10b981';
+                            text.textContent = 'Strong';
+                            text.style.color = '#10b981';
+                        } else {
+                            bar.style.background = '#22c55e';
+                            text.textContent = 'Very Strong';
+                            text.style.color = '#22c55e';
+                        }
+                    });
+
+                    function updateReq(el, met) {
+                        if (met) {
+                            el.style.color = '#22c55e';
+                        } else {
+                            el.style.color = '#ef4444';
+                        }
+                    }
+                })();
             </script>
 
             <p class="neo-muted" style="margin-top: 0.85rem; font-size: 0.9rem;">Already have an account? <a
@@ -377,6 +512,11 @@ unset($_SESSION['errors']);
 </div>
 
 <style>
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
     @keyframes rfSlideUp {
         from {
             opacity: 0;

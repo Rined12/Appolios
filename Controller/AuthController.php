@@ -906,11 +906,35 @@ class AuthController extends BaseController
 
     public function isUserBlocked($id)
     {
-        $sql = "SELECT is_blocked FROM {$this->table} WHERE id = ?";
-        $stmt = $this->getDb()->prepare($sql);
-        $stmt->execute([$id]);
-        $result = $stmt->fetch();
-        return $result && $result['is_blocked'] == 1;
+        try {
+            $sql = "SELECT is_blocked, ban_until FROM {$this->table} WHERE id = ?";
+            $stmt = $this->getDb()->prepare($sql);
+            $stmt->execute([$id]);
+            $result = $stmt->fetch();
+
+            if (!$result || $result['is_blocked'] != 1) {
+                return false;
+            }
+
+            // Check if temporary ban has expired
+            if (!empty($result['ban_until'])) {
+                $banUntil = strtotime($result['ban_until']);
+                if ($banUntil < time()) {
+                    // Ban expired - auto unblock
+                    $this->unblockUser($id);
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (PDOException $e) {
+            // Fallback if ban_until column doesn't exist - just check is_blocked
+            $sql = "SELECT is_blocked FROM {$this->table} WHERE id = ?";
+            $stmt = $this->getDb()->prepare($sql);
+            $stmt->execute([$id]);
+            $result = $stmt->fetch();
+            return $result && $result['is_blocked'] == 1;
+        }
     }
 
     public function getUsersWithFaceDescriptor()

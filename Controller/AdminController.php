@@ -282,7 +282,7 @@ class AdminController extends BaseController
     }
 
     /**
-     * Block a user
+     * Block a user (permanent)
      */
     public function blockUser($id)
     {
@@ -299,7 +299,7 @@ class AdminController extends BaseController
             return;
         }
 
-                $user = $this->findUserById((int) $id);
+        $user = $this->findUserById((int) $id);
 
         if (!$user) {
             $this->setFlash('error', 'User not found.');
@@ -307,7 +307,7 @@ class AdminController extends BaseController
             return;
         }
 
-        $sql = "UPDATE users SET is_blocked = 1 WHERE id = ?";
+        $sql = "UPDATE users SET is_blocked = 1, ban_until = NULL WHERE id = ?";
         $stmt = $this->getDb()->prepare($sql);
         if ($stmt->execute([$id])) {
             // Log activity
@@ -320,9 +320,85 @@ class AdminController extends BaseController
                 'admin'
             );
 
-            $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been blocked successfully.');
+            $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been blocked permanently.');
         } else {
             $this->setFlash('error', 'Failed to block user.');
+        }
+
+        $this->redirect('admin/users');
+    }
+
+    /**
+     * Ban a user temporarily with duration
+     */
+    public function banUser($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        // Prevent banning self
+        if ((int) $id === (int) $_SESSION['user_id']) {
+            $this->setFlash('error', 'You cannot ban yourself.');
+            $this->redirect('admin/users');
+            return;
+        }
+
+        $user = $this->findUserById((int) $id);
+
+        if (!$user) {
+            $this->setFlash('error', 'User not found.');
+            $this->redirect('admin/users');
+            return;
+        }
+
+        // Get duration from POST
+        $duration = $_POST['ban_duration'] ?? 'permanent';
+
+        // Calculate ban_until timestamp
+        $banUntil = null;
+        $banMessage = '';
+
+        switch ($duration) {
+            case '2h':
+                $banUntil = date('Y-m-d H:i:s', strtotime('+2 hours'));
+                $banMessage = 'banned for 2 hours';
+                break;
+            case '10h':
+                $banUntil = date('Y-m-d H:i:s', strtotime('+10 hours'));
+                $banMessage = 'banned for 10 hours';
+                break;
+            case '1d':
+                $banUntil = date('Y-m-d H:i:s', strtotime('+1 day'));
+                $banMessage = 'banned for 1 day';
+                break;
+            case 'permanent':
+            default:
+                $banUntil = null;
+                $banMessage = 'blocked permanently';
+                break;
+        }
+
+        // Use explicit column name with backticks to avoid any parsing issues
+        $sql = "UPDATE `users` SET `is_blocked` = 1, `ban_until` = :ban_until WHERE `id` = :id";
+        $stmt = $this->getDb()->prepare($sql);
+
+        if ($stmt->execute(['ban_until' => $banUntil, 'id' => $id])) {
+            // Log activity
+            $this->logActivity(
+                'ban_user',
+                "Admin " . $banMessage . ": {$user['name']} ({$user['email']})",
+                $_SESSION['user_id'],
+                $_SESSION['user_name'],
+                $_SESSION['user_email'],
+                'admin'
+            );
+
+            $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been ' . $banMessage . '.');
+        } else {
+            $this->setFlash('error', 'Failed to ban user.');
         }
 
         $this->redirect('admin/users');
@@ -339,7 +415,7 @@ class AdminController extends BaseController
             return;
         }
 
-                $user = $this->findUserById((int) $id);
+        $user = $this->findUserById((int) $id);
 
         if (!$user) {
             $this->setFlash('error', 'User not found.');
@@ -347,7 +423,7 @@ class AdminController extends BaseController
             return;
         }
 
-        $sql = "UPDATE users SET is_blocked = 0 WHERE id = ?";
+        $sql = "UPDATE users SET is_blocked = 0, ban_until = NULL WHERE id = ?";
         $stmt = $this->getDb()->prepare($sql);
         if ($stmt->execute([$id])) {
             // Log activity
@@ -1332,9 +1408,17 @@ class AdminController extends BaseController
 
     public function getStudents()
     {
-        $sql = "SELECT * FROM users WHERE role = 'student'";
-        $stmt = $this->getDb()->query($sql);
-        return $stmt->fetchAll();
+        // Try with ban_until column first, fallback without it if column doesn't exist
+        try {
+            $sql = "SELECT id, name, email, role, is_blocked, ban_until, created_at FROM users WHERE role = 'student' ORDER BY created_at DESC";
+            $stmt = $this->getDb()->query($sql);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            // Fallback if ban_until column doesn't exist yet
+            $sql = "SELECT id, name, email, role, is_blocked, created_at FROM users WHERE role = 'student' ORDER BY created_at DESC";
+            $stmt = $this->getDb()->query($sql);
+            return $stmt->fetchAll();
+        }
     }
 
     public function findUserById($id)

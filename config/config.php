@@ -22,7 +22,7 @@ define('APP_ENTRY', APP_URL . '/Controller/index.php');
 
 // Database Configuration
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'appolios-MVC');
+define('DB_NAME', 'appolios_db');
 define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');

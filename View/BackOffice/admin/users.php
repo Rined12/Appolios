@@ -141,6 +141,42 @@
         </style>
 
         <script>
+            // Ban User Function
+            function banUser(userId, userName) {
+                const duration = document.getElementById('ban-duration-' + userId).value;
+
+                let message = '';
+                switch(duration) {
+                    case '2h':
+                        message = 'Ban this user for 2 hours?';
+                        break;
+                    case '10h':
+                        message = 'Ban this user for 10 hours?';
+                        break;
+                    case '1d':
+                        message = 'Ban this user for 1 day?';
+                        break;
+                    default:
+                        message = 'Ban this user PERMANENTLY?';
+                }
+
+                if (confirm(message)) {
+                    // Create and submit form
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '<?= APP_ENTRY ?>?url=admin/ban-user/' + userId;
+
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'ban_duration';
+                    input.value = duration;
+
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            }
+
             // Toggle Search Panel
             function toggleSearch() {
                 const panel = document.getElementById('searchPanel');
@@ -268,9 +304,34 @@
                                     <td>
                                         <?php if ($user['id'] != $_SESSION['user_id']): ?>
                                             <?php if ($user['is_blocked'] ?? 0): ?>
+                                                <?php
+                                                $banUntil = $user['ban_until'] ?? null;
+                                                $isTempBan = false;
+                                                $banEndTime = null;
+                                                if ($banUntil) {
+                                                    $banEndTime = strtotime($banUntil);
+                                                    $isTempBan = $banEndTime > time();
+                                                }
+                                                ?>
+                                                <?php if ($isTempBan): ?>
+                                                    <span style="display: inline-block; padding: 4px 8px; background: #ffc107; color: #000; border-radius: 6px; font-size: 0.7rem; font-weight: 600; margin-right: 5px;">
+                                                        ⏰ Until: <?= date('M d, H:i', $banEndTime) ?>
+                                                    </span>
+                                                <?php endif; ?>
                                                 <a href="<?= APP_ENTRY ?>?url=admin/unblock-user/<?= $user['id'] ?>" class="btn action-btn" style="padding: 5px 10px; font-size: 0.8rem; background: #28a745; color: white;" onclick="return confirm('Are you sure you want to unblock this user?')">Unblock</a>
                                             <?php else: ?>
-                                                <a href="<?= APP_ENTRY ?>?url=admin/block-user/<?= $user['id'] ?>" class="btn action-btn danger" style="padding: 5px 10px; font-size: 0.8rem;" onclick="return confirm('Are you sure you want to block this user? They will not be able to access the site.')">Block</a>
+                                                <!-- Ban Dropdown -->
+                                                <div style="display: inline-flex; gap: 4px; align-items: center;">
+                                                    <select id="ban-duration-<?= $user['id'] ?>" style="padding: 5px 8px; font-size: 0.75rem; border: 1px solid #ddd; border-radius: 6px; background: white; cursor: pointer;">
+                                                        <option value="permanent">∞ Permanent</option>
+                                                        <option value="2h">⏰ 2 Hours</option>
+                                                        <option value="10h">⏰ 10 Hours</option>
+                                                        <option value="1d">⏰ 1 Day</option>
+                                                    </select>
+                                                    <button onclick="banUser(<?= $user['id'] ?>, '<?= htmlspecialchars($user['name']) ?>')" class="btn action-btn danger" style="padding: 5px 10px; font-size: 0.75rem;">
+                                                        Ban
+                                                    </button>
+                                                </div>
                                             <?php endif; ?>
                                         <?php else: ?>
                                             <span style="color: var(--gray-dark); font-size: 0.85rem;">Current User</span>
