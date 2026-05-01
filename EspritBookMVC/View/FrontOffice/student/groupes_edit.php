@@ -51,7 +51,14 @@ $series = $group_activity_series ?? ['labels' => [], 'discussions' => [], 'visit
                             </div>
                             <div class="form-group">
                                 <label>Replace photo</label>
-                                <input type="file" name="group_photo" accept="image/jpeg,image/png,image/gif,image/webp">
+                                <div class="upload-field">
+                                    <input id="group_photo_input" class="upload-field__input" type="file" name="group_photo" accept="image/jpeg,image/png,image/gif,image/webp">
+                                    <label for="group_photo_input" class="upload-field__button">
+                                        <i class="bi bi-image" aria-hidden="true"></i>
+                                        <span>Choose image</span>
+                                    </label>
+                                    <span id="group_photo_name" class="upload-field__name">No file selected</span>
+                                </div>
                                 <?php if (!empty($errors['group_photo'])): ?><div style="color:#dc2626;font-size:.85rem;font-weight:600;margin-top:.35rem;"><?= htmlspecialchars((string) $errors['group_photo']) ?></div><?php endif; ?>
                             </div>
                             <?php if ($cover !== ''): ?>
@@ -90,10 +97,70 @@ $series = $group_activity_series ?? ['labels' => [], 'discussions' => [], 'visit
 @media (max-width: 1080px) {
     .group-edit-grid { grid-template-columns: 1fr !important; }
 }
+
+.upload-field {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    padding: 0.6rem;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
+}
+.upload-field__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+.upload-field__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid #bfdbfe;
+    background: #fff;
+    color: #1d4ed8;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: transform .18s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.upload-field__button:hover {
+    transform: translateY(-1px);
+    border-color: #93c5fd;
+    box-shadow: 0 8px 18px rgba(59,130,246,0.15);
+}
+.upload-field__name {
+    font-size: 0.84rem;
+    color: #64748b;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (function () {
+    var groupPhotoInput = document.getElementById('group_photo_input');
+    var groupPhotoName = document.getElementById('group_photo_name');
+    if (groupPhotoInput && groupPhotoName) {
+        groupPhotoInput.addEventListener('change', function () {
+            if (groupPhotoInput.files && groupPhotoInput.files.length > 0) {
+                groupPhotoName.textContent = groupPhotoInput.files[0].name;
+                return;
+            }
+            groupPhotoName.textContent = 'No file selected';
+        });
+    }
+
     var el = document.getElementById('groupActivityChart');
     if (!el || !(window.Chart && typeof window.Chart === 'function')) { return; }
     var labels = <?= json_encode(array_values($series['labels'])) ?>;

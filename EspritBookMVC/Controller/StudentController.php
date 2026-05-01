@@ -1053,7 +1053,8 @@ class StudentController extends BaseController {
 
     private function studentDiscussionsEdit($discussionRepository, $groupeRepository, int $discussionId): void
     {
-        $discussion = $discussionRepository->findOwnedBy($discussionId, (int) $_SESSION['user_id']);
+        $authorId = (int) $_SESSION['user_id'];
+        $discussion = $discussionRepository->findOwnedBy($discussionId, $authorId);
         if (!$discussion) {
             $this->setFlash('error', 'Discussion not found.');
             $this->foRedirect('discussions');
@@ -1074,10 +1075,68 @@ class StudentController extends BaseController {
                 $form['content_value'] = (string) $old['contenu'];
             }
         }
+
+        $groupId = (int) ($discussion['id_groupe'] ?? 0);
+        $groupRows = $groupId > 0 ? $discussionRepository->getByGroup($groupId) : [];
+        $ownerMessages = 0;
+        $latestTs = 0;
+        $earliestTs = 0;
+        $seriesDays = 14;
+        $seriesMapAll = [];
+        $seriesMapOwner = [];
+        $seriesLabels = [];
+        $today = new DateTimeImmutable('today');
+        for ($i = $seriesDays - 1; $i >= 0; $i--) {
+            $d = $today->sub(new DateInterval('P' . $i . 'D'));
+            $k = $d->format('Y-m-d');
+            $seriesMapAll[$k] = 0;
+            $seriesMapOwner[$k] = 0;
+            $seriesLabels[] = $d->format('d M');
+        }
+        foreach ($groupRows as $row) {
+            $rowAuthor = (int) ($row['id_auteur'] ?? $row['created_by'] ?? 0);
+            if ($rowAuthor === $authorId) {
+                ++$ownerMessages;
+            }
+            $rawDate = (string) ($row['date_creation'] ?? $row['created_at'] ?? '');
+            $ts = $rawDate !== '' ? strtotime($rawDate) : false;
+            if ($ts !== false) {
+                if ($latestTs === 0 || $ts > $latestTs) {
+                    $latestTs = $ts;
+                }
+                if ($earliestTs === 0 || $ts < $earliestTs) {
+                    $earliestTs = $ts;
+                }
+                $k = date('Y-m-d', $ts);
+                if (isset($seriesMapAll[$k])) {
+                    $seriesMapAll[$k]++;
+                    if ($rowAuthor === $authorId) {
+                        $seriesMapOwner[$k]++;
+                    }
+                }
+            }
+        }
+        $currentContentWords = str_word_count(trim(strip_tags((string) ($discussion['contenu'] ?? ''))));
+        $daysSpan = 1;
+        if ($latestTs > 0 && $earliestTs > 0 && $latestTs >= $earliestTs) {
+            $daysSpan = max(1, (int) floor(($latestTs - $earliestTs) / 86400) + 1);
+        }
+        $discussionStats = [
+            'total_messages' => count($groupRows),
+            'owner_messages' => $ownerMessages,
+            'current_message_words' => $currentContentWords,
+            'avg_messages_per_day' => $daysSpan > 0 ? round(count($groupRows) / $daysSpan, 1) : (float) count($groupRows),
+            'last_activity_label' => $latestTs > 0 ? date('d M Y H:i', $latestTs) : 'No activity yet',
+            'series_labels' => $seriesLabels,
+            'series_group_messages' => array_values($seriesMapAll),
+            'series_owner_messages' => array_values($seriesMapOwner),
+        ];
+
         $data = $this->withFoContext([
             'title' => 'Edit Discussion - APPOLIOS',
             'studentSidebarActive' => 'discussions',
             'discussion_edit' => $form,
+            'discussion_stats' => $discussionStats,
             'groups' => $this->getApprovedOwnedGroups($groupeRepository),
             'errors' => $_SESSION['discussion_errors'] ?? [],
             'flash' => $this->getFlash()
