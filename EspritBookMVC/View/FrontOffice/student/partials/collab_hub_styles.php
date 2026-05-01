@@ -231,7 +231,7 @@
     border: 1px solid rgba(226, 232, 240, 0.95);
     box-shadow: 0 10px 36px rgba(15, 23, 42, 0.07);
     overflow: hidden;
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, filter 0.25s ease, opacity 0.25s ease;
 }
 
 .collab-hub .collab-disc-card::before {
@@ -378,12 +378,13 @@
 }
 
 .collab-hub .collab-group-card {
+    position: relative;
     border-radius: 20px;
     overflow: visible;
     background: rgba(255, 255, 255, 0.95);
     border: 1px solid rgba(226, 232, 240, 0.9);
     box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
-    transition: transform 0.28s ease, box-shadow 0.28s ease;
+    transition: transform 0.28s ease, box-shadow 0.28s ease, filter 0.28s ease, opacity 0.28s ease;
 }
 
 .collab-hub .collab-group-card:hover {
@@ -500,6 +501,44 @@
 .collab-hub .collab-pending-block .collab-group-card {
     border-color: rgba(251, 191, 36, 0.45);
     box-shadow: 0 14px 44px rgba(245, 158, 11, 0.18);
+}
+
+/* Approved groups: soft blended green backlight */
+.collab-hub .approved-group-grid .collab-group-card::after {
+    content: '';
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    bottom: -16px;
+    height: 44px;
+    border-radius: 999px;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(74, 222, 128, 0.28) 0%, rgba(34, 197, 94, 0.14) 45%, rgba(16, 185, 129, 0) 78%);
+    filter: blur(8px);
+    opacity: 0.9;
+    transition: opacity 0.25s ease, filter 0.25s ease, transform 0.25s ease;
+    z-index: -1;
+}
+
+.collab-hub .approved-group-grid .collab-group-card:hover::after {
+    opacity: 1;
+    filter: blur(10px);
+    transform: scale(1.03);
+}
+
+/* Focus-on-hover: blur/dim sibling cards in groups and discussions */
+@media (hover: hover) and (pointer: fine) {
+    .collab-hub .collab-group-grid:hover .collab-group-card:not(:hover),
+    .collab-hub .collab-disc-grid:hover .collab-disc-card:not(:hover) {
+        filter: blur(2.5px) saturate(0.85);
+        opacity: 0.45;
+        transform: scale(0.985);
+    }
+
+    .collab-hub .collab-group-grid:hover .collab-group-card:hover,
+    .collab-hub .collab-disc-grid:hover .collab-disc-card:hover {
+        z-index: 2;
+    }
 }
 
 /* ---- Group detail ---- */
