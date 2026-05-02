@@ -59,11 +59,28 @@
                     </div>
                 </div>
 
-                <!-- New Chart Section: User Distribution -->
+                <!-- User Distribution Chart -->
                 <div style="margin-top: 2rem; background: white; border-radius: 20px; padding: 2rem; box-shadow: 0 10px 30px rgba(43, 72, 101, 0.08);">
-                    <h3 style="color: #2B4865; margin-bottom: 2rem; font-family: 'Poppins', sans-serif; text-align: center;">Répartition des Utilisateurs (Étudiants vs Enseignants)</h3>
+                    <h3 style="color: #2B4865; margin-bottom: 2rem; font-family: 'Poppins', sans-serif; text-align: center;">Répartition actuelle (Étudiants vs Enseignants)</h3>
                     <div style="height: 300px; width: 100%;">
                         <canvas id="userDistributionChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- NEW: 7-Day Forecast Chart -->
+                <div style="margin-top: 2rem; background: #2B4865; border-radius: 20px; padding: 2rem; box-shadow: 0 10px 30px rgba(43, 72, 101, 0.15);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                        <div>
+                            <h3 style="color: #ffffff; margin: 0; font-family: 'Poppins', sans-serif;">Prévisions de croissance (7 jours)</h3>
+                            <p style="color: rgba(255,255,255,0.7); margin: 5px 0 0 0; font-size: 0.9rem;">Estimations basées sur les tendances d'activité hebdomadaires</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                            <span style="color: #80ffd4; font-weight: 700;">● Étudiants</span>
+                            <span style="color: #ffe080; font-weight: 700; margin-left: 15px;">● Enseignants</span>
+                        </div>
+                    </div>
+                    <div style="height: 350px; width: 100%;">
+                        <canvas id="forecastChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -107,9 +124,8 @@
             }
         });
 
-        // --- BAR CHART (Users) ---
+        // --- BAR CHART (Current Distribution) ---
         const ctxUser = document.getElementById('userDistributionChart').getContext('2d');
-        
         new Chart(ctxUser, {
             type: 'bar',
             data: {
@@ -117,45 +133,69 @@
                 datasets: [{
                     label: 'Nombre total',
                     data: [<?= $totalStudents ?? 0 ?>, <?= $totalTeachers ?? 0 ?>],
-                    backgroundColor: [
-                        '#80ffd4', // Sarcelle pour étudiants
-                        '#ffe080'  // Jaune pour enseignants
-                    ],
+                    backgroundColor: ['#80ffd4', '#ffe080'],
                     borderRadius: 12,
-                    barThickness: 80,
-                    borderWidth: 0
+                    barThickness: 80
                 }]
             },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: '#ff809b', font: { size: 16, weight: '700' } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                    x: { ticks: { color: '#2B4865', font: { size: 15, weight: '700' } }, grid: { display: false } }
+                }
+            }
+        });
+
+        // --- FORECAST CHART (7 Days Predictions) ---
+        const ctxForecast = document.getElementById('forecastChart').getContext('2d');
+        const forecastData = {
+            labels: [<?php foreach($forecast as $f) echo "'".$f['date']."',"; ?>],
+            datasets: [
+                {
+                    label: 'Étudiants',
+                    data: [<?php foreach($forecast as $f) echo $f['students'].","; ?>],
+                    backgroundColor: '#80ffd4',
+                    borderRadius: 5,
+                    barPercentage: 0.8,
+                    categoryPercentage: 0.6
+                },
+                {
+                    label: 'Enseignants',
+                    data: [<?php foreach($forecast as $f) echo $f['teachers'].","; ?>],
+                    backgroundColor: '#ffe080',
+                    borderRadius: 5,
+                    barPercentage: 0.8,
+                    categoryPercentage: 0.6
+                }
+            ]
+        };
+
+        new Chart(ctxForecast, {
+            type: 'bar',
+            data: forecastData,
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#2B4865',
-                        padding: 12,
-                        cornerRadius: 8
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#1a2e41',
+                        padding: 12
                     }
                 },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: {
-                            color: '#ff809b', // ROSE pour l'axe vertical comme demandé
-                            font: { size: 16, weight: '700', family: "'Poppins', sans-serif" },
-                            padding: 10
-                        },
-                        grid: {
-                            color: 'rgba(255, 128, 155, 0.1)',
-                            drawBorder: false
-                        }
+                        ticks: { color: 'rgba(255,255,255,0.7)', font: { size: 12 } },
+                        grid: { color: 'rgba(255,255,255,0.1)' }
                     },
                     x: {
-                        ticks: {
-                            color: '#2B4865',
-                            font: { size: 15, weight: '700', family: "'Poppins', sans-serif" },
-                            padding: 10
-                        },
+                        ticks: { color: '#ffffff', font: { size: 13, weight: '600' } },
                         grid: { display: false }
                     }
                 }

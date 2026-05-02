@@ -105,6 +105,52 @@ class AdminController extends BaseController
         $totalStudents = (int) ($userCounts['student'] ?? 0);
         $totalTeachers = (int) ($userCounts['teacher'] ?? 0);
 
+        // 3. Dynamic 7-day Forecast Algorithm
+        $forecast = [];
+        $growthFactor = 1.05; // +5% expected growth
+
+        // Get registrations from last 21 days to calculate averages
+        $sqlHistory = "SELECT DATE(created_at) as reg_date, role, COUNT(*) as count 
+                       FROM users 
+                       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 21 DAY)
+                       AND role IN ('student', 'teacher')
+                       GROUP BY reg_date, role";
+        $stmtHistory = $this->getDb()->query($sqlHistory);
+        $historyData = $stmtHistory->fetchAll(PDO::FETCH_ASSOC);
+
+        // Organize history by day of week (0=Sun, 6=Sat)
+        $dayAverages = [
+            'student' => [0 => [], 1 => [], 2 => [], 3 => [], 4 => [], 5 => [], 6 => []],
+            'teacher' => [0 => [], 1 => [], 2 => [], 3 => [], 4 => [], 5 => [], 6 => []]
+        ];
+
+        foreach ($historyData as $row) {
+            $dayOfWeek = date('w', strtotime($row['reg_date']));
+            $dayAverages[$row['role']][$dayOfWeek][] = $row['count'];
+        }
+
+        // Generate forecast for next 7 days
+        for ($i = 0; $i < 7; $i++) {
+            $targetTime = strtotime("+$i days");
+            $targetDay = date('w', $targetTime);
+            $dateLabel = date('d/m', $targetTime);
+
+            // Calculate average for this specific day of week
+            $avgStudents = !empty($dayAverages['student'][$targetDay]) 
+                ? array_sum($dayAverages['student'][$targetDay]) / count($dayAverages['student'][$targetDay])
+                : 5; // Default fallback if no data
+
+            $avgTeachers = !empty($dayAverages['teacher'][$targetDay]) 
+                ? array_sum($dayAverages['teacher'][$targetDay]) / count($dayAverages['teacher'][$targetDay])
+                : 1; // Default fallback
+
+            $forecast[] = [
+                'date' => $dateLabel,
+                'students' => round($avgStudents * $growthFactor),
+                'teachers' => round($avgTeachers * $growthFactor)
+            ];
+        }
+
         $data = [
             'title' => 'Admin Statistics - APPOLIOS',
             'description' => 'Platform activity and ban analytics',
@@ -112,6 +158,7 @@ class AdminController extends BaseController
             'stats' => $stats,
             'totalStudents' => $totalStudents,
             'totalTeachers' => $totalTeachers,
+            'forecast' => $forecast,
             'unreadCount' => $this->getContactMessageUnreadCount(),
             'flash' => $this->getFlash()
         ];
