@@ -9,6 +9,7 @@ require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Enrollment.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
+require_once __DIR__ . '/../Model/AvatarGenerator.php';
 
 class StudentController extends BaseController {
 
@@ -544,12 +545,62 @@ class StudentController extends BaseController {
         }
 
         $users = $this->getUsersWithFaceDescriptors();
-        
+
         // Filter out current user
         $otherUsers = array_filter($users, function($user) {
             return $user['id'] != $_SESSION['user_id'];
         });
-        
+
         echo json_encode(['success' => true, 'users' => array_values($otherUsers)]);
+    }
+
+    /**
+     * Generate avatar from face photo
+     */
+    public function generateAvatar() {
+        // Set JSON header
+        header('Content-Type: application/json');
+
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            return;
+        }
+
+        if (!isset($_FILES['faceImage']) || $_FILES['faceImage']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No image uploaded or upload error']);
+            return;
+        }
+
+        $file = $_FILES['faceImage'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+        // Check file type
+        if (!in_array($file['type'], $allowedTypes)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, and WEBP are allowed.']);
+            return;
+        }
+
+        // Check file size (max 10MB)
+        if ($file['size'] > 10 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'error' => 'File size must be less than 10MB']);
+            return;
+        }
+
+        // Get face data from POST
+        $faceData = json_decode($_POST['faceData'] ?? '{}', true);
+
+        try {
+            // Generate avatar
+            $generator = new AvatarGenerator();
+            $result = $generator->generateAvatar($faceData, $_SESSION['user_id']);
+            echo json_encode($result);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
     }
 }

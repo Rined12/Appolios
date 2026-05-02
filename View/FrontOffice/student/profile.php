@@ -23,11 +23,11 @@ $studentSidebarActive = 'profile';
                 <div style="padding: 40px; text-align: center;">
                     <div style="position: relative; width: 120px; height: 120px; margin: 0 auto 20px;">
                         <?php if (!empty($user['avatar'])): ?>
-                            <img src="<?= APP_URL ?>/uploads/avatars/<?= htmlspecialchars($user['avatar']) ?>"
+                            <img id="profile-avatar-img" src="<?= APP_URL ?>/uploads/avatars/<?= htmlspecialchars($user['avatar']) ?>"
                                  alt="<?= htmlspecialchars($user['name']) ?>"
                                  style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary-color);">
                         <?php else: ?>
-                            <div style="width: 120px; height: 120px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 4px solid var(--primary-color);">
+                            <div id="profile-avatar-img" style="width: 120px; height: 120px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 4px solid var(--primary-color);">
                                 <svg viewBox="0 0 24 24" width="60" height="60" fill="white">
                                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                                 </svg>
@@ -51,6 +51,16 @@ $studentSidebarActive = 'profile';
                             <?= ucfirst(htmlspecialchars($user['role'])) ?>
                         </span>
                     </p>
+
+                    <!-- Generate Avatar Button -->
+                    <div style="margin-top: 20px;">
+                        <button type="button" class="btn btn-primary" onclick="openAvatarGenerator()" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            Generate Avatar from Photo
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -173,6 +183,62 @@ $studentSidebarActive = 'profile';
         </div>
 
         <input type="hidden" id="faceid-descriptor" value="">
+    </div>
+</div>
+
+<!-- Avatar Generator Modal -->
+<div id="avatar-generator-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9998; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: var(--border-radius-lg); padding: 30px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <h3 style="margin: 0 0 10px 0;">Generate Your Avatar</h3>
+        <p style="margin-bottom: 20px; color: var(--gray-dark); font-size: 0.9rem;">Upload a photo of your face and we'll create a cartoon avatar for you.</p>
+
+        <!-- Step 1: Upload -->
+        <div id="avatar-step-upload">
+            <div style="border: 2px dashed var(--primary-color); border-radius: var(--border-radius-lg); padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s;"
+                 ondragover="event.preventDefault(); this.style.background='#f0f0f0'"
+                 ondragleave="this.style.background='transparent'"
+                 ondrop="event.preventDefault(); this.style.background='transparent'; handleAvatarDrop(event)">
+                <input type="file" id="avatar-gen-input" accept="image/*" style="display: none;" onchange="handleAvatarSelect()">
+                <label for="avatar-gen-input" style="cursor: pointer; display: block;">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="var(--primary-color)" style="margin: 0 auto 15px;">
+                        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                    </svg>
+                    <strong>Click to upload</strong> or drag and drop
+                    <div style="font-size: 0.85rem; color: var(--gray-dark); margin-top: 8px;">JPG, PNG or WEBP (max 10MB)</div>
+                </label>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeAvatarGenerator()">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Preview & Generate -->
+        <div id="avatar-step-preview" style="display: none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.95rem;">Your Photo</h4>
+                    <img id="avatar-gen-preview" src="" alt="Your photo" style="width: 100%; border-radius: var(--border-radius-lg); border: 2px solid var(--gray);">
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.95rem;">Generated Avatar</h4>
+                    <div id="avatar-gen-result" style="width: 100%; aspect-ratio: 1; background: #f5f5f5; border-radius: var(--border-radius-lg); display: flex; align-items: center; justify-content: center;">
+                        <span style="color: var(--gray-dark); font-size: 0.85rem;">Avatar will appear here</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="avatar-gen-status" style="padding: 10px; border-radius: var(--border-radius-sm); background: var(--gray-light); text-align: center; margin-bottom: 15px;">
+                Analyzing your photo...
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button type="button" class="btn btn-primary" id="avatar-generate-btn" onclick="generateAvatar()">
+                    Generate Avatar
+                </button>
+                <button type="button" class="btn btn-outline" onclick="resetAvatarGenerator()">Try Another Photo</button>
+                <button type="button" class="btn btn-outline" onclick="closeAvatarGenerator()">Cancel</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -414,5 +480,239 @@ async function removeFaceId() {
     } catch (e) {
         alert('Error removing Face ID: ' + e.message);
     }
+}
+
+// Avatar Generator Functions
+let uploadedFile = null;
+let detectedFaceData = null;
+let currentImageUrl = null;
+
+function openAvatarGenerator() {
+    document.getElementById('avatar-generator-modal').style.display = 'flex';
+    resetAvatarGenerator();
+}
+
+function closeAvatarGenerator() {
+    document.getElementById('avatar-generator-modal').style.display = 'none';
+}
+
+function resetAvatarGenerator() {
+    document.getElementById('avatar-step-upload').style.display = 'block';
+    document.getElementById('avatar-step-preview').style.display = 'none';
+    document.getElementById('avatar-gen-input').value = '';
+    document.getElementById('avatar-generate-btn').disabled = true;
+    document.getElementById('avatar-gen-result').innerHTML = '<span style="color: var(--gray-dark); font-size: 0.85rem;">Avatar will appear here</span>';
+    uploadedFile = null;
+    detectedFaceData = null;
+    if (currentImageUrl) {
+        URL.revokeObjectURL(currentImageUrl);
+        currentImageUrl = null;
+    }
+}
+
+function handleAvatarDrop(e) {
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+        processAvatarFile(file);
+    }
+}
+
+function handleAvatarSelect() {
+    const fileInput = document.getElementById('avatar-gen-input');
+    if (fileInput.files.length > 0) {
+        processAvatarFile(fileInput.files[0]);
+    }
+}
+
+function processAvatarFile(file) {
+    uploadedFile = file;
+    currentImageUrl = URL.createObjectURL(file);
+    
+    document.getElementById('avatar-step-upload').style.display = 'none';
+    document.getElementById('avatar-step-preview').style.display = 'block';
+    document.getElementById('avatar-gen-preview').src = currentImageUrl;
+    
+    analyzeFace(currentImageUrl);
+}
+
+async function analyzeFace(imageUrl) {
+    const statusEl = document.getElementById('avatar-gen-status');
+    statusEl.textContent = 'Loading face recognition models...';
+    statusEl.style.background = 'var(--gray-light)';
+
+    try {
+        const MODELS = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+
+        // Load models
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODELS);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODELS);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODELS);
+        await faceapi.nets.ageGenderNet.loadFromUri(MODELS);
+
+        statusEl.textContent = 'Analyzing your photo...';
+
+        // Load image using HTML Image element
+        const img = new Image();
+        img.src = imageUrl;
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+        });
+
+        // Detect face with landmarks and gender
+        const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+            .withFaceLandmarks()
+            .withAgeAndGender();
+
+        if (!detection) {
+            statusEl.textContent = 'No face detected. Please upload a photo with a visible face.';
+            statusEl.style.background = '#ffebee';
+            document.getElementById('avatar-generate-btn').disabled = true;
+            return;
+        }
+
+        // Extract face data for avatar generation
+        const landmarks = detection.landmarks;
+        const jawline = landmarks.getJawOutline();
+        const nose = landmarks.getNose();
+        const mouth = landmarks.getMouth();
+        const leftEye = landmarks.getLeftEye();
+        const rightEye = landmarks.getRightEye();
+
+        // Calculate face proportions
+        const jawWidth = jawline[16].x - jawline[0].x;
+        const jawHeight = jawline[8].y - jawline[0].y;
+        const faceShape = jawWidth > jawHeight * 1.2 ? 'square' : jawWidth < jawHeight * 0.9 ? 'long' : 'oval';
+
+        // Estimate skin tone from cheek area
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        // Get cheek pixel (approximate)
+        const cheekX = Math.floor(jawline[2].x + 10);
+        const cheekY = Math.floor(jawline[2].y - 10);
+        const pixelData = ctx.getImageData(cheekX, cheekY, 1, 1).data;
+        
+        // Convert to hex
+        const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => {
+            const hex = x.toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+        }).join('');
+        
+        const skinTone = rgbToHex(pixelData[0], pixelData[1], pixelData[2]);
+
+        // Estimate hair color (sample from top of bounding box)
+        const box = detection.detection.box;
+        const hairX = Math.floor(box.x + box.width / 2);
+        const hairY = Math.floor(box.y + 15); // Look slightly inside the top of the box
+        
+        const hairPixel = ctx.getImageData(hairX, hairY, 1, 1).data;
+        const hairColor = rgbToHex(hairPixel[0], hairPixel[1], hairPixel[2]);
+
+        detectedFaceData = {
+            skinTone: skinTone,
+            hairColor: hairColor,
+            faceShape: faceShape,
+            gender: detection.gender || 'male', // pass gender
+            eyeColor: '#6B4425' // Default
+        };
+
+        statusEl.textContent = 'Analysis complete! Ready to generate.';
+        statusEl.style.background = '#e8f5e9';
+        document.getElementById('avatar-generate-btn').disabled = false;
+
+    } catch (error) {
+        console.error('Face analysis error:', error);
+        statusEl.textContent = 'Error analyzing photo. You can still try generating.';
+        statusEl.style.background = '#ffebee';
+        // Allow generating with defaults
+        document.getElementById('avatar-generate-btn').disabled = false;
+        detectedFaceData = {}; 
+    }
+}
+
+function generateAvatar() {
+    const statusEl = document.getElementById('avatar-gen-status');
+    const resultContainer = document.getElementById('avatar-gen-result');
+    const btn = document.getElementById('avatar-generate-btn');
+    
+    btn.disabled = true;
+    statusEl.textContent = 'Generating cartoon avatar...';
+    statusEl.style.background = 'var(--gray-light)';
+    resultContainer.innerHTML = '<div class="spinner" style="width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite;"></div>';
+
+    const formData = new FormData();
+    formData.append('faceImage', uploadedFile);
+    
+    if (detectedFaceData) {
+        formData.append('faceData', JSON.stringify(detectedFaceData));
+    }
+
+    fetch('<?= APP_ENTRY ?>?url=student/generate-avatar', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        // Prevent generic JSON parsing error message if not json
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            return response.json();
+        } else {
+            throw new Error("Oops, we haven't got JSON!");
+        }
+    })
+    .then(data => {
+        if (data.success) {
+            statusEl.textContent = 'Avatar generated successfully!';
+            statusEl.style.background = '#e8f5e9';
+            
+            // Display result
+            resultContainer.innerHTML = `<img src="${data.url}" alt="Generated Avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--border-radius-lg);">`;
+            
+            // Update profile image
+            const profileImg = document.getElementById('profile-avatar-img');
+            if (profileImg) {
+                // Replace with actual img tag if it was a div (no avatar set before)
+                if (profileImg.tagName === 'DIV') {
+                    const img = document.createElement('img');
+                    img.id = 'profile-avatar-img';
+                    img.src = data.url;
+                    img.alt = 'Avatar';
+                    img.style.cssText = 'width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid var(--primary-color);';
+                    profileImg.replaceWith(img);
+                } else {
+                    profileImg.src = data.url;
+                }
+            }
+            
+            // Update nav image if exists
+            const navImg = document.querySelector('.nav-user-img');
+            if (navImg) navImg.src = data.url;
+            
+            // Close after 3 seconds
+            setTimeout(() => {
+                closeAvatarGenerator();
+            }, 3000);
+        } else {
+            throw new Error(data.error || 'Failed to generate avatar');
+        }
+    })
+    .catch(error => {
+        console.error('Generation error:', error);
+        statusEl.textContent = 'Error: ' + error.message;
+        statusEl.style.background = '#ffebee';
+        resultContainer.innerHTML = '<span style="color: #dc3545;">Generation failed</span>';
+        btn.disabled = false;
+    });
+}
+
+function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
 }
 </script>

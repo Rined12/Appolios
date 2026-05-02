@@ -1,32 +1,26 @@
 <?php
 /**
- * Migration script to add avatar column to users table
- * Run this once to enable profile picture uploads
+ * Avatar table migration script
+ * Run this once to create the avatars table
  */
 
+require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
 
 try {
-    $db = getConnection();
+    $pdo = getConnection();
+    echo "Connected to database.\n";
 
-    // Check if column already exists
-    $stmt = $db->query("SHOW COLUMNS FROM users LIKE 'avatar'");
-    if ($stmt->rowCount() > 0) {
-        echo "Column 'avatar' already exists in users table.\n";
+    // Read and execute the SQL file
+    $sqlFile = __DIR__ . '/create_avatar_table.sql';
+    if (file_exists($sqlFile)) {
+        $sql = file_get_contents($sqlFile);
+        $pdo->exec($sql);
+        echo "Avatar table created successfully!\n";
     } else {
-        // Add avatar column
-        $db->exec("ALTER TABLE users ADD COLUMN avatar VARCHAR(255) NULL DEFAULT NULL AFTER face_descriptor");
-        echo "Column 'avatar' added successfully to users table.\n";
+        echo "SQL file not found.\n";
     }
 
-    // Create uploads directory
-    $uploadDir = __DIR__ . '/../uploads/avatars/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
-        echo "Upload directory created: {$uploadDir}\n";
-    }
-
-    echo "Migration completed successfully!\n";
 } catch (PDOException $e) {
-    echo "Error: " . $e->getMessage() . "\n";
+    echo "Database error: " . $e->getMessage() . "\n";
 }

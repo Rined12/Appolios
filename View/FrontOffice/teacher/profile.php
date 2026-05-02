@@ -50,6 +50,7 @@ $teacherSidebarActive = 'profile';
                             TEACHER
                         </span>
                     </p>
+
                 </div>
             </div>
 
