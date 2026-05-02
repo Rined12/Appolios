@@ -6,8 +6,94 @@
 
 require_once __DIR__ . '/../Controller/BaseController.php';
 require_once __DIR__ . '/../Model/Course.php';
+require_once __DIR__ . '/../Services/QuizService.php';
 
 class HomeController extends BaseController {
+
+    public function verifyCert() {
+        $token = (string) ($_GET['token'] ?? '');
+        $token = trim($token);
+
+        $data = [
+            'title' => 'Vérification certificat - ' . APP_NAME,
+            'ok' => false,
+            'reason' => 'Certificat invalide.',
+            'attempt' => null,
+        ];
+
+        if ($token === '' || strpos($token, '.') === false) {
+            $this->view('FrontOffice/home/verify_cert', $data);
+            return;
+        }
+
+        [$b64, $sigB64] = explode('.', $token, 2);
+        $calc = hash_hmac('sha256', $b64, (string) APP_QR_SECRET, true);
+        $calcB64 = rtrim(strtr(base64_encode($calc), '+/', '-_'), '=');
+
+        if (!hash_equals($calcB64, $sigB64)) {
+            $data['reason'] = 'Signature invalide.';
+            $this->view('FrontOffice/home/verify_cert', $data);
+            return;
+        }
+
+        $json = base64_decode(strtr($b64, '-_', '+/'), true);
+        if (!is_string($json) || $json === '') {
+            $data['reason'] = 'Token illisible.';
+            $this->view('FrontOffice/home/verify_cert', $data);
+            return;
+        }
+
+        $payload = json_decode($json, true);
+        if (!is_array($payload)) {
+            $data['reason'] = 'Token invalide.';
+            $this->view('FrontOffice/home/verify_cert', $data);
+            return;
+        }
+
+        $exp = (int) ($payload['exp'] ?? 0);
+        if ($exp > 0 && time() > $exp) {
+            $data['reason'] = 'Certificat expiré.';
+            $this->view('FrontOffice/home/verify_cert', $data);
+            return;
+        }
+
+        $aid = (int) ($payload['aid'] ?? 0);
+        $uid = (int) ($payload['uid'] ?? 0);
+        $qid = (int) ($payload['qid'] ?? 0);
+        $pct = (int) ($payload['pct'] ?? 0);
+
+        if ($aid <= 0 || $uid <= 0 || $qid <= 0) {
+            $data['reason'] = 'Certificat incomplet.';
+            $this->view('FrontOffice/home/verify_cert', $data);
+            return;
+        }
+
+        $quizService = $this->service('QuizService');
+        $attempt = $quizService->findAttemptByIdWithDetails($aid);
+        if (!$attempt) {
+            $data['reason'] = 'Tentative introuvable.';
+            $this->view('FrontOffice/home/verify_cert', $data);
+            return;
+        }
+
+        if ((int) ($attempt['user_id'] ?? 0) !== $uid || (int) ($attempt['quiz_id'] ?? 0) !== $qid) {
+            $data['reason'] = 'Certificat non-correspondant.';
+            $this->view('FrontOffice/home/verify_cert', $data);
+            return;
+        }
+
+        if ((int) ($attempt['percentage'] ?? 0) !== $pct) {
+            $data['reason'] = 'Score non-correspondant.';
+            $this->view('FrontOffice/home/verify_cert', $data);
+            return;
+        }
+
+        $data['ok'] = true;
+        $data['reason'] = 'Certificat authentique.';
+        $data['attempt'] = $attempt;
+
+        $this->view('FrontOffice/home/verify_cert', $data);
+    }
 
     /**
      * Home page (Landing page)

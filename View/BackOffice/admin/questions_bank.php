@@ -1,5 +1,7 @@
 <?php
 $adminSidebarActive = 'questions';
+$top = isset($qbTopStats) && is_array($qbTopStats) ? $qbTopStats : [];
+$charts = $charts ?? [];
 ?>
 <div class="dashboard">
     <div class="container admin-dashboard-container">
@@ -18,6 +20,88 @@ $adminSidebarActive = 'questions';
                 <?php if (!empty($flash)): ?>
                     <p class="flash flash-<?= htmlspecialchars($flash['type']) ?>"><?= htmlspecialchars($flash['message']) ?></p>
                 <?php endif; ?>
+                <?php
+                    $diff = isset($charts['difficulty']) && is_array($charts['difficulty']) ? $charts['difficulty'] : [];
+                    $diffTotal = 0;
+                    foreach ($diff as $k => $v) { $diffTotal += (int) $v; }
+                    $diffColors = [
+                        'beginner' => 'rgba(34,197,94,0.92)',
+                        'intermediate' => 'rgba(250,204,21,0.92)',
+                        'advanced' => 'rgba(244,63,94,0.92)',
+                    ];
+                    $circ = 2 * 3.141592653589793 * 46;
+                    $acc = 0.0;
+                    $segs = [];
+                    if ($diffTotal > 0) {
+                        foreach ($diff as $key => $v) {
+                            $val = (int) $v;
+                            if ($val <= 0) continue;
+                            $pct = $val / $diffTotal;
+                            $len = $circ * $pct;
+                            $segs[] = [
+                                'key' => (string) $key,
+                                'val' => $val,
+                                'dash' => $len . ' ' . ($circ - $len),
+                                'offset' => -$acc,
+                                'color' => $diffColors[$key] ?? 'rgba(96,165,250,0.9)',
+                            ];
+                            $acc += $len;
+                        }
+                    }
+                ?>
+                <div class="pro-stats-grid" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Répartition Difficulté</div>
+                            <div class="pro-stat-icon"><i class="bi bi-pie-chart"></i></div>
+                        </div>
+                        <div class="pro-chart-grid">
+                            <div class="pro-donut" aria-hidden="true">
+                                <svg viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(148,163,184,0.14)" stroke-width="16" />
+                                    <?php foreach ($segs as $s): ?>
+                                        <circle cx="60" cy="60" r="46" fill="none" stroke="<?= htmlspecialchars($s['color']) ?>" stroke-width="16" stroke-linecap="round" stroke-dasharray="<?= htmlspecialchars((string) $s['dash']) ?>" stroke-dashoffset="<?= htmlspecialchars((string) $s['offset']) ?>" />
+                                    <?php endforeach; ?>
+                                </svg>
+                                <div class="pro-donut-center">
+                                    <div class="pro-donut-big"><?= (int) $diffTotal ?></div>
+                                    <div class="pro-donut-sub">questions</div>
+                                </div>
+                            </div>
+                            <div class="pro-legend">
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($diffColors['beginner']) ?>;"></span> Débutant <span class="v"><?= (int) ($diff['beginner'] ?? 0) ?></span></div>
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($diffColors['intermediate']) ?>;"></span> Intermédiaire <span class="v"><?= (int) ($diff['intermediate'] ?? 0) ?></span></div>
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($diffColors['advanced']) ?>;"></span> Avancé <span class="v"><?= (int) ($diff['advanced'] ?? 0) ?></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Qualité globale</div>
+                            <div class="pro-stat-icon"><i class="bi bi-stars"></i></div>
+                        </div>
+                        <div class="pro-stat-value"><?= (int) ($top['attempts_total'] ?? 0) ?></div>
+                        <div class="pro-stat-sub">Tentatives · Moyenne <?= htmlspecialchars(number_format((float) ($top['avg_percentage'] ?? 0), 1)) ?>%</div>
+                    </div>
+                </div>
+                <div class="pro-stats-grid">
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Questions</div>
+                            <div class="pro-stat-icon"><i class="bi bi-journal-text"></i></div>
+                        </div>
+                        <div class="pro-stat-value"><?= (int) ($top['questions_total'] ?? 0) ?></div>
+                        <div class="pro-stat-sub"><?= (int) ($top['used_questions'] ?? 0) ?> utilisées dans des quiz</div>
+                    </div>
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Engagement</div>
+                            <div class="pro-stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                        </div>
+                        <div class="pro-stat-value"><?= (int) ($top['attempts_total'] ?? 0) ?></div>
+                        <div class="pro-stat-sub">Tentatives · Moyenne <?= htmlspecialchars(number_format((float) ($top['avg_percentage'] ?? 0), 1)) ?>%</div>
+                    </div>
+                </div>
                 <div class="pro-table-card">
                     <div class="pro-table-toolbar">
                         <div class="pro-table-toolbar-left">

@@ -1070,9 +1070,25 @@ class AdminController extends BaseController {
             return;
         }
         $quizService = $this->service('QuizService');
+
+        $statsRows = $quizService->getQuizStatsForAdmin();
+        $attemptsTotal = 0;
+        $wSum = 0.0;
+        foreach ($statsRows as $r) {
+            $att = (int) ($r['attempts_count'] ?? 0);
+            $avg = (float) ($r['avg_percentage'] ?? 0);
+            $attemptsTotal += $att;
+            $wSum += ($avg * $att);
+        }
+        $top = [
+            'attempts_total' => $attemptsTotal,
+            'avg_percentage' => $attemptsTotal > 0 ? round($wSum / (float) $attemptsTotal, 1) : 0.0,
+        ];
+
         $this->view('BackOffice/admin/quizzes', [
             'title' => 'Quiz (admin) - ' . APP_NAME,
             'quizzes' => $quizService->getAllForAdmin(),
+            'quizTopStats' => $top,
             'flash' => $this->getFlash(),
         ]);
     }
@@ -1099,6 +1115,17 @@ class AdminController extends BaseController {
         $rows = $quizService->getQuizStatsForAdmin();
         $series = $quizService->getQuizAttemptSeriesMapForAdmin(120);
 
+        $diffDist = [
+            'beginner' => 0,
+            'intermediate' => 0,
+            'advanced' => 0,
+        ];
+        $statusDist = [
+            'approved' => 0,
+            'pending' => 0,
+            'rejected' => 0,
+        ];
+
         $totalQuizzes = count($rows);
         $totalAttempts = 0;
         $sumAvg = 0.0;
@@ -1114,14 +1141,58 @@ class AdminController extends BaseController {
             if ((string) ($r['status'] ?? '') === 'approved') {
                 $approved++;
             }
+
+            $d = (string) ($r['difficulty'] ?? 'beginner');
+            if (!isset($diffDist[$d])) {
+                $diffDist[$d] = 0;
+            }
+            $diffDist[$d]++;
+
+            $st = (string) ($r['status'] ?? 'approved');
+            if (!isset($statusDist[$st])) {
+                $statusDist[$st] = 0;
+            }
+            $statusDist[$st]++;
         }
 
         $overallAvg = $avgCount > 0 ? round($sumAvg / $avgCount, 1) : 0.0;
+
+        $trendRows = $quizService->getQuizAttemptsTrendForAdmin(21);
+        $trendMap = [];
+        foreach ($trendRows as $qid => $list) {
+            foreach (($list ?? []) as $p) {
+                $day = (string) ($p['day'] ?? '');
+                if ($day === '') {
+                    continue;
+                }
+                if (!isset($trendMap[$day])) {
+                    $trendMap[$day] = ['day' => $day, 'count' => 0, 'avg_sum' => 0.0, 'avg_n' => 0];
+                }
+                $trendMap[$day]['count'] += (int) ($p['count'] ?? 0);
+                $trendMap[$day]['avg_sum'] += (float) ($p['avg'] ?? 0);
+                $trendMap[$day]['avg_n'] += 1;
+            }
+        }
+        ksort($trendMap);
+        $trend = [];
+        foreach ($trendMap as $day => $info) {
+            $n = (int) ($info['avg_n'] ?? 0);
+            $trend[] = [
+                'day' => (string) ($info['day'] ?? ''),
+                'count' => (int) ($info['count'] ?? 0),
+                'avg' => $n > 0 ? round(((float) ($info['avg_sum'] ?? 0)) / $n, 1) : 0.0,
+            ];
+        }
 
         $this->view('BackOffice/admin/quiz_stats', [
             'title' => 'Statistiques quiz - ' . APP_NAME,
             'rows' => $rows,
             'series' => $series,
+            'charts' => [
+                'difficulty' => $diffDist,
+                'status' => $statusDist,
+                'trend' => $trend,
+            ],
             'kpis' => [
                 'total_quizzes' => $totalQuizzes,
                 'total_attempts' => $totalAttempts,
@@ -1358,9 +1429,42 @@ class AdminController extends BaseController {
             return;
         }
         $quizService = $this->service('QuizService');
+
+        $questions = $quizService->getQuestionBankForAdmin();
+        $usage = $quizService->getQuestionBankUsageStatsForAdmin();
+
+        $top = [
+            'questions_total' => count($questions),
+            'used_questions' => 0,
+            'attempts_total' => 0,
+            'avg_percentage' => 0.0,
+        ];
+        $wSum = 0.0;
+        foreach ($usage as $id => $u) {
+            $qz = (int) ($u['quizzes'] ?? 0);
+            $att = (int) ($u['attempts'] ?? 0);
+            $avg = (float) ($u['avg'] ?? 0);
+            if ($qz > 0) {
+                $top['used_questions']++;
+            }
+            $top['attempts_total'] += $att;
+            $wSum += ($avg * $att);
+        }
+        if ($top['attempts_total'] > 0) {
+            $top['avg_percentage'] = round($wSum / (float) $top['attempts_total'], 1);
+        }
+
         $this->view('BackOffice/admin/questions_bank', [
             'title' => 'Banque de questions (admin) - ' . APP_NAME,
-            'questions' => $quizService->getQuestionBankForAdmin(),
+            'questions' => $questions,
+            'qbTopStats' => $top,
+            'charts' => [
+                'difficulty' => [
+                    'beginner' => count(array_filter($questions, static fn($q) => (string) ($q['difficulty'] ?? 'beginner') === 'beginner')),
+                    'intermediate' => count(array_filter($questions, static fn($q) => (string) ($q['difficulty'] ?? 'beginner') === 'intermediate')),
+                    'advanced' => count(array_filter($questions, static fn($q) => (string) ($q['difficulty'] ?? 'beginner') === 'advanced')),
+                ],
+            ],
             'flash' => $this->getFlash(),
         ]);
     }

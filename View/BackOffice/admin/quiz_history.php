@@ -12,7 +12,12 @@ $adminSidebarActive = 'quiz_history';
                         <p>Consultez tous les quiz et leur créateur.</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a href="<?= APP_ENTRY ?>?url=admin/add-quiz" class="btn btn-primary">Nouveau quiz</a>
+                        <a href="<?= APP_ENTRY ?>?url=admin/quizStats" class="btn btn-stats-pro">
+                            <i class="bi bi-graph-up" aria-hidden="true"></i>
+                            Statistiques
+                            <span class="btn-stats-pro-badge">PRO</span>
+                        </a>
+                        <a href="<?= APP_ENTRY ?>?url=admin/quizzes" class="btn btn-outline">Retour aux quiz</a>
                     </div>
                 </div>
 

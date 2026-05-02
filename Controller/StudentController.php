@@ -112,11 +112,28 @@ class StudentController extends BaseController {
 
         $weakChapters = [];
         foreach ($chapterAverages as $cid => $info) {
+            $avg = (int) round((float) ($info['avg'] ?? 0));
+            $attempts = (int) ($info['attempts'] ?? 0);
+            $last = isset($chapterRecent[(int) $cid]) ? $chapterRecent[(int) $cid] : null;
+            $lastPct = is_array($last) && $last['last'] !== null ? (int) $last['last'] : null;
+            $prevPct = is_array($last) && $last['prev'] !== null ? (int) $last['prev'] : null;
+            $delta = ($lastPct !== null && $prevPct !== null) ? ($lastPct - $prevPct) : null;
+            $lastAt = is_array($last) ? ($last['last_at'] ?? null) : null;
+
+            $needBoost = max(0.0, min(1.0, (70.0 - (float) $avg) / 70.0));
+            $confidence = 1.0 - exp(-0.45 * max(0, $attempts));
+            $priority = $needBoost * $confidence;
+
             $weakChapters[] = [
                 'chapter_id' => (int) $cid,
                 'chapter_title' => (string) ($chapterNames[(int) $cid] ?? ''),
-                'avg' => (int) round((float) ($info['avg'] ?? 0)),
-                'attempts' => (int) ($info['attempts'] ?? 0),
+                'avg' => $avg,
+                'attempts' => $attempts,
+                'last' => $lastPct,
+                'prev' => $prevPct,
+                'delta' => $delta,
+                'last_at' => $lastAt ? (string) $lastAt : null,
+                'priority' => $priority,
             ];
             if (count($weakChapters) >= 3) {
                 break;
@@ -629,7 +646,7 @@ class StudentController extends BaseController {
 
         $total = count($questions);
         $percentage = $total > 0 ? (int) round(($score / $total) * 100) : 0;
-        $quizService->recordAttempt((int) $_SESSION['user_id'], (int) $id, $score, $total, $percentage);
+        $attemptId = $quizService->recordAttemptAndGetId((int) $_SESSION['user_id'], (int) $id, $score, $total, $percentage);
 
         $quizRepo = new QuizRepository();
         $attemptRepo = new QuizAttemptRepository();
@@ -646,6 +663,7 @@ class StudentController extends BaseController {
         $coach = $this->buildRankCoachMessage($quiz, $percentage, $ratingUpdate, $rankProgress);
 
         $chapterAverages = $attemptRepo->getChapterAveragesByUser((int) $_SESSION['user_id']);
+        $chapterRecent = $attemptRepo->getRecentPercentagesByChapterForUser((int) $_SESSION['user_id'], 60);
         uasort($chapterAverages, static function ($a, $b) {
             $av = (float) ($a['avg'] ?? 0);
             $bv = (float) ($b['avg'] ?? 0);
@@ -679,6 +697,79 @@ class StudentController extends BaseController {
             }
         }
 
+        $cert = null;
+        if ($attemptId !== null && $attemptId > 0 && $percentage >= 70) {
+            $payload = [
+                'v' => 1,
+                'aid' => (int) $attemptId,
+                'uid' => (int) $_SESSION['user_id'],
+                'qid' => (int) $id,
+                'pct' => (int) $percentage,
+                'iat' => time(),
+                'exp' => time() + (60 * 60 * 24 * 365),
+            ];
+            $json = json_encode($payload);
+            $b64 = rtrim(strtr(base64_encode($json !== false ? $json : '{}'), '+/', '-_'), '=');
+            $sig = hash_hmac('sha256', $b64, (string) APP_QR_SECRET, true);
+            $sigB64 = rtrim(strtr(base64_encode($sig), '+/', '-_'), '=');
+            $token = $b64 . '.' . $sigB64;
+
+            $entry = (string) APP_ENTRY;
+            $needLan = (strpos($entry, '://localhost') !== false) || (strpos($entry, '://127.0.0.1') !== false);
+            if ($needLan) {
+                $lan = '';
+                if (defined('APP_LAN_HOST') && is_string(APP_LAN_HOST) && trim(APP_LAN_HOST) !== '') {
+                    $lan = trim((string) APP_LAN_HOST);
+                } else {
+                    try {
+                        $ips = @gethostbynamel(gethostname());
+                        $ips = is_array($ips) ? $ips : [];
+
+                        $candidates = [];
+                        foreach ($ips as $ip) {
+                            $ip = (string) $ip;
+                            if ($ip === '' || $ip === '127.0.0.1') {
+                                continue;
+                            }
+                            if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                                continue;
+                            }
+                            $candidates[] = $ip;
+                        }
+
+                        $pick = function (string $prefix) use ($candidates): string {
+                            foreach ($candidates as $c) {
+                                if (strncmp($c, $prefix, strlen($prefix)) === 0) {
+                                    return $c;
+                                }
+                            }
+                            return '';
+                        };
+
+                        $lan = $pick('192.168.1.');
+                        if ($lan === '') $lan = $pick('192.168.0.');
+                        if ($lan === '') $lan = $pick('10.');
+                        if ($lan === '') $lan = $pick('172.16.');
+                        if ($lan === '' && !empty($candidates)) {
+                            $lan = (string) $candidates[0];
+                        }
+                    } catch (Throwable $e) {
+                        $lan = '';
+                    }
+                }
+                if ($lan !== '') {
+                    $entry = str_replace('://localhost', '://' . $lan, $entry);
+                    $entry = str_replace('://127.0.0.1', '://' . $lan, $entry);
+                }
+            }
+
+            $cert = [
+                'attempt_id' => (int) $attemptId,
+                'token' => $token,
+                'verify_url' => $entry . '?url=home/verify-cert&token=' . rawurlencode($token),
+            ];
+        }
+
         $this->view('FrontOffice/student/quiz_result', [
             'title' => 'Résultat du quiz - ' . APP_NAME,
             'quiz' => $quiz,
@@ -693,6 +784,7 @@ class StudentController extends BaseController {
             'rank_spark' => $spark,
             'coach' => $coach,
             'weakChapters' => $weakChapters,
+            'cert' => $cert,
         ]);
     }
 
@@ -1017,6 +1109,7 @@ class StudentController extends BaseController {
                 'difficulty' => $cDiff,
                 'chapter_title' => (string) ($c['chapter_title'] ?? ''),
                 'chapter_id' => $cChapterId,
+                'is_new' => !isset($attemptedSet[$cid]),
                 '_recency_days' => $recencyDays,
                 '_skill_fit' => $skillFit,
                 '_score' => $score,
@@ -1062,7 +1155,11 @@ class StudentController extends BaseController {
             return ($progressChapterId > 0 && (int) $x['chapter_id'] === $progressChapterId) && $difficultyRank((string) $x['difficulty']) >= $curRank;
         }, $attemptedSet);
 
-        $push = static function (?array $item, string $goal, string $reason) use (&$out) {
+        $exp = $pick($best, static function ($x) use ($exploreChapterId) {
+            return ($exploreChapterId > 0 && (int) $x['chapter_id'] === $exploreChapterId);
+        }, $attemptedSet);
+
+        $push = static function (?array $item, string $goal, string $reason, array $insights = []) use (&$out) {
             if (!$item) {
                 return;
             }
@@ -1073,12 +1170,44 @@ class StudentController extends BaseController {
                 'chapter_title' => (string) $item['chapter_title'],
                 'goal' => $goal,
                 'reason' => $reason,
+                'is_new' => !empty($item['is_new']),
+                'insights' => $insights,
             ];
         };
 
-        $push($rem, 'Remédiation', 'Ciblé sur tes lacunes (chapitre le plus faible) et évite les quiz déjà tentés si possible.');
-        $push($con, 'Consolidation', 'Renforce le même chapitre avec une difficulté proche pour stabiliser le score.');
-        $push($pro, 'Progression', 'Augmente le niveau (ou challenge) tout en gardant un parcours cohérent.');
+        $mkInsights = static function (?array $item, string $needLabel) use ($need, $weakChapterId, $chapterId): array {
+            if (!$item) {
+                return [];
+            }
+            $ins = [];
+            $ins[] = $needLabel;
+            if (!empty($item['is_new'])) {
+                $ins[] = 'Nouveau (pas encore tenté)';
+            } else {
+                $ins[] = 'Déjà tenté (révision ciblée)';
+            }
+            $cid = (int) ($item['chapter_id'] ?? 0);
+            if ($weakChapterId > 0 && $cid === $weakChapterId) {
+                $ins[] = 'Chapitre faible (priorité)';
+            } elseif ($chapterId > 0 && $cid === $chapterId) {
+                $ins[] = 'Même chapitre (continuité)';
+            }
+            return $ins;
+        };
+
+        if ($need === 'remediation') {
+            $push($rem, 'Remédiation', 'Ciblé sur la faiblesse principale (objectif : remonter au-dessus de 70%).', $mkInsights($rem, 'Focus : récupérer des points'));
+            $push($con, 'Consolidation', 'Stabilise la base (même chapitre / difficulté similaire).', $mkInsights($con, 'Focus : consolider'));
+            $push($pro, 'Progression', 'Une fois stabilisé, monte en difficulté pour progresser durablement.', $mkInsights($pro, 'Focus : progression'));
+        } elseif ($need === 'progression') {
+            $push($pro, 'Challenge', 'Tu es en forme : monte d’un cran pour gagner du rating.', $mkInsights($pro, 'Focus : challenge'));
+            $push($con, 'Consolidation', 'Assure un second quiz “safe” pour stabiliser ton niveau.', $mkInsights($con, 'Focus : consolider'));
+            $push($exp, 'Exploration', 'Découvre un autre chapitre (espacement des révisions).', $mkInsights($exp, 'Focus : variété'));
+        } else {
+            $push($con, 'Consolidation', 'Consolide avant de monter en difficulté.', $mkInsights($con, 'Focus : consolider'));
+            $push($pro, 'Progression', 'Monte doucement en difficulté pour débloquer le palier suivant.', $mkInsights($pro, 'Focus : progression'));
+            $push($exp, 'Exploration', 'Varie les chapitres pour éviter l’oubli et élargir ta maîtrise.', $mkInsights($exp, 'Focus : variété'));
+        }
 
         $seen = [];
         $dedup = [];
@@ -1108,7 +1237,9 @@ class StudentController extends BaseController {
                     'difficulty' => (string) $b['difficulty'],
                     'chapter_title' => (string) $b['chapter_title'],
                     'goal' => 'Suggestion',
-                    'reason' => 'Quiz recommandé selon ton résultat et le cours.'
+                    'reason' => 'Quiz recommandé selon ton résultat et ton parcours.',
+                    'is_new' => !empty($b['is_new']),
+                    'insights' => !empty($b['is_new']) ? ['Nouveau (pas encore tenté)'] : ['Déjà tenté (révision)'],
                 ];
             }
         }
@@ -1124,6 +1255,54 @@ class StudentController extends BaseController {
         $this->view('FrontOffice/student/questions_bank', [
             'title' => 'Banque de questions - ' . APP_NAME,
             'questions' => $quizService->getQuestionBankReadable(),
+            'flash' => $this->getFlash(),
+        ]);
+    }
+
+    public function training() {
+        if (!$this->requireStudentRole()) {
+            return;
+        }
+        $quizService = $this->service('QuizService');
+        $all = $quizService->getQuestionBankReadable();
+
+        $difficulty = isset($_GET['difficulty']) ? strtolower(trim((string) $_GET['difficulty'])) : '';
+        if (!in_array($difficulty, ['', 'beginner', 'intermediate', 'advanced'], true)) {
+            $difficulty = '';
+        }
+
+        $count = isset($_GET['count']) ? (int) $_GET['count'] : 10;
+        $count = max(5, min(30, $count));
+
+        $filtered = [];
+        foreach ($all as $q) {
+            $d = strtolower((string) ($q['difficulty'] ?? 'beginner'));
+            if ($difficulty !== '' && $d !== $difficulty) {
+                continue;
+            }
+            $opts = isset($q['options']) && is_array($q['options']) ? array_values($q['options']) : [];
+            if (count($opts) < 2) {
+                continue;
+            }
+            $ca = isset($q['correct_answer']) ? (int) $q['correct_answer'] : 0;
+            if ($ca < 0 || $ca >= count($opts)) {
+                $ca = 0;
+            }
+            $filtered[] = [
+                'id' => (int) ($q['id'] ?? 0),
+                'title' => (string) ($q['title'] ?? 'Question'),
+                'question_text' => (string) ($q['question_text'] ?? ''),
+                'difficulty' => $d !== '' ? $d : 'beginner',
+                'options' => $opts,
+                'correct_answer' => $ca,
+            ];
+        }
+
+        $this->view('FrontOffice/student/training', [
+            'title' => 'Training Lab - ' . APP_NAME,
+            'difficulty' => $difficulty,
+            'count' => $count,
+            'questions' => $filtered,
             'flash' => $this->getFlash(),
         ]);
     }

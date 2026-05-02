@@ -16,8 +16,10 @@ if (
     str_starts_with($currentUrl, 'student/coach') ||
     str_starts_with($currentUrl, 'student/chapitres') ||
     str_starts_with($currentUrl, 'student/questions-bank') ||
+    str_starts_with($currentUrl, 'student/training') ||
     str_starts_with($currentUrl, 'student/quiz-history') ||
     str_starts_with($currentUrl, 'teacher/quiz') ||
+    str_starts_with($currentUrl, 'teacher/quiz-stats') ||
     str_starts_with($currentUrl, 'teacher/add-quiz') ||
     str_starts_with($currentUrl, 'teacher/edit-quiz') ||
     str_starts_with($currentUrl, 'teacher/questions') ||

@@ -4,6 +4,13 @@
  */
 
 $studentSidebarActive = 'evenements';
+
+$favoriteQuizIds = isset($favoriteQuizIds) && is_array($favoriteQuizIds) ? $favoriteQuizIds : [];
+$redoQuizIds = isset($redoQuizIds) && is_array($redoQuizIds) ? $redoQuizIds : [];
+
+$rank = isset($rank) && is_array($rank) ? $rank : null;
+$rankProgress = isset($rankProgress) && is_array($rankProgress) ? $rankProgress : null;
+$rankSpark = isset($rankSpark) && is_array($rankSpark) ? $rankSpark : [];
 ?>
 
 <div class="dashboard student-events-page">
@@ -17,6 +24,69 @@ $studentSidebarActive = 'evenements';
                         <span class="student-events-hero-kicker">Student Space</span>
                         <h1>Upcoming Events</h1>
                         <p>Welcome <?= htmlspecialchars($userName ?? ($_SESSION['user_name'] ?? 'Student')) ?>, discover event details and resources.</p>
+
+                        <div style="margin-top: 12px; display:flex; gap:10px; flex-wrap: wrap;">
+                            <a class="student-events-header-chip" href="<?= APP_ENTRY ?>?url=student/quiz&filter=favorites" style="text-decoration:none;">
+                                Favoris quiz: <?= (int) count($favoriteQuizIds) ?>
+                            </a>
+                            <a class="student-events-header-chip" href="<?= APP_ENTRY ?>?url=student/quiz&filter=redo" style="text-decoration:none;">
+                                À refaire: <?= (int) count($redoQuizIds) ?>
+                            </a>
+                        </div>
+
+                        <?php if (!empty($rank)): ?>
+                            <?php
+                                $rp = is_array($rankProgress) ? $rankProgress : null;
+                                $rpPct = (int) ($rp['pct'] ?? 0);
+                                $rpToNext = (int) ($rp['to_next'] ?? 0);
+                                $rpNext = (string) ($rp['next_label'] ?? 'Next');
+                            ?>
+                            <div style="margin-top: 14px; padding: 12px; border-radius: 16px; background: linear-gradient(135deg, rgba(88, 202, 255, 0.10), rgba(170, 106, 255, 0.10)); border: 1px solid rgba(120, 190, 255, 0.22); display:flex; gap: 12px; align-items:center; flex-wrap: wrap;">
+                                <div style="width:42px;height:42px;border-radius:14px; background: rgba(11, 31, 58, 0.92); border: 1px solid rgba(120, 190, 255, 0.25); display:flex;align-items:center;justify-content:center;">
+                                    <i class="bi bi-trophy" style="color: rgba(170, 220, 255, 0.98); font-size: 1.1rem;"></i>
+                                </div>
+                                <div style="flex:1; min-width: 240px;">
+                                    <div style="font-weight:900; letter-spacing:.2px;">Quiz Rank</div>
+                                    <div style="margin-top:4px; font-weight:800; opacity:.95;">
+                                        <?= htmlspecialchars((string) ($rank['league'] ?? 'Bronze')) ?> <?= htmlspecialchars((string) ($rank['division'] ?? 'III')) ?>
+                                        <span style="opacity:.9;">· Rating</span>
+                                        <strong><?= (int) ($rank['rating'] ?? 1000) ?></strong>
+                                    </div>
+                                    <div style="margin-top:8px;">
+                                        <div style="display:flex; justify-content:space-between; font-size:.82rem; font-weight:900; opacity:.95;">
+                                            <span>Progression vers <?= htmlspecialchars($rpNext) ?></span>
+                                            <span><?= (int) $rpPct ?>%</span>
+                                        </div>
+                                        <div style="margin-top:6px; width: 100%; height: 10px; border-radius: 999px; overflow:hidden; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.14);">
+                                            <div style="height:100%; width: <?= max(0, min(100, $rpPct)) ?>%; background: linear-gradient(90deg, rgba(96,165,250,.95), rgba(167,139,250,.95));"></div>
+                                        </div>
+                                        <div style="margin-top:6px; font-size:.82rem; font-weight:800; opacity:.92;">
+                                            <?= $rpToNext > 0 ? '~' . (int) $rpToNext . ' points restants' : 'palier proche' ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <?php if (!empty($rankSpark) && count($rankSpark) >= 2): ?>
+                                    <?php
+                                        $pts = [];
+                                        $n = count($rankSpark);
+                                        $w = 140;
+                                        $h = 44;
+                                        for ($i = 0; $i < $n; $i++) {
+                                            $x = (int) round(($w - 2) * ($i / max(1, $n - 1))) + 1;
+                                            $y = (int) round(($h - 2) * (1 - (max(0, min(100, (int) $rankSpark[$i])) / 100))) + 1;
+                                            $pts[] = $x . ',' . $y;
+                                        }
+                                    ?>
+                                    <div style="text-align:right;">
+                                        <svg width="<?= (int) $w ?>" height="<?= (int) $h ?>" viewBox="0 0 <?= (int) $w ?> <?= (int) $h ?>" style="display:block;">
+                                            <polyline points="<?= htmlspecialchars(implode(' ', $pts)) ?>" fill="none" stroke="rgba(96,165,250,.95)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                                        </svg>
+                                        <div style="font-size:.78rem; opacity:.85; font-weight:800;">Dernières tentatives</div>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
                     <div class="student-events-hero-media" aria-hidden="true">

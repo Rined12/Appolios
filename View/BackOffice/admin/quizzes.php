@@ -1,5 +1,6 @@
 <?php
 $adminSidebarActive = 'quiz';
+$top = isset($quizTopStats) && is_array($quizTopStats) ? $quizTopStats : [];
 ?>
 <div class="dashboard">
     <div class="container admin-dashboard-container">
@@ -12,12 +13,39 @@ $adminSidebarActive = 'quiz';
                         <p>Gérez et suivez tous les quiz de la plateforme.</p>
                     </div>
                     <div class="pro-table-actions">
+                        <a href="<?= APP_ENTRY ?>?url=admin/quizStats" class="btn btn-stats-pro">
+                            <i class="bi bi-graph-up" aria-hidden="true"></i>
+                            Statistiques
+                            <span class="btn-stats-pro-badge">PRO</span>
+                        </a>
+                        <a href="<?= APP_ENTRY ?>?url=admin/quiz-history" class="btn btn-outline">
+                            <i class="bi bi-clock-history" aria-hidden="true"></i>
+                            Historique
+                        </a>
                         <a href="<?= APP_ENTRY ?>?url=admin/add-quiz" class="btn btn-primary">Nouveau quiz</a>
                     </div>
                 </div>
                 <?php if (!empty($flash)): ?>
                     <p class="flash flash-<?= htmlspecialchars($flash['type']) ?>"><?= htmlspecialchars($flash['message']) ?></p>
                 <?php endif; ?>
+                <div class="pro-stats-grid">
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Tentatives</div>
+                            <div class="pro-stat-icon"><i class="bi bi-lightning-charge"></i></div>
+                        </div>
+                        <div class="pro-stat-value"><?= (int) ($top['attempts_total'] ?? 0) ?></div>
+                        <div class="pro-stat-sub">Total (plateforme)</div>
+                    </div>
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Moyenne</div>
+                            <div class="pro-stat-icon"><i class="bi bi-bar-chart"></i></div>
+                        </div>
+                        <div class="pro-stat-value"><?= htmlspecialchars(number_format((float) ($top['avg_percentage'] ?? 0), 1)) ?>%</div>
+                        <div class="pro-stat-sub">Moyenne pondérée (toutes tentatives)</div>
+                    </div>
+                </div>
                 <div class="pro-table-card">
                     <div class="pro-table-toolbar">
                         <div class="pro-table-toolbar-left">

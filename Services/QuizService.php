@@ -35,6 +35,16 @@ class QuizService extends BaseService
         return $this->quizRepo->getAllForTeacher($teacherId);
     }
 
+    public function getQuizStatsForTeacher(int $teacherId): array
+    {
+        return $this->quizRepo->getQuizStatsForTeacher($teacherId);
+    }
+
+    public function getQuizAttemptSeriesMapForTeacher(int $teacherId, int $limitPerQuiz = 120): array
+    {
+        return $this->quizRepo->getQuizAttemptSeriesMapForTeacher($teacherId, $limitPerQuiz);
+    }
+
     public function getAllForAdmin(): array
     {
         return $this->quizRepo->getAllForAdmin();
@@ -118,6 +128,11 @@ class QuizService extends BaseService
         return $this->qbRepo->getAllForAdmin();
     }
 
+    public function getQuestionBankUsageStatsForAdmin(): array
+    {
+        return $this->qbRepo->getUsageStatsMapForAdmin();
+    }
+
     public function getQuestionBankReadable(): array
     {
         return $this->qbRepo->getAllReadable();
@@ -173,6 +188,16 @@ class QuizService extends BaseService
     public function recordAttempt(int $studentId, int $quizId, int $score, int $total, int $percentage): bool
     {
         return $this->attemptRepo->record($studentId, $quizId, $score, $total, $percentage);
+    }
+
+    public function recordAttemptAndGetId(int $studentId, int $quizId, int $score, int $total, int $percentage): ?int
+    {
+        return $this->attemptRepo->recordAndGetId($studentId, $quizId, $score, $total, $percentage);
+    }
+
+    public function findAttemptByIdWithDetails(int $attemptId): ?array
+    {
+        return $this->attemptRepo->findByIdWithDetails($attemptId);
     }
 
     public function getAttemptsByUser(int $studentId): array

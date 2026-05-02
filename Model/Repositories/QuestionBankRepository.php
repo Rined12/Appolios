@@ -7,6 +7,8 @@ require_once __DIR__ . '/BaseRepository.php';
 class QuestionBankRepository extends BaseRepository
 {
     private string $table = 'question_bank';
+    private string $quizQuestionBankTable = 'quiz_question_bank';
+    private string $quizAttemptsTable = 'quiz_attempts';
 
     public function getForTeacher(int $teacherId): array
     {
@@ -14,6 +16,68 @@ class QuestionBankRepository extends BaseRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$teacherId]);
         return $this->decodeOptionsRows($stmt->fetchAll());
+    }
+
+    public function getUsageStatsMapForTeacher(int $teacherId): array
+    {
+        $sql = "SELECT qb.id AS question_bank_id,
+                       COUNT(DISTINCT qqb.quiz_id) AS quizzes_count,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM {$this->table} qb
+                LEFT JOIN {$this->quizQuestionBankTable} qqb ON qqb.question_bank_id = qb.id
+                LEFT JOIN {$this->quizAttemptsTable} a ON a.quiz_id = qqb.quiz_id
+                WHERE qb.created_by = ?
+                GROUP BY qb.id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        $rows = $stmt->fetchAll();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['question_bank_id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $out[$id] = [
+                'quizzes' => (int) ($r['quizzes_count'] ?? 0),
+                'attempts' => (int) ($r['attempts_count'] ?? 0),
+                'avg' => (float) ($r['avg_percentage'] ?? 0),
+                'last_attempt_at' => isset($r['last_attempt_at']) ? (string) $r['last_attempt_at'] : null,
+            ];
+        }
+        return $out;
+    }
+
+    public function getUsageStatsMapForAdmin(): array
+    {
+        $sql = "SELECT qb.id AS question_bank_id,
+                       COUNT(DISTINCT qqb.quiz_id) AS quizzes_count,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM {$this->table} qb
+                LEFT JOIN {$this->quizQuestionBankTable} qqb ON qqb.question_bank_id = qb.id
+                LEFT JOIN {$this->quizAttemptsTable} a ON a.quiz_id = qqb.quiz_id
+                GROUP BY qb.id";
+        $stmt = $this->db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll() : [];
+
+        $out = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['question_bank_id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $out[$id] = [
+                'quizzes' => (int) ($r['quizzes_count'] ?? 0),
+                'attempts' => (int) ($r['attempts_count'] ?? 0),
+                'avg' => (float) ($r['avg_percentage'] ?? 0),
+                'last_attempt_at' => isset($r['last_attempt_at']) ? (string) $r['last_attempt_at'] : null,
+            ];
+        }
+        return $out;
     }
 
     public function getAllForAdmin(): array

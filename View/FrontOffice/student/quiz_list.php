@@ -78,6 +78,11 @@ ksort($courses, SORT_NUMERIC);
                                 <?php endif; ?>
                             </div>
                         <?php endif; ?>
+                        <a href="<?= APP_ENTRY ?>?url=student/coach&return=student/quiz" class="btn btn-coach-pro">
+                            <i class="bi bi-stars" aria-hidden="true"></i>
+                            Coach
+                            <span class="btn-coach-pro-badge">PRO</span>
+                        </a>
                         <a href="<?= APP_ENTRY ?>?url=student/quiz-history" class="btn btn-outline">Historique</a>
                         <a href="<?= APP_ENTRY ?>?url=student/chapitres" class="btn btn-outline">Chapitres</a>
                     </div>

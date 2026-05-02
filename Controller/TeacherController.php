@@ -9,8 +9,11 @@ require_once __DIR__ . '/../Model/User.php';
 require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
-require_once __DIR__ . '/../Model/Chapter.php';
-require_once __DIR__ . '/QuizQuestionValidation.php';
+require_once __DIR__ . '/BaseController.php';
+require_once __DIR__ . '/../Model/Repositories/QuizRepository.php';
+require_once __DIR__ . '/../Model/Repositories/QuestionBankRepository.php';
+require_once __DIR__ . '/../Model/Repositories/QuestionCollectionRepository.php';
+require_once __DIR__ . '/../Model/QuizServer.php';
 
 class TeacherController extends BaseController {
 
@@ -424,10 +427,118 @@ class TeacherController extends BaseController {
 
     public function quiz() {
         $this->requireTeacher();
-        $quizService = $this->service('QuizService');
+
+        $teacherId = (int) $_SESSION['user_id'];
+        $quizRepo = new QuizRepository();
+
+        $quizUsage = $quizRepo->getUsageStatsMapForTeacher($teacherId);
+
+        $quizTopStats = [
+            'quizzes_count' => 0,
+            'attempts_total' => 0,
+            'avg_percentage' => 0,
+            'last_attempt_at' => null,
+        ];
+        $wSum = 0.0;
+        $lastAttempt = null;
+        foreach ($quizUsage as $qid => $u) {
+            $att = (int) ($u['attempts'] ?? 0);
+            $avg = (float) ($u['avg'] ?? 0);
+            $quizTopStats['attempts_total'] += $att;
+            $wSum += ($avg * $att);
+            $la = isset($u['last_attempt_at']) ? (string) $u['last_attempt_at'] : '';
+            if ($la !== '' && ($lastAttempt === null || $la > $lastAttempt)) {
+                $lastAttempt = $la;
+            }
+        }
+        if ($quizTopStats['attempts_total'] > 0) {
+            $quizTopStats['avg_percentage'] = round($wSum / (float) $quizTopStats['attempts_total'], 1);
+        }
+        $quizTopStats['last_attempt_at'] = $lastAttempt;
+
+        $sql = "SELECT q.*, ch.id AS chapter_id, ch.title AS chapter_title,
+                       c.id AS course_id, c.title AS course_title
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                WHERE c.created_by = ?
+                ORDER BY q.created_at DESC";
+        $stmt = $quizRepo->getDb()->prepare($sql);
+        $stmt->execute([$teacherId]);
+        $quizRows = $stmt->fetchAll();
+
+        $quizTopStats['quizzes_count'] = is_array($quizRows) ? count($quizRows) : 0;
+
+        $quizzes = [];
+        foreach ($quizRows as $q) {
+            $courseId = (int) ($q['course_id'] ?? 0);
+            $chapterId = (int) ($q['chapter_id'] ?? 0);
+            $quizzes[] = new QuizServer(
+                isset($q['id']) ? (int) $q['id'] : null,
+                $courseId,
+                (string) ($q['course_title'] ?? ''),
+                $chapterId,
+                (string) ($q['chapter_title'] ?? ''),
+                (string) ($q['title'] ?? ''),
+                (string) ($q['difficulty'] ?? 'beginner'),
+                isset($q['tags']) ? (string) $q['tags'] : null,
+                isset($q['status']) ? (string) $q['status'] : null,
+                isset($q['created_at']) ? (string) $q['created_at'] : null
+            );
+        }
+
         $this->view('FrontOffice/teacher/quizzes', [
             'title' => 'Quiz - ' . APP_NAME,
-            'quizzes' => $quizService->getAllForTeacher((int) $_SESSION['user_id']),
+            'quizzes' => $quizzes,
+            'quizUsage' => $quizUsage,
+            'quizTopStats' => $quizTopStats,
+            'flash' => $this->getFlash(),
+        ]);
+    }
+
+    public function quizStats() {
+        $this->requireTeacher();
+
+        $teacherId = (int) $_SESSION['user_id'];
+        $quizService = $this->service('QuizService');
+
+        $rows = $quizService->getQuizStatsForTeacher($teacherId);
+        $series = $quizService->getQuizAttemptSeriesMapForTeacher($teacherId, 120);
+
+        $totalQuizzes = is_array($rows) ? count($rows) : 0;
+        $totalAttempts = 0;
+        $wSum = 0.0;
+        $playedQuizzes = 0;
+
+        foreach ($rows as $r) {
+            $att = (int) ($r['attempts_count'] ?? 0);
+            $avg = (float) ($r['avg_percentage'] ?? 0);
+            $totalAttempts += $att;
+            $wSum += ($avg * $att);
+            if ($att > 0) {
+                $playedQuizzes++;
+            }
+        }
+
+        $overallAvg = $totalAttempts > 0 ? round($wSum / (float) $totalAttempts, 1) : 0.0;
+        $coveragePct = $totalQuizzes > 0 ? min(100, max(0, ($playedQuizzes / $totalQuizzes) * 100)) : 0;
+        $attemptsPerQuiz = $totalQuizzes > 0 ? ($totalAttempts / $totalQuizzes) : 0;
+        $engagementPct = 100 * (1 - exp(-($attemptsPerQuiz / 3)));
+        if ($engagementPct < 0) $engagementPct = 0;
+        if ($engagementPct > 100) $engagementPct = 100;
+
+        $this->view('FrontOffice/teacher/quiz_stats', [
+            'title' => 'Statistiques quiz - ' . APP_NAME,
+            'rows' => $rows,
+            'series' => $series,
+            'kpis' => [
+                'total_quizzes' => $totalQuizzes,
+                'total_attempts' => $totalAttempts,
+                'overall_avg' => $overallAvg,
+                'coverage_pct' => round((float) $coveragePct, 1),
+                'engagement_pct' => round((float) $engagementPct, 1),
+                'attempts_per_quiz' => round((float) $attemptsPerQuiz, 2),
+            ],
             'flash' => $this->getFlash(),
         ]);
     }
@@ -437,13 +548,13 @@ class TeacherController extends BaseController {
 
         $chapterModel = $this->model('Chapter');
         $chapters = $chapterModel->getAllForTeacher((int) $_SESSION['user_id']);
-        $quizService = $this->service('QuizService');
+        $qbRepo = new QuestionBankRepository();
 
         $this->view('FrontOffice/teacher/quiz_form', [
             'title' => 'Nouveau quiz - ' . APP_NAME,
             'quiz' => null,
             'chapters' => $chapters,
-            'questionBank' => $quizService->getQuestionBankForTeacher((int) $_SESSION['user_id']),
+            'questionBank' => $qbRepo->getForTeacher((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -464,9 +575,10 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
+        $quizRepo = new QuizRepository();
+        $qbRepo = new QuestionBankRepository();
 
-        $meta = QuizQuestionValidation::validateQuizMeta($_POST);
+        $meta = $this->validateQuizMetaFromPost($_POST);
         if (!empty($meta['errors'])) {
             $this->setFlash('error', $meta['errors'][0]);
             $this->redirect('teacher/add-quiz');
@@ -474,8 +586,8 @@ class TeacherController extends BaseController {
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
-        $questions = $quizService->appendBankQuestions(
-            $quizService->normalizeQuestionsFromPost($_POST),
+        $questions = $qbRepo->appendIdsToQuizQuestions(
+            QuizRepository::normalizeQuestionsFromPost($_POST),
             $bankIds,
             (int) $_SESSION['user_id']
         );
@@ -486,24 +598,23 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $qErr = QuizQuestionValidation::validateNormalizedQuestions($questions);
+        $qErr = $this->validateNormalizedQuizQuestions($questions);
         if (!empty($qErr)) {
             $this->setFlash('error', $qErr[0]);
             $this->redirect('teacher/add-quiz');
             return;
         }
 
-        $createdId = $quizService->createTeacherQuiz(
-            (int) $_SESSION['user_id'],
-            $chapterId,
-            [
-                'title' => $this->sanitize($meta['title']),
-                'difficulty' => $meta['difficulty'],
-                'tags' => $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
-                'time_limit_sec' => $meta['time_limit_sec'],
-            ],
-            $questions
-        );
+        $createdId = $quizRepo->create([
+            'chapter_id' => $chapterId,
+            'title' => $this->sanitize($meta['title']),
+            'difficulty' => $meta['difficulty'],
+            'tags' => $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
+            'time_limit_sec' => $meta['time_limit_sec'],
+            'questions' => $questions,
+            'created_by' => (int) $_SESSION['user_id'],
+            'status' => 'pending',
+        ]);
 
         if ($createdId === false) {
             $this->setFlash('error', 'Impossible d’enregistrer le quiz (vérifiez la base de données).');
@@ -518,8 +629,9 @@ class TeacherController extends BaseController {
     public function editQuiz($id) {
         $this->requireTeacher();
 
-        $quizService = $this->service('QuizService');
-        $quiz = $quizService->findWithChapterCourse((int) $id);
+        $quizRepo = new QuizRepository();
+        $qbRepo = new QuestionBankRepository();
+        $quiz = $quizRepo->findWithChapterCourse((int) $id);
         if (!$quiz || (int) ($quiz['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
@@ -533,7 +645,7 @@ class TeacherController extends BaseController {
             'title' => 'Modifier le quiz - ' . APP_NAME,
             'quiz' => $quiz,
             'chapters' => $chapters,
-            'questionBank' => $quizService->getQuestionBankForTeacher((int) $_SESSION['user_id']),
+            'questionBank' => $qbRepo->getForTeacher((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -545,8 +657,9 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
-        $existing = $quizService->findWithChapterCourse((int) $id);
+        $quizRepo = new QuizRepository();
+        $qbRepo = new QuestionBankRepository();
+        $existing = $quizRepo->findWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
@@ -562,7 +675,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $meta = QuizQuestionValidation::validateQuizMeta($_POST);
+        $meta = $this->validateQuizMetaFromPost($_POST);
         if (!empty($meta['errors'])) {
             $this->setFlash('error', $meta['errors'][0]);
             $this->redirect('teacher/edit-quiz/' . (int) $id);
@@ -570,8 +683,8 @@ class TeacherController extends BaseController {
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
-        $questions = $quizService->appendBankQuestions(
-            $quizService->normalizeQuestionsFromPost($_POST),
+        $questions = $qbRepo->appendIdsToQuizQuestions(
+            QuizRepository::normalizeQuestionsFromPost($_POST),
             $bankIds,
             (int) $_SESSION['user_id']
         );
@@ -582,14 +695,14 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $qErr = QuizQuestionValidation::validateNormalizedQuestions($questions);
+        $qErr = $this->validateNormalizedQuizQuestions($questions);
         if (!empty($qErr)) {
             $this->setFlash('error', $qErr[0]);
             $this->redirect('teacher/edit-quiz/' . (int) $id);
             return;
         }
 
-        $updated = $quizService->updateQuiz((int) $id, [
+        $updated = $quizRepo->update((int) $id, [
             'chapter_id' => $chapterId,
             'title' => $this->sanitize($meta['title']),
             'difficulty' => $meta['difficulty'],
@@ -610,26 +723,145 @@ class TeacherController extends BaseController {
 
     public function deleteQuiz($id) {
         $this->requireTeacher();
-        $quizService = $this->service('QuizService');
-        $existing = $quizService->findWithChapterCourse((int) $id);
+        $quizRepo = new QuizRepository();
+        $existing = $quizRepo->findWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
             return;
         }
-        $quizService->deleteQuiz((int) $id);
+        $quizRepo->delete((int) $id);
         $this->setFlash('success', 'Quiz supprimé.');
         $this->redirect('teacher/quiz');
     }
 
+    public function duplicateQuiz($id) {
+        $this->requireTeacher();
+        $quizRepo = new QuizRepository();
+        $existing = $quizRepo->findWithChapterCourse((int) $id);
+        if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
+            $this->setFlash('error', 'Quiz introuvable.');
+            $this->redirect('teacher/quiz');
+            return;
+        }
+
+        $newId = $quizRepo->duplicateForTeacher((int) $id, (int) $_SESSION['user_id']);
+        if ($newId === false) {
+            $this->setFlash('error', 'Impossible de dupliquer ce quiz.');
+            $this->redirect('teacher/quiz');
+            return;
+        }
+
+        $this->setFlash('success', 'Quiz dupliqué.');
+        $this->redirect('teacher/edit-quiz/' . (int) $newId);
+    }
+
     public function questions() {
         $this->requireTeacher();
-        $quizService = $this->service('QuizService');
+        $qbRepo = new QuestionBankRepository();
+        $colRepo = new QuestionCollectionRepository();
+        $teacherId = (int) $_SESSION['user_id'];
+
+        $collections = $colRepo->getForTeacher($teacherId);
+        $selectedCollectionId = isset($_GET['collection_id']) ? (int) $_GET['collection_id'] : 0;
+        $selectedIds = $selectedCollectionId > 0 ? $colRepo->getQuestionIdsForCollection($selectedCollectionId, $teacherId) : [];
+        $selectedMap = [];
+        foreach ($selectedIds as $id) {
+            $selectedMap[(int) $id] = true;
+        }
+
+        $questions = $qbRepo->getForTeacher($teacherId);
+        $questionUsage = $qbRepo->getUsageStatsMapForTeacher($teacherId);
+
+        $qbTopStats = [
+            'questions_total' => count($questions),
+            'used_questions' => 0,
+            'attempts_total' => 0,
+            'avg_percentage' => 0,
+        ];
+        $wSum = 0.0;
+        foreach ($questionUsage as $id => $u) {
+            $qz = (int) ($u['quizzes'] ?? 0);
+            $att = (int) ($u['attempts'] ?? 0);
+            $avg = (float) ($u['avg'] ?? 0);
+            if ($qz > 0) {
+                $qbTopStats['used_questions']++;
+            }
+            $qbTopStats['attempts_total'] += $att;
+            $wSum += ($avg * $att);
+        }
+        if ($qbTopStats['attempts_total'] > 0) {
+            $qbTopStats['avg_percentage'] = round($wSum / (float) $qbTopStats['attempts_total'], 1);
+        }
+
         $this->view('FrontOffice/teacher/questions_bank', [
             'title' => 'Banque de questions - ' . APP_NAME,
-            'questions' => $quizService->getQuestionBankForTeacher((int) $_SESSION['user_id']),
+            'questions' => $questions,
+            'questionUsage' => $questionUsage,
+            'qbTopStats' => $qbTopStats,
+            'collections' => $collections,
+            'selectedCollectionId' => $selectedCollectionId,
+            'collectionSelectedMap' => $selectedMap,
             'flash' => $this->getFlash(),
         ]);
+    }
+
+    public function createQuestionCollection() {
+        $this->requireTeacher();
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('teacher/questions');
+            return;
+        }
+        $title = $this->sanitize($_POST['title'] ?? '');
+        if ($title === '') {
+            $this->setFlash('error', 'Titre requis.');
+            $this->redirect('teacher/questions');
+            return;
+        }
+        $colRepo = new QuestionCollectionRepository();
+        $id = $colRepo->create((int) $_SESSION['user_id'], $title);
+        if ($id === false) {
+            $this->setFlash('error', 'Impossible de créer le pack.');
+        } else {
+            $this->setFlash('success', 'Pack créé.');
+        }
+        $this->redirect('teacher/questions');
+    }
+
+    public function deleteQuestionCollection($id) {
+        $this->requireTeacher();
+        $colRepo = new QuestionCollectionRepository();
+        $ok = $colRepo->deleteOwned((int) $id, (int) $_SESSION['user_id']);
+        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Pack supprimé.' : 'Impossible de supprimer.');
+        $this->redirect('teacher/questions');
+    }
+
+    public function addQuestionToCollection($collectionId, $questionId) {
+        $this->requireTeacher();
+        $cid = (int) $collectionId;
+        $qid = (int) $questionId;
+        $colRepo = new QuestionCollectionRepository();
+        $ok = $colRepo->addQuestion($cid, $qid, (int) $_SESSION['user_id']);
+        if ($ok) {
+            $this->setFlash('success', 'Question ajoutée au pack.');
+        } else {
+            $this->setFlash('error', 'Impossible d\'ajouter au pack.');
+        }
+        $this->redirect('teacher/questions?collection_id=' . $cid);
+    }
+
+    public function removeQuestionFromCollection($collectionId, $questionId) {
+        $this->requireTeacher();
+        $cid = (int) $collectionId;
+        $qid = (int) $questionId;
+        $colRepo = new QuestionCollectionRepository();
+        $ok = $colRepo->removeQuestion($cid, $qid, (int) $_SESSION['user_id']);
+        if ($ok) {
+            $this->setFlash('success', 'Question retirée du pack.');
+        } else {
+            $this->setFlash('error', 'Impossible de retirer du pack.');
+        }
+        $this->redirect('teacher/questions?collection_id=' . $cid);
     }
 
     public function addQuestion() {
@@ -654,17 +886,17 @@ class TeacherController extends BaseController {
         $opts = is_array($optionsRaw) ? array_values(array_filter(array_map([$this, 'sanitize'], $optionsRaw))) : [];
         $correct = (int) ($_POST['correct_answer'] ?? 0);
         $tags = $this->sanitize($_POST['tags'] ?? '');
-        $difficulty = QuizQuestionValidation::normalizeDifficulty($_POST['difficulty'] ?? 'beginner');
+        $difficulty = $this->normalizeDifficulty($_POST['difficulty'] ?? 'beginner');
 
-        $errs = QuizQuestionValidation::validateQuestionBankFields($title, $questionText, $opts, $correct, $tags);
+        $errs = $this->validateQuestionBankFields($title, $questionText, $opts, $correct, $tags);
         if (!empty($errs)) {
             $this->setFlash('error', $errs[0]);
             $this->redirect('teacher/add-question');
             return;
         }
 
-        $quizService = $this->service('QuizService');
-        $quizService->createQuestion([
+        $qbRepo = new QuestionBankRepository();
+        $qbRepo->create([
             'title' => $title !== '' ? $title : null,
             'question_text' => $questionText,
             'options' => $opts,
@@ -680,8 +912,8 @@ class TeacherController extends BaseController {
 
     public function editQuestion($id) {
         $this->requireTeacher();
-        $quizService = $this->service('QuizService');
-        $row = $quizService->findQuestionOwned((int) $id, (int) $_SESSION['user_id']);
+        $qbRepo = new QuestionBankRepository();
+        $row = $qbRepo->findOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$row) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
@@ -701,8 +933,8 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
-        $existing = $quizService->findQuestionOwned((int) $id, (int) $_SESSION['user_id']);
+        $qbRepo = new QuestionBankRepository();
+        $existing = $qbRepo->findOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
@@ -715,16 +947,17 @@ class TeacherController extends BaseController {
         $opts = is_array($optionsRaw) ? array_values(array_filter(array_map([$this, 'sanitize'], $optionsRaw))) : [];
         $correct = (int) ($_POST['correct_answer'] ?? 0);
         $tags = $this->sanitize($_POST['tags'] ?? '');
-        $difficulty = QuizQuestionValidation::normalizeDifficulty($_POST['difficulty'] ?? 'beginner');
+        $difficulty = $this->normalizeDifficulty($_POST['difficulty'] ?? 'beginner');
 
-        $errs = QuizQuestionValidation::validateQuestionBankFields($title, $questionText, $opts, $correct, $tags);
+        $errs = $this->validateQuestionBankFields($title, $questionText, $opts, $correct, $tags);
         if (!empty($errs)) {
             $this->setFlash('error', $errs[0]);
             $this->redirect('teacher/edit-question/' . (int) $id);
             return;
         }
 
-        $quizService->updateQuestion((int) $id, [
+
+        $qbRepo->update((int) $id, [
             'title' => $title !== '' ? $title : null,
             'question_text' => $questionText,
             'options' => $opts,
@@ -739,14 +972,14 @@ class TeacherController extends BaseController {
 
     public function deleteQuestion($id) {
         $this->requireTeacher();
-        $quizService = $this->service('QuizService');
-        $existing = $quizService->findQuestionOwned((int) $id, (int) $_SESSION['user_id']);
+        $qbRepo = new QuestionBankRepository();
+        $existing = $qbRepo->findOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
             return;
         }
-        $quizService->deleteQuestion((int) $id);
+        $qbRepo->delete((int) $id);
         $this->setFlash('success', 'Question supprimée.');
         $this->redirect('teacher/questions');
     }
@@ -761,6 +994,131 @@ class TeacherController extends BaseController {
             return null;
         }
         return $course;
+    }
+
+    private function normalizeDifficulty($difficulty): string
+    {
+        $d = strtolower(trim((string) $difficulty));
+        if ($d === 'beginner' || $d === 'intermediate' || $d === 'advanced') {
+            return $d;
+        }
+        return 'beginner';
+    }
+
+    private function validateQuizMetaFromPost(array $post): array
+    {
+        $errors = [];
+
+        $title = $this->sanitize($post['title'] ?? '');
+        if ($title === '' || mb_strlen($title) < 3) {
+            $errors[] = 'Titre invalide.';
+        }
+
+        $difficulty = $this->normalizeDifficulty($post['difficulty'] ?? 'beginner');
+
+        $tagsRaw = $post['tags'] ?? null;
+        $tags = null;
+        if ($tagsRaw !== null && $tagsRaw !== '') {
+            $tagsSan = $this->sanitize((string) $tagsRaw);
+            $tags = $tagsSan !== '' ? $tagsSan : null;
+        }
+
+        $timeLimitSecRaw = $post['time_limit_sec'] ?? null;
+        $timeLimitSec = null;
+        if ($timeLimitSecRaw !== null && $timeLimitSecRaw !== '') {
+            $timeLimitSec = (int) $timeLimitSecRaw;
+            if ($timeLimitSec < 0) {
+                $errors[] = 'Temps limite invalide.';
+            }
+        }
+
+        return [
+            'errors' => $errors,
+            'title' => $title,
+            'difficulty' => $difficulty,
+            'tags' => $tags,
+            'time_limit_sec' => $timeLimitSec,
+        ];
+    }
+
+    private function validateNormalizedQuizQuestions(array $questions): array
+    {
+        $errors = [];
+
+        if (count($questions) < 1) {
+            $errors[] = 'Au moins une question requise.';
+            return $errors;
+        }
+
+        foreach ($questions as $idx => $q) {
+            if (!is_array($q)) {
+                $errors[] = 'Format de question invalide.';
+                return $errors;
+            }
+
+            $text = isset($q['question_text']) ? trim((string) $q['question_text']) : '';
+            if ($text === '') {
+                $errors[] = 'Question vide.';
+                return $errors;
+            }
+
+            $opts = $q['options'] ?? [];
+            if (!is_array($opts) || count($opts) < 2) {
+                $errors[] = 'Options invalides.';
+                return $errors;
+            }
+
+            $correct = isset($q['correct_answer']) ? (int) $q['correct_answer'] : -1;
+            if ($correct < 0 || $correct >= count($opts)) {
+                $errors[] = 'Réponse correcte invalide.';
+                return $errors;
+            }
+
+            if (isset($q['difficulty'])) {
+                $this->normalizeDifficulty($q['difficulty']);
+            }
+
+            if (isset($q['type']) && !in_array((string) $q['type'], ['mcq', 'true_false'], true)) {
+                $errors[] = 'Type de question invalide.';
+                return $errors;
+            }
+        }
+
+        return $errors;
+    }
+
+    private function validateQuestionBankFields(string $title, string $questionText, array $opts, int $correct, string $tags): array
+    {
+        $errors = [];
+
+        if (trim($questionText) === '') {
+            $errors[] = 'Texte de question requis.';
+        }
+
+        if (!is_array($opts) || count($opts) < 2) {
+            $errors[] = 'Ajoutez au moins deux options.';
+        }
+
+        if ($correct < 0 || $correct >= count($opts)) {
+            $errors[] = 'Choisissez une réponse correcte valide.';
+        }
+
+        foreach ($opts as $o) {
+            if (trim((string) $o) === '') {
+                $errors[] = 'Option vide.';
+                break;
+            }
+        }
+
+        if ($title !== '' && mb_strlen($title) > 255) {
+            $errors[] = 'Titre trop long.';
+        }
+
+        if ($tags !== '' && mb_strlen($tags) > 255) {
+            $errors[] = 'Tags trop longs.';
+        }
+
+        return $errors;
     }
 
     /**

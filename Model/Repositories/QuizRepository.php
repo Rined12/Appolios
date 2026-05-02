@@ -25,6 +25,95 @@ class QuizRepository extends BaseRepository
         }
     }
 
+    public function duplicateForTeacher(int $quizId, int $teacherId)
+    {
+        $quizId = (int) $quizId;
+        $teacherId = (int) $teacherId;
+        if ($quizId <= 0 || $teacherId <= 0) {
+            return false;
+        }
+
+        $sql = "SELECT q.*
+                FROM {$this->table} q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                WHERE q.id = ? AND c.created_by = ?
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$quizId, $teacherId]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return false;
+        }
+
+        $inTx = false;
+        try {
+            $this->db->beginTransaction();
+            $inTx = true;
+
+            $title = (string) ($row['title'] ?? 'Quiz');
+            $newTitle = trim($title) !== '' ? ($title . ' (Copie)') : 'Quiz (Copie)';
+            $chapterId = (int) ($row['chapter_id'] ?? 0);
+            $difficulty = (string) ($row['difficulty'] ?? 'beginner');
+            $tags = $row['tags'] ?? null;
+            $timeLimit = isset($row['time_limit_sec']) ? (int) $row['time_limit_sec'] : null;
+            $questionsJson = (string) ($row['questions_json'] ?? '[]');
+
+            $ins = $this->db->prepare(
+                "INSERT INTO {$this->table}
+                    (chapter_id, title, difficulty, tags, time_limit_sec, questions_json, created_by, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            $ok = $ins->execute([
+                $chapterId,
+                $newTitle,
+                $difficulty,
+                $tags,
+                $timeLimit,
+                $questionsJson,
+                $teacherId,
+                'pending',
+            ]);
+
+            if (!$ok) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $newId = (int) $this->db->lastInsertId();
+            if ($newId <= 0) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            if ($this->linkTableExists()) {
+                $links = $this->db->prepare("SELECT question_bank_id, sort_order FROM {$this->linkTable} WHERE quiz_id = ? ORDER BY sort_order ASC, id ASC");
+                $links->execute([$quizId]);
+                $rows = $links->fetchAll();
+
+                if (!empty($rows)) {
+                    $insLink = $this->db->prepare("INSERT INTO {$this->linkTable} (quiz_id, question_bank_id, sort_order) VALUES (?, ?, ?)");
+                    foreach ($rows as $lr) {
+                        $bid = (int) ($lr['question_bank_id'] ?? 0);
+                        $so = (int) ($lr['sort_order'] ?? 0);
+                        if ($bid <= 0) {
+                            continue;
+                        }
+                        $insLink->execute([$newId, $bid, $so]);
+                    }
+                }
+            }
+
+            $this->db->commit();
+            return $newId;
+        } catch (Throwable $e) {
+            if ($inTx) {
+                try { $this->db->rollBack(); } catch (Throwable $e2) {}
+            }
+            return false;
+        }
+    }
+
     private function ensureLinkTable(): void
     {
         $sql = "CREATE TABLE IF NOT EXISTS {$this->linkTable} (
@@ -102,6 +191,87 @@ class QuizRepository extends BaseRepository
                 $item['question_bank_id'] = $bankId;
             }
             $out[] = $item;
+        }
+        return $out;
+    }
+
+    public function getQuizStatsForTeacher(int $teacherId): array
+    {
+        $sql = "SELECT q.id, q.title, q.difficulty, q.status, q.created_at,
+                       ch.title AS chapter_title, c.title AS course_title,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       COALESCE(MAX(a.percentage), 0) AS best_percentage,
+                       COALESCE(MAX(a.score), 0) AS best_score,
+                       COALESCE(MAX(a.total), 0) AS best_total,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM {$this->table} q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                LEFT JOIN {$this->attemptsTable} a ON a.quiz_id = q.id
+                WHERE c.created_by = ?
+                GROUP BY q.id
+                ORDER BY attempts_count DESC, q.created_at DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        return $stmt->fetchAll();
+    }
+
+    public function getQuizAttemptSeriesMapForTeacher(int $teacherId, int $limitPerQuiz = 120): array
+    {
+        $limitPerQuiz = max(10, min(300, $limitPerQuiz));
+        $sql = "SELECT a.quiz_id, a.submitted_at, a.percentage, a.score, a.total
+                FROM {$this->attemptsTable} a
+                JOIN {$this->table} q ON q.id = a.quiz_id
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                JOIN (
+                    SELECT a2.quiz_id, a2.submitted_at, a2.id,
+                           ROW_NUMBER() OVER (PARTITION BY a2.quiz_id ORDER BY a2.submitted_at ASC) AS rn
+                    FROM {$this->attemptsTable} a2
+                ) x ON x.id = a.id
+                WHERE c.created_by = ? AND x.rn <= {$limitPerQuiz}
+                ORDER BY a.quiz_id ASC, a.submitted_at ASC";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([(int) $teacherId]);
+            $rows = $stmt->fetchAll();
+        } catch (Throwable $e) {
+            $rows = [];
+            $quizIdsStmt = $this->db->prepare(
+                "SELECT DISTINCT q.id
+                 FROM {$this->table} q
+                 JOIN chapters ch ON ch.id = q.chapter_id
+                 JOIN courses c ON c.id = ch.course_id
+                 WHERE c.created_by = ?"
+            );
+            $quizIdsStmt->execute([(int) $teacherId]);
+            $quizIds = $quizIdsStmt->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($quizIds as $qid) {
+                $ser = $this->getQuizAttemptSeriesForAdmin((int) $qid, $limitPerQuiz);
+                foreach ($ser as $r) {
+                    $r['quiz_id'] = (int) $qid;
+                    $rows[] = $r;
+                }
+            }
+        }
+
+        $out = [];
+        foreach ($rows as $r) {
+            $qid = (int) ($r['quiz_id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            if (!isset($out[$qid])) {
+                $out[$qid] = [];
+            }
+            $out[$qid][] = [
+                't' => (string) ($r['submitted_at'] ?? ''),
+                'p' => (float) ($r['percentage'] ?? 0),
+                's' => (int) ($r['score'] ?? 0),
+                'tot' => (int) ($r['total'] ?? 0),
+            ];
         }
         return $out;
     }
@@ -185,6 +355,22 @@ class QuizRepository extends BaseRepository
         return $row;
     }
 
+    public function getApprovedCandidatesForCourse(int $courseId, int $excludeQuizId = 0, int $limit = 30): array
+    {
+        $limit = max(3, min(200, $limit));
+        $sql = "SELECT q.id, q.title, q.difficulty, q.chapter_id, ch.title AS chapter_title, q.created_at
+                FROM {$this->table} q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                WHERE ch.course_id = ?
+                  AND (q.status IS NULL OR q.status = 'approved')
+                  AND (? = 0 OR q.id <> ?)
+                ORDER BY q.created_at DESC
+                LIMIT {$limit}";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([(int) $courseId, (int) $excludeQuizId, (int) $excludeQuizId]);
+        return $stmt->fetchAll();
+    }
+
     public function getAllForTeacher(int $teacherId): array
     {
         $sql = "SELECT q.*, ch.title AS chapter_title, ch.id AS chapter_id, c.title AS course_title, c.id AS course_id
@@ -196,6 +382,37 @@ class QuizRepository extends BaseRepository
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$teacherId]);
         return $this->hydrateQuestionsList($stmt->fetchAll());
+    }
+
+    public function getUsageStatsMapForTeacher(int $teacherId): array
+    {
+        $sql = "SELECT q.id AS quiz_id,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM {$this->table} q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                LEFT JOIN {$this->attemptsTable} a ON a.quiz_id = q.id
+                WHERE c.created_by = ?
+                GROUP BY q.id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        $rows = $stmt->fetchAll();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['quiz_id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $out[$id] = [
+                'attempts' => (int) ($r['attempts_count'] ?? 0),
+                'avg' => (float) ($r['avg_percentage'] ?? 0),
+                'last_attempt_at' => isset($r['last_attempt_at']) ? (string) $r['last_attempt_at'] : null,
+            ];
+        }
+        return $out;
     }
 
     public function getAllForAdmin(): array

@@ -1,5 +1,8 @@
 <?php
 $teacherSidebarActive = 'quiz';
+require_once __DIR__ . '/../../../Model/QuizServer.php';
+$usage = isset($quizUsage) && is_array($quizUsage) ? $quizUsage : [];
+$top = isset($quizTopStats) && is_array($quizTopStats) ? $quizTopStats : [];
 ?>
 <div class="dashboard">
     <div class="container admin-dashboard-container">
@@ -12,12 +15,35 @@ $teacherSidebarActive = 'quiz';
                         <p>Créez et gérez vos quiz.</p>
                     </div>
                     <div class="pro-table-actions">
+                        <a href="<?= APP_ENTRY ?>?url=teacher/quiz-stats" class="btn btn-stats-pro">
+                            <i class="bi bi-graph-up" aria-hidden="true"></i>
+                            Statistiques
+                            <span class="btn-stats-pro-badge">PRO</span>
+                        </a>
                         <a href="<?= APP_ENTRY ?>?url=teacher/add-quiz" class="btn btn-primary">Nouveau quiz</a>
                     </div>
                 </div>
                 <?php if (!empty($flash)): ?>
                     <p class="flash flash-<?= htmlspecialchars($flash['type']) ?>"><?= htmlspecialchars($flash['message']) ?></p>
                 <?php endif; ?>
+                <div class="pro-stats-grid">
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Tentatives</div>
+                            <div class="pro-stat-icon"><i class="bi bi-lightning-charge"></i></div>
+                        </div>
+                        <div class="pro-stat-value"><?= (int) ($top['attempts_total'] ?? 0) ?></div>
+                        <div class="pro-stat-sub">Total sur tous vos quiz</div>
+                    </div>
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Moyenne</div>
+                            <div class="pro-stat-icon"><i class="bi bi-bar-chart"></i></div>
+                        </div>
+                        <div class="pro-stat-value"><?= htmlspecialchars(number_format((float) ($top['avg_percentage'] ?? 0), 1)) ?>%</div>
+                        <div class="pro-stat-sub">Moyenne pondérée (toutes tentatives)</div>
+                    </div>
+                </div>
                 <div class="pro-table-card">
                     <div class="pro-table-toolbar">
                         <div class="pro-table-toolbar-left">
@@ -25,11 +51,18 @@ $teacherSidebarActive = 'quiz';
                                 <i class="bi bi-search"></i>
                                 <input id="teacherQuizSearch" type="text" placeholder="Rechercher un quiz..." autocomplete="off">
                             </div>
+                            <input id="teacherQuizTags" type="text" class="pro-select" placeholder="Tags (ex: sql, uml)" style="min-width: 200px;">
                             <select id="teacherQuizDifficulty" class="pro-select" aria-label="Filtrer par niveau">
                                 <option value="">Tous les niveaux</option>
                                 <option value="beginner">Beginner</option>
                                 <option value="intermediate">Intermediate</option>
                                 <option value="advanced">Advanced</option>
+                            </select>
+                            <select id="teacherQuizStatus" class="pro-select" aria-label="Filtrer par statut">
+                                <option value="">Tous les statuts</option>
+                                <option value="approved">Approuvé</option>
+                                <option value="pending">En attente</option>
+                                <option value="rejected">Rejeté</option>
                             </select>
                             <select id="teacherQuizSort" class="pro-select" aria-label="Trier">
                                 <option value="title">Trier : Titre</option>
@@ -50,39 +83,68 @@ $teacherSidebarActive = 'quiz';
                                     <th>Cours</th>
                                     <th>Chapitre</th>
                                     <th>Difficulté</th>
+                                    <th>Analytics</th>
                                     <th style="width:1%;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (!empty($quizzes)): foreach ($quizzes as $q): ?>
                                     <?php
-                                        $diff = (string) ($q['difficulty'] ?? 'beginner');
+                                        $diff = $q instanceof QuizServer ? (string) $q->getDifficulty() : (string) (($q['difficulty'] ?? 'beginner'));
                                         $diffClass = 'pro-badge';
                                         if ($diff === 'beginner') { $diffClass .= ' pro-badge--beginner'; }
                                         elseif ($diff === 'intermediate') { $diffClass .= ' pro-badge--intermediate'; }
                                         elseif ($diff === 'advanced') { $diffClass .= ' pro-badge--advanced'; }
+
+                                        $qid = $q instanceof QuizServer ? (int) ($q->getId() ?? 0) : (int) ($q['id'] ?? 0);
+                                        $titleTxt = $q instanceof QuizServer ? (string) $q->getTitle() : (string) ($q['title'] ?? '');
+                                        $courseTitle = $q instanceof QuizServer ? (string) $q->getCourseTitle() : (string) ($q['course_title'] ?? '');
+                                        $chapterTitle = $q instanceof QuizServer ? (string) $q->getChapterTitle() : (string) ($q['chapter_title'] ?? '');
+                                        $tagsTxt = $q instanceof QuizServer ? (string) ($q->getTags() ?? '') : (string) ($q['tags'] ?? '');
+                                        $statusTxt = $q instanceof QuizServer ? (string) ($q->getStatus() ?? '') : (string) ($q['status'] ?? '');
+
+                                        $u = $usage[(int) $qid] ?? null;
+                                        $att = is_array($u) ? (int) ($u['attempts'] ?? 0) : 0;
+                                        $avg = is_array($u) ? (float) ($u['avg'] ?? 0) : 0;
+                                        $last = is_array($u) ? (string) ($u['last_attempt_at'] ?? '') : '';
+                                        $anaBadge = 'pro-badge';
+                                        $anaLabel = 'Données insuff.';
+                                        if ($att >= 10) {
+                                            if ($avg <= 40) { $anaLabel = 'À problème'; $anaBadge .= ' pro-badge--advanced'; }
+                                            elseif ($avg >= 85) { $anaLabel = 'Trop facile'; $anaBadge .= ' pro-badge--beginner'; }
+                                            else { $anaLabel = 'OK'; $anaBadge .= ' pro-badge--intermediate'; }
+                                        }
                                     ?>
-                                    <tr data-id="<?= (int) ($q['id'] ?? 0) ?>" data-title="<?= htmlspecialchars(mb_strtolower((string) ($q['title'] ?? ''))) ?>" data-course="<?= htmlspecialchars(mb_strtolower((string) ($q['course_title'] ?? ''))) ?>" data-chapter="<?= htmlspecialchars(mb_strtolower((string) ($q['chapter_title'] ?? ''))) ?>" data-difficulty="<?= htmlspecialchars($diff) ?>">
+                                    <tr data-id="<?= (int) $qid ?>" data-title="<?= htmlspecialchars(mb_strtolower($titleTxt)) ?>" data-course="<?= htmlspecialchars(mb_strtolower($courseTitle)) ?>" data-chapter="<?= htmlspecialchars(mb_strtolower($chapterTitle)) ?>" data-difficulty="<?= htmlspecialchars($diff) ?>" data-tags="<?= htmlspecialchars(mb_strtolower($tagsTxt)) ?>" data-status="<?= htmlspecialchars(mb_strtolower($statusTxt)) ?>">
                                         <td>
                                             <span class="pro-dot"></span>
-                                            <?= htmlspecialchars($q['title']) ?>
+                                            <?= htmlspecialchars($titleTxt) ?>
                                         </td>
-                                        <td><?= htmlspecialchars($q['course_title'] ?? '') ?></td>
-                                        <td><?= htmlspecialchars($q['chapter_title'] ?? '') ?></td>
+                                        <td><?= htmlspecialchars($courseTitle) ?></td>
+                                        <td><?= htmlspecialchars($chapterTitle) ?></td>
                                         <td><span class="<?= $diffClass ?>"><?= htmlspecialchars(difficulty_label_fr($diff)) ?></span></td>
                                         <td>
+                                            <span class="<?= $anaBadge ?>"><?= htmlspecialchars($anaLabel) ?></span>
+                                            <div class="pro-cell-sub">
+                                                <?= (int) $att ?> tentatives · <?= (int) round($avg) ?>%<?= $last !== '' ? ' · ' . htmlspecialchars(substr($last, 0, 10)) : '' ?>
+                                            </div>
+                                        </td>
+                                        <td>
                                             <div class="pro-actions">
-                                                <a href="<?= APP_ENTRY ?>?url=teacher/edit-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
+                                                <a href="<?= APP_ENTRY ?>?url=teacher/duplicate-quiz/<?= (int) $qid ?>" class="pro-icon-btn" title="Dupliquer" aria-label="Dupliquer" onclick="return confirm('Dupliquer ce quiz ?');">
+                                                    <i class="bi bi-copy"></i>
+                                                </a>
+                                                <a href="<?= APP_ENTRY ?>?url=teacher/edit-quiz/<?= (int) $qid ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <a href="<?= APP_ENTRY ?>?url=teacher/delete-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
+                                                <a href="<?= APP_ENTRY ?>?url=teacher/delete-quiz/<?= (int) $qid ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
                                                     <i class="bi bi-trash"></i>
                                                 </a>
                                             </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; else: ?>
-                                    <tr><td colspan="5">Aucun quiz. Créez des chapitres puis ajoutez un quiz.</td></tr>
+                                    <tr><td colspan="6">Aucun quiz. Créez des chapitres puis ajoutez un quiz.</td></tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -96,11 +158,13 @@ $teacherSidebarActive = 'quiz';
 <script>
 (function () {
   var input = document.getElementById('teacherQuizSearch');
+  var tagsInput = document.getElementById('teacherQuizTags');
   var sel = document.getElementById('teacherQuizDifficulty');
+  var statusSel = document.getElementById('teacherQuizStatus');
   var sortSel = document.getElementById('teacherQuizSort');
   var exportBtn = document.getElementById('teacherQuizExport');
   var table = document.getElementById('teacherQuizTable');
-  if (!input || !sel || !sortSel || !exportBtn || !table) return;
+  if (!input || !tagsInput || !sel || !statusSel || !sortSel || !exportBtn || !table) return;
 
   function norm(v) {
     return (v || '').toString().trim().toLowerCase();
@@ -108,16 +172,22 @@ $teacherSidebarActive = 'quiz';
 
   function apply() {
     var q = norm(input.value);
+    var tg = norm(tagsInput.value);
     var d = norm(sel.value);
+    var st = norm(statusSel.value);
     table.querySelectorAll('tbody tr').forEach(function (tr) {
       var title = norm(tr.getAttribute('data-title'));
       var course = norm(tr.getAttribute('data-course'));
       var chapter = norm(tr.getAttribute('data-chapter'));
       var diff = norm(tr.getAttribute('data-difficulty'));
+      var tags = norm(tr.getAttribute('data-tags'));
+      var status = norm(tr.getAttribute('data-status'));
 
       var matchText = !q || title.indexOf(q) !== -1 || course.indexOf(q) !== -1 || chapter.indexOf(q) !== -1;
+      var matchTags = !tg || tags.indexOf(tg) !== -1;
       var matchDiff = !d || diff === d;
-      tr.style.display = (matchText && matchDiff) ? '' : 'none';
+      var matchStatus = !st || status === st;
+      tr.style.display = (matchText && matchTags && matchDiff && matchStatus) ? '' : 'none';
     });
   }
 
@@ -174,7 +244,9 @@ $teacherSidebarActive = 'quiz';
   }
 
   input.addEventListener('input', apply);
+  tagsInput.addEventListener('input', apply);
   sel.addEventListener('change', apply);
+  statusSel.addEventListener('change', apply);
   sortSel.addEventListener('change', function () { sortRows(); apply(); });
   exportBtn.addEventListener('click', function () { apply(); exportCsv(); });
 

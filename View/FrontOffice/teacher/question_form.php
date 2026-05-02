@@ -6,150 +6,77 @@ $action = $isEdit
     : APP_ENTRY . '?url=teacher/store-question';
 $opts = $isEdit ? ($question['options'] ?? ['', '']) : ['', ''];
 ?>
-<style>
-    .teacher-qf-wrap { max-width: 920px; }
-    .teacher-qf-hero {
-        background: linear-gradient(140deg, #ffffff 0%, #f6f9ff 60%, #eef5ff 100%);
-        border: 1px solid #dbe7f6;
-        border-radius: 18px;
-        padding: 1rem 1.2rem;
-        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-        margin-bottom: 1rem;
-    }
-    .teacher-qf-hero h1 {
-        margin: 0;
-        color: #173b6d;
-        letter-spacing: -0.02em;
-        font-size: clamp(1.65rem, 2.4vw, 2.25rem);
-    }
-    .teacher-qf-back {
-        margin-top: 0.45rem;
-        display: inline-flex;
-        font-weight: 700;
-        color: #2f6fed;
-        text-decoration: none;
-    }
-    .teacher-qf-back:hover { text-decoration: underline; }
-    .teacher-qf-card {
-        background: #fff;
-        border: 1px solid #dbe7f6;
-        border-radius: 18px;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-        padding: 1.2rem 1.2rem 1.35rem;
-    }
-    .teacher-qf-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.85rem 1rem;
-    }
-    .teacher-qf-field { display: grid; gap: 0.35rem; }
-    .teacher-qf-field--full { grid-column: 1 / -1; }
-    .teacher-qf-field label {
-        font-size: 0.86rem;
-        font-weight: 700;
-        color: #284668;
-    }
-    .teacher-qf-card .form-control {
-        width: 100%;
-        border: 1px solid #cfdef1;
-        border-radius: 11px;
-        background: #f9fcff;
-        box-shadow: none;
-        padding: 0.62rem 0.7rem;
-    }
-    .teacher-qf-card .form-control:focus {
-        border-color: #6aa7ff;
-        outline: 0;
-        box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.12);
-        background: #fff;
-    }
-    .teacher-qf-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.6rem;
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid #e6eef9;
-    }
-    .teacher-qf-actions .btn { border-radius: 11px; font-weight: 800; }
-    .field-error {
-        color: #dc2626;
-        font-size: 0.8rem;
-        font-weight: 700;
-        margin-top: 0.2rem;
-    }
-    .form-control.input-error {
-        border-color: #ef4444 !important;
-        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14) !important;
-        background: #fff7f7 !important;
-    }
-    @media (max-width: 780px) {
-        .teacher-qf-grid { grid-template-columns: 1fr; }
-    }
-</style>
 <div class="dashboard">
     <div class="container admin-dashboard-container">
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
-            <div class="admin-main teacher-qf-wrap">
-                <header class="teacher-qf-hero">
-                    <h1><?= $isEdit ? 'Modifier la question' : 'Nouvelle question' ?></h1>
-                    <a class="teacher-qf-back" href="<?= APP_ENTRY ?>?url=teacher/questions">← Retour à la banque</a>
-                </header>
+            <div class="admin-main pro-table-page pro-form-page" style="max-width: 980px;">
+                <div class="pro-table-head">
+                    <div>
+                        <h1><?= $isEdit ? 'Modifier la question' : 'Nouvelle question' ?></h1>
+                        <p>Créez une question réutilisable dans vos quiz (banque de questions).</p>
+                    </div>
+                    <div class="pro-table-actions">
+                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher/questions">← Retour à la banque</a>
+                    </div>
+                </div>
+
                 <?php if (!empty($flash)): ?>
                     <p class="flash flash-<?= htmlspecialchars($flash['type']) ?>"><?= htmlspecialchars($flash['message']) ?></p>
                 <?php endif; ?>
 
-                <form method="post" action="<?= $action ?>" class="teacher-qf-card" onsubmit="return appValidateQuestionForm(this);">
-                    <div class="teacher-qf-grid">
-                        <div class="teacher-qf-field teacher-qf-field--full">
-                            <label for="qf-title">Titre court (optionnel)</label>
-                            <input id="qf-title" type="text" name="title" class="form-control" maxlength="255" value="<?= htmlspecialchars($question['title'] ?? '') ?>">
-                        </div>
-
-                        <div class="teacher-qf-field teacher-qf-field--full">
-                            <label for="qf-text">Question</label>
-                            <textarea id="qf-text" name="question_text" rows="4" class="form-control"><?= htmlspecialchars($question['question_text'] ?? '') ?></textarea>
-                        </div>
-
-                        <?php foreach ($opts as $i => $o): ?>
-                            <div class="teacher-qf-field">
-                                <label for="qf-opt-<?= $i ?>">Option <?= $i + 1 ?></label>
-                                <input id="qf-opt-<?= $i ?>" type="text" name="options[]" class="form-control" maxlength="500" value="<?= htmlspecialchars($o) ?>">
+                <div class="pro-table-card pro-form-card">
+                    <form method="post" action="<?= $action ?>" onsubmit="return appValidateQuestionForm(this);">
+                        <div class="pro-form-grid">
+                            <div class="pro-form-field pro-form-field--full">
+                                <label for="qf-title">Titre court (optionnel)</label>
+                                <input id="qf-title" type="text" name="title" class="form-control" maxlength="255" value="<?= htmlspecialchars($question['title'] ?? '') ?>">
                             </div>
-                        <?php endforeach; ?>
 
-                        <div class="teacher-qf-field">
-                            <label for="qf-opt-extra">Option supplémentaire</label>
-                            <input id="qf-opt-extra" type="text" name="options[]" class="form-control" maxlength="500" value="">
+                            <div class="pro-form-field pro-form-field--full">
+                                <label for="qf-text">Question</label>
+                                <textarea id="qf-text" name="question_text" rows="4" class="form-control"><?= htmlspecialchars($question['question_text'] ?? '') ?></textarea>
+                            </div>
+
+                            <?php foreach ($opts as $i => $o): ?>
+                                <div class="pro-form-field">
+                                    <label for="qf-opt-<?= $i ?>">Option <?= $i + 1 ?></label>
+                                    <input id="qf-opt-<?= $i ?>" type="text" name="options[]" class="form-control" maxlength="500" value="<?= htmlspecialchars($o) ?>">
+                                </div>
+                            <?php endforeach; ?>
+
+                            <div class="pro-form-field">
+                                <label for="qf-opt-extra">Option supplémentaire</label>
+                                <input id="qf-opt-extra" type="text" name="options[]" class="form-control" maxlength="500" value="">
+                            </div>
+
+                            <div class="pro-form-field">
+                                <label for="qf-correct">Bonne réponse (index, 0 = première option)</label>
+                                <input id="qf-correct" type="text" name="correct_answer" class="form-control" maxlength="4" value="<?= (int)($question['correct_answer'] ?? 0) ?>">
+                            </div>
+
+                            <div class="pro-form-field">
+                                <label for="qf-tags">Tags</label>
+                                <input id="qf-tags" type="text" name="tags" class="form-control" maxlength="500" value="<?= htmlspecialchars($question['tags'] ?? '') ?>">
+                            </div>
+
+                            <div class="pro-form-field">
+                                <label for="qf-difficulty">Difficulté</label>
+                                <select id="qf-difficulty" name="difficulty" class="form-control">
+                                <?php $d = $question['difficulty'] ?? 'beginner'; ?>
+                                <option value="beginner" <?= $d === 'beginner' ? 'selected' : '' ?>>Débutant</option>
+                                <option value="intermediate" <?= $d === 'intermediate' ? 'selected' : '' ?>>Intermédiaire</option>
+                                <option value="advanced" <?= $d === 'advanced' ? 'selected' : '' ?>>Avancé</option>
+                                </select>
+                            </div>
                         </div>
 
-                        <div class="teacher-qf-field">
-                            <label for="qf-correct">Bonne réponse (index, 0 = première option)</label>
-                            <input id="qf-correct" type="text" name="correct_answer" class="form-control" maxlength="4" value="<?= (int)($question['correct_answer'] ?? 0) ?>">
+                        <div class="pro-form-actions">
+                            <button type="submit" class="btn btn-primary">Enregistrer</button>
+                            <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher/questions">Annuler</a>
                         </div>
-
-                        <div class="teacher-qf-field">
-                            <label for="qf-tags">Tags</label>
-                            <input id="qf-tags" type="text" name="tags" class="form-control" maxlength="500" value="<?= htmlspecialchars($question['tags'] ?? '') ?>">
-                        </div>
-
-                        <div class="teacher-qf-field">
-                            <label for="qf-difficulty">Difficulté</label>
-                            <select id="qf-difficulty" name="difficulty" class="form-control">
-                            <?php $d = $question['difficulty'] ?? 'beginner'; ?>
-                            <option value="beginner" <?= $d === 'beginner' ? 'selected' : '' ?>>Débutant</option>
-                            <option value="intermediate" <?= $d === 'intermediate' ? 'selected' : '' ?>>Intermédiaire</option>
-                            <option value="advanced" <?= $d === 'advanced' ? 'selected' : '' ?>>Avancé</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="teacher-qf-actions">
-                        <button type="submit" class="btn btn-primary">Enregistrer</button>
-                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher/questions">Annuler</a>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

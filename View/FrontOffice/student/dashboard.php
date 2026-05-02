@@ -8,6 +8,8 @@ $enrollmentCount = count($enrollments ?? []);
 $availableCount = count($allCourses ?? []);
 $avgProgress = 0;
 
+$rank = isset($rank) && is_array($rank) ? $rank : null;
+
 if (!empty($enrollments)) {
     $sum = 0;
     foreach ($enrollments as $enrollment) {
@@ -160,6 +162,23 @@ if (!empty($enrollments)) {
                             </div>
                             <h3 style="margin: 0 0 0.3rem 0; font-size: 1.4rem; color: #1e293b; font-weight: 800;"><?= htmlspecialchars($userName) ?></h3>
                             <p style="margin: 0 0 1.5rem 0; color: #64748b; font-weight: 600; font-size: 0.95rem;">Student Level <?= max(1, (int) floor(($avgProgress + 20) / 15)) ?></p>
+
+                            <?php if (!empty($rank)): ?>
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap: 10px; padding: 10px 12px; background: #0b1f3a; color: #e6f1ff; border-radius: 12px; margin-bottom: 1rem;">
+                                    <div style="text-align:left;">
+                                        <div style="font-weight:800; font-size: .95rem;">Quiz Rank</div>
+                                        <div style="margin-top:4px; font-weight:700;">
+                                            <?= htmlspecialchars((string) ($rank['league'] ?? 'Bronze')) ?> <?= htmlspecialchars((string) ($rank['division'] ?? 'III')) ?>
+                                        </div>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <div style="font-size:.8rem; opacity:.9; font-weight:700;">Rating</div>
+                                        <div style="font-weight:900; font-size: 1.15rem; line-height:1;">
+                                            <?= (int) ($rank['rating'] ?? 1000) ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                             
                             <div style="margin-bottom: 1.5rem; text-align: left;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">

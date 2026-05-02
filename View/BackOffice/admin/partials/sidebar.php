@@ -72,28 +72,6 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             <span>Quiz</span>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=admin/quiz-history" class="admin-side-link <?= $adminSidebarActive === 'quiz_history' ? 'active' : '' ?>">
-            <span class="admin-side-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 3v18h18"></path>
-                    <path d="M7 15l4-4 3 3 5-6"></path>
-                </svg>
-            </span>
-            <span>Historique des quiz</span>
-        </a>
-
-        <a href="<?= APP_ENTRY ?>?url=admin/quiz-stats" class="admin-side-link <?= $adminSidebarActive === 'quiz_stats' ? 'active' : '' ?>">
-            <span class="admin-side-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 19V5"></path>
-                    <path d="M10 19V9"></path>
-                    <path d="M16 19V12"></path>
-                    <path d="M22 19V7"></path>
-                </svg>
-            </span>
-            <span>Statistiques quiz</span>
-        </a>
-
         <a href="<?= APP_ENTRY ?>?url=admin/questions" class="admin-side-link <?= $adminSidebarActive === 'questions' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
