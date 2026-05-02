@@ -1310,7 +1310,79 @@ class TeacherController extends BaseController {
         }
 
         if ($this->queryUpdateParticipationStatus((int) $id, 'approved')) {
-            $this->setFlash('success', 'Participation approved.');
+            $this->setFlash('success', 'Participation approved. A ticket has been sent to the student.');
+
+            // ---- SEND TICKET VIA EMAIL ----
+            $stUser = $this->getDb()->prepare('SELECT name, email FROM users WHERE id = ?');
+            $stUser->execute([(int)$participation['created_by']]);
+            $student = $stUser->fetch();
+
+            $event = $this->queryFindEventByIdAndCreator((int)$participation['evenement_id'], (int) $_SESSION['user_id']);
+
+            if ($student && $event && !empty($student['email'])) {
+                $to = $student['email'];
+                $subject = "Your Official Ticket: " . $event['title'];
+                $date = !empty($event['date_debut']) ? date('M d, Y', strtotime($event['date_debut'])) : 'TBA';
+                $location = !empty($event['lieu']) ? $event['lieu'] : 'TBA';
+                
+                $message = "
+                <html>
+                <body style='background-color: #f1f5f9; margin: 0; padding: 20px; font-family: Arial, sans-serif;'>
+                    <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                        <tr>
+                            <td align='center'>
+                                <table width='600' cellpadding='0' cellspacing='0' border='0' style='background-color: #ffffff; border-radius: 16px; overflow: hidden; border-collapse: collapse; box-shadow: 0 10px 25px rgba(0,0,0,0.1);'>
+                                    <tr>
+                                        <!-- LEFT SIDE -->
+                                        <td width='420' valign='top' style='padding: 30px; border-right: 2px dashed #e2e8f0;'>
+                                            <div style='color: #548CA8; font-weight: bold; font-size: 16px; margin-bottom: 20px;'>APPOLIOS</div>
+                                            <div style='background-color: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 15px;'>Official Event Pass</div>
+                                            <h1 style='color: #1e293b; font-size: 24px; margin: 0 0 25px 0; line-height: 1.3;'>" . htmlspecialchars($event['title']) . "</h1>
+                                            
+                                            <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                                                <tr>
+                                                    <td width='50%' valign='top' style='padding-bottom: 20px;'>
+                                                        <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Attendee</div>
+                                                        <div style='font-size: 14px; color: #334155; font-weight: bold;'>" . htmlspecialchars($student['name']) . "</div>
+                                                    </td>
+                                                    <td width='50%' valign='top' style='padding-bottom: 20px;'>
+                                                        <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Date & Time</div>
+                                                        <div style='font-size: 14px; color: #334155; font-weight: bold;'>{$date}</div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td width='50%' valign='top'>
+                                                        <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Location</div>
+                                                        <div style='font-size: 14px; color: #334155; font-weight: bold;'>" . htmlspecialchars($location) . "</div>
+                                                    </td>
+                                                    <td width='50%' valign='top'>
+                                                        <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Ticket Type</div>
+                                                        <div style='font-size: 14px; color: #334155; font-weight: bold;'>Student Pass</div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- RIGHT SIDE -->
+                                        <td width='180' valign='middle' align='center' style='background-color: #2B4865; padding: 20px;'>
+                                            <div style='background-color: #ffffff; padding: 10px; border-radius: 8px; display: inline-block; margin-bottom: 10px;'>
+                                                <img src='https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=TICKET-{$id}-" . urlencode($student['name']) . "' width='120' height='120' style='display: block; border: 0;' alt='QR Code'>
+                                            </div>
+                                            <div style='font-size: 10px; font-weight: bold; color: #94a3b8; letter-spacing: 1px; margin-bottom: 20px;'>SCAN TO VALIDATE</div>
+                                            <div style='color: #10b981; font-weight: bold; font-size: 16px; border: 2px solid #10b981; padding: 6px 12px; border-radius: 6px; text-transform: uppercase; display: inline-block;'>APPROVED</div>
+                                            <div style='font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 30px;'>#ID-" . str_pad($id, 6, '0', STR_PAD_LEFT) . "</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>";
+
+                // ---- SEND EMAIL ----
+                $this->sendEmail($to, $subject, $message);
+                // -------------------------------
+            }
         } else {
             $this->setFlash('error', 'Failed to approve participation.');
         }

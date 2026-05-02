@@ -95,11 +95,6 @@ abstract class BaseController
         return $errors;
     }
 
-    /**
-     * Generate a random temporary password
-     * @param int $length
-     * @return string
-     */
     protected function generateTempPassword(int $length = 10): string
     {
         $chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -111,5 +106,82 @@ abstract class BaseController
         }
 
         return $password;
+    }
+
+    /**
+     * Send email via Gmail SMTP or fallback to mail()
+     */
+    protected function sendEmail(string $to, string $subject, string $message): bool
+    {
+        $envPath = __DIR__ . '/../.env';
+        $gmailUser = '';
+        $gmailPass = '';
+        
+        if (file_exists($envPath)) {
+            $envVars = parse_ini_file($envPath);
+            $gmailUser = $envVars['GMAIL_EMAIL'] ?? '';
+            $gmailPass = $envVars['GMAIL_APP_PASSWORD'] ?? '';
+        }
+
+        if (!empty($gmailUser) && !empty($gmailPass)) {
+            try {
+                $socket = fsockopen("ssl://smtp.gmail.com", 465, $errno, $errstr, 15);
+                if ($socket) {
+                    // Helper to read multiline responses
+                    $getServerResponse = function() use ($socket) {
+                        $data = "";
+                        while ($str = fgets($socket, 515)) {
+                            $data .= $str;
+                            if (substr($str, 3, 1) == " ") { break; }
+                        }
+                        return $data;
+                    };
+
+                    $getServerResponse(); // Read welcome message
+                    
+                    fputs($socket, "EHLO localhost\r\n");
+                    $getServerResponse();
+                    
+                    fputs($socket, "AUTH LOGIN\r\n");
+                    $getServerResponse();
+                    
+                    fputs($socket, base64_encode($gmailUser) . "\r\n");
+                    $getServerResponse();
+                    
+                    fputs($socket, base64_encode($gmailPass) . "\r\n");
+                    $getServerResponse();
+                    
+                    fputs($socket, "MAIL FROM: <$gmailUser>\r\n");
+                    $getServerResponse();
+                    
+                    fputs($socket, "RCPT TO: <$to>\r\n");
+                    $getServerResponse();
+                    
+                    fputs($socket, "DATA\r\n");
+                    $getServerResponse();
+                    
+                    $headers = "From: APPOLIOS Events <$gmailUser>\r\n";
+                    $headers .= "To: $to\r\n";
+                    $headers .= "Subject: $subject\r\n";
+                    $headers .= "MIME-Version: 1.0\r\n";
+                    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+                    
+                    fputs($socket, $headers . "\r\n" . $message . "\r\n.\r\n");
+                    $getServerResponse();
+                    
+                    fputs($socket, "QUIT\r\n");
+                    fclose($socket);
+                    return true;
+                }
+            } catch (Exception $e) {
+                // Ignore and fallback
+            }
+        }
+
+        // Fallback
+        $headers  = "MIME-Version: 1.0\r\n";
+        $headers .= "Content-type: text/html; charset=UTF-8\r\n";
+        $headers .= "From: APPOLIOS Events <no-reply@appolios.com>\r\n";
+        return @mail($to, $subject, $message, $headers);
     }
 }
