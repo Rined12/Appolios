@@ -721,7 +721,7 @@ $teacherSidebarActive = 'evenements';
                 </svg>
             </div>
             <h2 style="font-size: 1.8rem; font-weight: 800; color: #0f172a; margin: 0 0 0.5rem 0;">AI Event Predictions</h2>
-            <p style="color: #64748b; margin: 0; font-size: 1rem;">Top 3 events likely to have the highest attendance based on algorithmic insights.</p>
+
         </div>
 
         <div id="aiPredictionContent" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
