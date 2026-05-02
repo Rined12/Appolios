@@ -21,19 +21,87 @@ class ImageGenerator {
     public function generateAIPrompt($courseTitle, $categoryName = '') {
         $searchTerm = trim($courseTitle);
         
-        // Build a better prompt with category context
-        $categoryContext = $categoryName ? " in $categoryName" : '';
-        $prompt = "$searchTerm$categoryContext, professional educational course thumbnail, modern flat design, vibrant colors, clean composition, high quality, no text";
+        // Different style variations for uniqueness
+        $styles = [
+            'futuristic technology blue and cyan colors, 3D render',
+            'warm sunset gradient orange and pink, abstract art',
+            'dark mode cyberpunk neon purple and green, digital art',
+            'minimalist white and gold elegant design, luxury',
+            'nature green forest and mountains, landscape photography',
+            'ocean deep blue and teal, underwater theme',
+            'geometric shapes pattern, modern abstract',
+            'gradient pink purple blue, colorful gradient background',
+            'dark mysterious purple and black, elegant dark theme',
+            'bright sunshine yellow and orange, energetic vibe'
+        ];
         
-        $seed = preg_replace('/[^a-zA-Z0-9]/', '', $searchTerm);
-        $seed = substr($seed, 0, 15);
-        if (empty($seed)) $seed = 'course';
+        // Pick random style
+        $style = $styles[array_rand($styles)];
         
-        // Generate the Pollinations.ai URL
-        $imageUrl = "https://image.pollinations.ai/prompt/" . rawurlencode($prompt) . "?width=800&height=400&nologo=true&seed=" . $seed . "&enhance=true";
+        // Build unique prompt based on course content
+        $keywords = $this->extractKeywords($searchTerm);
         
-        // Download and save the image locally
-        return $this->downloadImage($imageUrl, $seed);
+        // More descriptive prompt for accurate imagery
+        $prompt = "$keywords, professional course thumbnail, clean modern design, high quality, educational, no text, detailed illustration, vibrant colors";
+        
+        // Use timestamp + random for unique seed
+        $seed = substr(preg_replace('/[^a-zA-Z]/', '', $searchTerm), 0, 10) . rand(1000, 9999);
+        
+        // Try multiple AI services in sequence
+        $services = [
+            // Pollinations with Flux model (often less busy)
+            "https://image.pollinations.ai/prompt/" . rawurlencode($prompt) . "?width=1024&height=512&nologo=true&seed=" . $seed . "&model=flux&enhance=true",
+            // Pollinations standard
+            "https://image.pollinations.ai/prompt/" . rawurlencode($prompt) . "?width=1024&height=512&nologo=true&seed=" . $seed . "&enhance=true",
+            // Pollinations turbo
+            "https://image.pollinations.ai/prompt/" . rawurlencode($prompt) . "?width=1024&height=512&nologo=true&seed=" . $seed . "&model=turbo&enhance=true"
+        ];
+        
+        foreach ($services as $imageUrl) {
+            $result = $this->downloadImage($imageUrl, $seed);
+            if ($result) {
+                return $result;
+            }
+            sleep(1); // Wait between attempts
+        }
+        
+        // Final fallback to picsum
+        $picsumId = abs(crc32($seed));
+        $fallbackUrl = "https://picsum.photos/seed/{$picsumId}/800/400";
+        return $this->downloadImage($fallbackUrl, 'picsum_' . $seed);
+    }
+    
+    private function extractKeywords($title) {
+        // Specific keywords with visual elements for accurate images
+        $keywords = [
+            'Java' => 'Java programming language logo blue coffee cup code developer, software development',
+            'Python' => 'Python programming language logo yellow snake code data science',
+            'Web Development' => 'HTML CSS JavaScript code web design developer laptop screen',
+            'AI' => 'artificial intelligence robot brain neural network machine learning technology',
+            'Machine Learning' => 'neural network AI algorithm data science deep learning futuristic',
+            'Data Science' => 'data analytics charts graphs database visualization statistics',
+            'Programming' => 'computer code programming developer software algorithm',
+            'React' => 'React JS logo blue atom web development javascript',
+            'Node' => 'Node.js logo green hexagon server backend development',
+            'Database' => 'database server storage cylinders technology data',
+            'Mobile' => 'smartphone mobile app development android ios',
+            'Game' => 'game controller gaming pixel art video game',
+            'Cyber' => 'cybersecurity hacker lock shield digital security',
+            'Cloud' => 'cloud computing network server data center technology',
+            'Design' => 'graphic design creativity art colors illustration',
+            'Marketing' => 'marketing business growth strategy analytics',
+            'English' => 'language learning books education vocabulary',
+            'Business' => 'business meeting office professional corporate',
+            'Finance' => 'finance money chart investment banking'
+        ];
+        
+        foreach ($keywords as $key => $value) {
+            if (stripos($title, $key) !== false) {
+                return $value;
+            }
+        }
+        
+        return 'online learning education course';
     }
     
     /**

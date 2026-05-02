@@ -47,6 +47,11 @@ $chapters = $course['chapters'] ?? [];
                             <?php else: ?>
                                 <a href="<?= APP_ENTRY ?>?url=student/enroll/<?= $course['id'] ?>" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 20px; font-weight: 600; text-decoration: none;">Enroll Now</a>
                             <?php endif; ?>
+                            <?php if (isset($_SESSION['user_id'])): ?>
+                                <button onclick="toggleBookmark(<?= $course['id'] ?>)" id="bookmark-btn-<?= $course['id'] ?>" style="background: <?= ($isBookmarked ?? false) ? '#fbbf24' : '#f1f5f9' ?>; border: none; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 1.2rem;" title="Bookmark">
+                                    <?= ($isBookmarked ?? false) ? '★' : '☆' ?>
+                                </button>
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -349,5 +354,21 @@ function setRating(rating) {
             star.setAttribute('stroke', '#e2e8f0');
         }
     }
+}
+
+function toggleBookmark(courseId) {
+    fetch('<?= APP_ENTRY ?>?url=student/toggleBookmark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'course_id=' + courseId
+    })
+    .then(res => res.json())
+    .then(data => {
+        const btn = document.getElementById('bookmark-btn-' + courseId);
+        if (data.success) {
+            btn.style.background = data.bookmarked ? '#fbbf24' : '#f1f5f9';
+            btn.innerHTML = data.bookmarked ? '★' : '☆';
+        }
+    });
 }
 </script>

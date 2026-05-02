@@ -9,112 +9,77 @@ require_once __DIR__ . '/BaseModel.php';
 class ContactMessage extends BaseModel {
     protected string $table = 'contact_messages';
 
-    /**
-     * Create a new contact message
-     * @param array $data
-     * @return bool|int
-     */
-    public function createMessage($data) {
-        $sql = "INSERT INTO {$this->table} (name, email, subject, message)
-                VALUES (?, ?, ?, ?)";
+    private ?int $id;
+    private ?string $name;
+    private ?string $email;
+    private ?string $subject;
+    private ?string $message;
+    private ?int $is_read;
+    private ?int $read_by;
+    private ?string $read_at;
+    private ?string $created_at;
 
-        try {
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([
-                $data['name'],
-                $data['email'],
-                $data['subject'],
-                $data['message']
-            ]);
-
-            return $this->db->lastInsertId();
-        } catch (PDOException $e) {
-            error_log("ContactMessage::createMessage error: " . $e->getMessage());
-            return false;
-        }
+    public function __construct(
+        ?int $id = null,
+        ?string $name = null,
+        ?string $email = null,
+        ?string $subject = null,
+        ?string $message = null,
+        ?int $is_read = null,
+        ?int $read_by = null,
+        ?string $read_at = null,
+        ?string $created_at = null
+    ) {
+        parent::__construct();
+        
+        $this->id = $id;
+        $this->name = $name;
+        $this->email = $email;
+        $this->subject = $subject;
+        $this->message = $message;
+        $this->is_read = $is_read;
+        $this->read_by = $read_by;
+        $this->read_at = $read_at;
+        $this->created_at = $created_at;
     }
 
-    /**
-     * Get all messages with pagination
-     * @param int $limit
-     * @param int $offset
-     * @return array
-     */
-    public function getAllMessages($limit = 50, $offset = 0) {
-        $sql = "SELECT cm.*, u.name AS reader_name
-                FROM {$this->table} cm
-                LEFT JOIN users u ON cm.read_by = u.id
-                ORDER BY cm.created_at DESC
-                LIMIT ? OFFSET ?";
+    public function getId(): ?int { return $this->id; }
+    public function setId(?int $id): self { $this->id = $id; return $this; }
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$limit, $offset]);
-        return $stmt->fetchAll();
-    }
+    public function getName(): ?string { return $this->name; }
+    public function setName(?string $name): self { $this->name = $name; return $this; }
 
-    /**
-     * Get unread messages count
-     * @return int
-     */
+    public function getEmail(): ?string { return $this->email; }
+    public function setEmail(?string $email): self { $this->email = $email; return $this; }
+
+    public function getSubject(): ?string { return $this->subject; }
+    public function setSubject(?string $subject): self { $this->subject = $subject; return $this; }
+
+    public function getMessage(): ?string { return $this->message; }
+    public function setMessage(?string $message): self { $this->message = $message; return $this; }
+
+    public function getIsRead(): ?int { return $this->is_read; }
+    public function setIsRead(?int $is_read): self { $this->is_read = $is_read; return $this; }
+
+    public function getReadBy(): ?int { return $this->read_by; }
+    public function setReadBy(?int $read_by): self { $this->read_by = $read_by; return $this; }
+
+    public function getReadAt(): ?string { return $this->read_at; }
+    public function setReadAt(?string $read_at): self { $this->read_at = $read_at; return $this; }
+
+    public function getCreatedAt(): ?string { return $this->created_at; }
+    public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
+    
+    // Delegate methods for backward compatibility
     public function getUnreadCount() {
-        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE is_read = 0";
-        $stmt = $this->db->query($sql);
-        return (int) $stmt->fetchColumn();
+        require_once __DIR__ . '/../Controller/ContactMessageController.php';
+        $ctrl = new ContactMessageController();
+        return $ctrl->getUnreadCount();
     }
-
-    /**
-     * Get single message by ID
-     * @param int $id
-     * @return array|false
-     */
-    public function getById($id) {
-        $sql = "SELECT cm.*, u.name AS reader_name
-                FROM {$this->table} cm
-                LEFT JOIN users u ON cm.read_by = u.id
-                WHERE cm.id = ?";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        return $stmt->fetch();
-    }
-
-    /**
-     * Mark message as read
-     * @param int $id
-     * @param int $adminId
-     * @return bool
-     */
-    public function markAsRead($id, $adminId) {
-        $sql = "UPDATE {$this->table} 
-                SET is_read = 1, read_by = ?, read_at = NOW() 
-                WHERE id = ?";
-
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$adminId, $id]);
-    }
-
-    /**
-     * Mark message as unread
-     * @param int $id
-     * @return bool
-     */
-    public function markAsUnread($id) {
-        $sql = "UPDATE {$this->table} 
-                SET is_read = 0, read_by = NULL, read_at = NULL 
-                WHERE id = ?";
-
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$id]);
-    }
-
-    /**
-     * Delete message
-     * @param int $id
-     * @return bool
-     */
-    public function delete($id): bool {
-        $sql = "DELETE FROM {$this->table} WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$id]);
+    
+    public function getAll() {
+        require_once __DIR__ . '/../Controller/ContactMessageController.php';
+        $ctrl = new ContactMessageController();
+        return $ctrl->getAll();
     }
 }

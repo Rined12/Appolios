@@ -2,8 +2,42 @@
 
 abstract class BaseController
 {
+    // Mapping from model names to controller names
+    private array $controllerMap = [
+        'Course' => 'CourseController',
+        'User' => 'UserController',
+        'Enrollment' => 'EnrollmentController',
+        'Chapter' => 'ChapterController',
+        'Lesson' => 'LessonController',
+        'Evenement' => 'EvenementController',
+        'EvenementRessource' => 'EvenementRessourceController',
+        'Badge' => 'BadgeController',
+        'Category' => 'CategoryController',
+        'Certificate' => 'CertificateController',
+        'Review' => 'ReviewController',
+        'Notification' => 'NotificationController',
+        'TeacherApplication' => 'TeacherApplicationController',
+        'ContactMessage' => 'ContactMessageController',
+        'LessonProgress' => 'LessonProgressController',
+        'CourseBookmark' => 'CourseBookmarkController',
+        'CourseBadge' => 'CourseBadgeController',
+        'UserXP' => 'UserXPController',
+    ];
+
     public function model(string $model)
     {
+        // Check if there's a corresponding controller
+        if (isset($this->controllerMap[$model])) {
+            $controllerName = $this->controllerMap[$model];
+            $controllerFile = __DIR__ . '/' . $controllerName . '.php';
+            
+            if (file_exists($controllerFile)) {
+                require_once $controllerFile;
+                return new $controllerName();
+            }
+        }
+        
+        // Fall back to original model if controller doesn't exist
         $modelFile = __DIR__ . '/../Model/' . $model . '.php';
 
         if (!file_exists($modelFile)) {

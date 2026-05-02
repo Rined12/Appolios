@@ -5,10 +5,12 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Model/Course.php';
-require_once __DIR__ . '/../Model/Enrollment.php';
-require_once __DIR__ . '/../Model/Evenement.php';
-require_once __DIR__ . '/../Model/EvenementRessource.php';
+require_once __DIR__ . '/../Controller/LessonController.php';
+require_once __DIR__ . '/../Controller/ChapterController.php';
+require_once __DIR__ . '/../Controller/LessonProgressController.php';
+require_once __DIR__ . '/../Controller/CourseBadgeController.php';
+require_once __DIR__ . '/../Controller/BadgeController.php';
+require_once __DIR__ . '/../Controller/UserXPController.php';
 
 class StudentController extends BaseController {
 
@@ -54,11 +56,8 @@ class StudentController extends BaseController {
             exit;
         }
 
-        require_once __DIR__ . '/../Model/Lesson.php';
-        require_once __DIR__ . '/../Model/Chapter.php';
-        
-        $lessonModel = new Lesson();
-        $lesson = $lessonModel->findById($lessonId);
+        $lessonController = new LessonController();
+        $lesson = $lessonController->findById($lessonId);
         
         if (!$lesson) {
             http_response_code(404);
@@ -66,8 +65,8 @@ class StudentController extends BaseController {
             exit;
         }
 
-        $chapterModel = new Chapter();
-        $chapter = $chapterModel->findById($lesson['chapter_id']);
+        $chapterController = new ChapterController();
+        $chapter = $chapterController->findById($lesson['chapter_id']);
         
         if (!$chapter) {
             http_response_code(404);
@@ -85,12 +84,11 @@ class StudentController extends BaseController {
             exit;
         }
 
-        require_once __DIR__ . '/../Model/LessonProgress.php';
-        $progressModel = new LessonProgress();
-        $progressModel->markCompleteNoDuplicate($_SESSION['user_id'], $lessonId);
+        $progressController = new LessonProgressController();
+        $progressController->markCompleteNoDuplicate($_SESSION['user_id'], $lessonId);
 
-        $allLessons = $lessonModel->getByCourseId($actualCourseId);
-        $completedFromDb = $progressModel->getCompletedLessons($_SESSION['user_id'], $actualCourseId);
+        $allLessons = $lessonController->getByCourseId($actualCourseId);
+        $completedFromDb = $progressController->getCompletedLessons($_SESSION['user_id'], $actualCourseId);
         $completedLessons = array_column($completedFromDb, 'lesson_id');
         
         if (!in_array($lessonId, $completedLessons)) {
@@ -117,9 +115,8 @@ class StudentController extends BaseController {
      * Award XP to user
      */
     private function awardXP($userId, $amount, $reason) {
-        require_once __DIR__ . '/../Model/UserXP.php';
-        $xpModel = new UserXP();
-        return $xpModel->addXP($userId, $amount, $reason);
+        $xpController = new UserXPController();
+        return $xpController->addXP($userId, $amount, $reason);
     }
 
     /**
@@ -335,11 +332,10 @@ class StudentController extends BaseController {
         $userBadges = $badgeModel->getByUserId($_SESSION['user_id']);
         
         // Get XP and level
-        require_once __DIR__ . '/../Model/UserXP.php';
-        $xpModel = new UserXP();
-        $xpData = $xpModel->getByUserId($_SESSION['user_id']);
+        $xpController = new UserXPController();
+        $xpData = $xpController->getByUserId($_SESSION['user_id']);
         $totalXP = $xpData['total_xp'] ?? 0;
-        $levelInfo = $xpModel->getLevel($totalXP);
+        $levelInfo = $xpController->getLevel($totalXP);
         
         // Get course recommendations
         require_once __DIR__ . '/../Service/CourseRecommendation.php';
@@ -451,10 +447,9 @@ class StudentController extends BaseController {
             return;
         }
 
-        $courseModel = $this->model('Course');
+$courseModel = $this->model('Course');
         $enrollmentModel = $this->model('Enrollment');
-
-        // Get all courses
+        
         $allCourses = $courseModel->getAllWithCreator();
 
         // Filter only approved courses for students
@@ -492,6 +487,12 @@ class StudentController extends BaseController {
         require_once __DIR__ . '/../Service/CourseRecommendation.php';
         $recommendationModel = new CourseRecommendation();
         $recommendations = $recommendationModel->getRecommendations($_SESSION['user_id'], 4);
+        
+        // Exclude recommended courses from regular list to avoid duplicates
+        $recommendedIds = array_column($recommendations, 'id');
+        $allCourses = array_filter($allCourses, function($course) use ($recommendedIds) {
+            return !in_array($course['id'], $recommendedIds);
+        });
         
         $data = [
             'title' => 'Browse Courses - APPOLIOS',
@@ -541,6 +542,10 @@ class StudentController extends BaseController {
         $reviewModel = new Review();
         $reviews = $reviewModel->getByCourseId($id);
         $hasReview = $reviewModel->hasUserReviewed($_SESSION['user_id'], $id);
+        
+        require_once __DIR__ . '/../Model/CourseBookmark.php';
+        $bookmarkModel = new CourseBookmark();
+        $isBookmarked = $bookmarkModel->isBookmarked($_SESSION['user_id'], $id);
 
         $data = [
             'title' => $course['title'] . ' - APPOLIOS',
@@ -551,6 +556,7 @@ class StudentController extends BaseController {
             'completedLessons' => $completedLessons,
             'reviews' => $reviews,
             'hasReview' => $hasReview,
+            'isBookmarked' => $isBookmarked,
             'flash' => $this->getFlash()
         ];
 
@@ -653,11 +659,11 @@ class StudentController extends BaseController {
         $enrollmentModel = $this->model('Enrollment');
         $enrollments = $enrollmentModel->getUserEnrollments($_SESSION['user_id']);
         
-        // Get course recommendations
+// Get course recommendations
         require_once __DIR__ . '/../Service/CourseRecommendation.php';
         $recommendationModel = new CourseRecommendation();
         $recommendations = $recommendationModel->getRecommendations($_SESSION['user_id'], 4);
-
+        
         $data = [
             'title' => 'My Courses - APPOLIOS',
             'description' => 'Your enrolled courses',

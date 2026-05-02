@@ -9,87 +9,40 @@ require_once __DIR__ . '/../Model/BaseModel.php';
 class Certificate extends BaseModel {
     protected string $table = 'certificates';
 
-    public function generateCertificate($userId, $courseId) {
-        $courseModel = new Course();
-        $course = $courseModel->findById($courseId);
+    private ?int $id;
+    private ?int $user_id;
+    private ?int $course_id;
+    private ?string $certificate_number;
+    private ?string $issued_at;
+
+    public function __construct(
+        ?int $id = null,
+        ?int $user_id = null,
+        ?int $course_id = null,
+        ?string $certificate_number = null,
+        ?string $issued_at = null
+    ) {
+        parent::__construct();
         
-        if (!$course) return false;
-
-        $sql = "INSERT INTO {$this->table} (user_id, course_id, certificate_number, issued_at) 
-                VALUES (?, ?, ?, NOW())";
-        
-        $certNumber = 'CERT-' . strtoupper(uniqid()) . '-' . date('Y');
-        
-        try {
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$userId, $courseId, $certNumber]);
-            return $this->db->lastInsertId();
-        } catch (PDOException $e) {
-            return false;
-        }
+        $this->id = $id;
+        $this->user_id = $user_id;
+        $this->course_id = $course_id;
+        $this->certificate_number = $certificate_number;
+        $this->issued_at = $issued_at;
     }
 
-    public function getUserCertificates($userId) {
-        $sql = "SELECT cert.*, c.title as course_title, c.description, u.name as creator_name
-                FROM {$this->table} cert
-                JOIN courses c ON cert.course_id = c.id
-                JOIN users u ON c.created_by = u.id
-                WHERE cert.user_id = ?
-                ORDER BY cert.issued_at DESC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId]);
-        return $stmt->fetchAll();
-    }
+    public function getId(): ?int { return $this->id; }
+    public function setId(?int $id): self { $this->id = $id; return $this; }
 
-    public function getCertificateById($id) {
-        $sql = "SELECT cert.*, c.title as course_title, c.description, u.name as creator_name, usr.name as student_name, usr.email as student_email
-                FROM {$this->table} cert
-                JOIN courses c ON cert.course_id = c.id
-                JOIN users u ON c.created_by = u.id
-                JOIN users usr ON cert.user_id = usr.id
-                WHERE cert.id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        return $stmt->fetch();
-    }
+    public function getUserId(): ?int { return $this->user_id; }
+    public function setUserId(?int $user_id): self { $this->user_id = $user_id; return $this; }
 
-    public function hasCertificate($userId, $courseId) {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE user_id = ? AND course_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $courseId]);
-        $result = $stmt->fetch();
-        return $result['count'] > 0;
-    }
+    public function getCourseId(): ?int { return $this->course_id; }
+    public function setCourseId(?int $course_id): self { $this->course_id = $course_id; return $this; }
 
-    public function verifyCertificate($certificateNumber) {
-        $sql = "SELECT cert.*, c.title as course_title, u.name as student_name
-                FROM {$this->table} cert
-                JOIN courses c ON cert.course_id = c.id
-                JOIN users u ON cert.user_id = u.id
-                WHERE cert.certificate_number = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$certificateNumber]);
-        return $stmt->fetch();
-    }
+    public function getCertificateNumber(): ?string { return $this->certificate_number; }
+    public function setCertificateNumber(?string $certificate_number): self { $this->certificate_number = $certificate_number; return $this; }
 
-    public function getCertificateByCourse($userId, $courseId) {
-        $sql = "SELECT * FROM {$this->table} WHERE user_id = ? AND course_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $courseId]);
-        return $stmt->fetch();
-    }
-
-    public function delete($id): bool {
-        $sql = "DELETE FROM {$this->table} WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$id]);
-    }
-
-    public function countUserCertificates($userId) {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE user_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId]);
-        $result = $stmt->fetch();
-        return $result['count'] ?? 0;
-    }
+    public function getIssuedAt(): ?string { return $this->issued_at; }
+    public function setIssuedAt(?string $issued_at): self { $this->issued_at = $issued_at; return $this; }
 }

@@ -9,63 +9,65 @@ require_once __DIR__ . '/../Model/BaseModel.php';
 class Review extends BaseModel {
     protected string $table = 'reviews';
 
+    private ?int $id;
+    private ?int $user_id;
+    private ?int $course_id;
+    private ?int $rating;
+    private ?string $comment;
+    private ?string $created_at;
+
+    public function __construct(
+        ?int $id = null,
+        ?int $user_id = null,
+        ?int $course_id = null,
+        ?int $rating = null,
+        ?string $comment = null,
+        ?string $created_at = null
+    ) {
+        parent::__construct();
+        
+        $this->id = $id;
+        $this->user_id = $user_id;
+        $this->course_id = $course_id;
+        $this->rating = $rating;
+        $this->comment = $comment;
+        $this->created_at = $created_at;
+    }
+
+    public function getId(): ?int { return $this->id; }
+    public function setId(?int $id): self { $this->id = $id; return $this; }
+
+    public function getUserId(): ?int { return $this->user_id; }
+    public function setUserId(?int $user_id): self { $this->user_id = $user_id; return $this; }
+
+    public function getCourseId(): ?int { return $this->course_id; }
+    public function setCourseId(?int $course_id): self { $this->course_id = $course_id; return $this; }
+
+    public function getRating(): ?int { return $this->rating; }
+    public function setRating(?int $rating): self { $this->rating = $rating; return $this; }
+
+    public function getComment(): ?string { return $this->comment; }
+    public function setComment(?string $comment): self { $this->comment = $comment; return $this; }
+
+    public function getCreatedAt(): ?string { return $this->created_at; }
+    public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
+    
+    // Delegate methods for backward compatibility
     public function getByCourseId($courseId) {
-        $sql = "SELECT r.*, u.name as user_name
-                FROM {$this->table} r
-                JOIN users u ON r.user_id = u.id
-                WHERE r.course_id = ?
-                ORDER BY r.created_at DESC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$courseId]);
-        return $stmt->fetchAll();
+        require_once __DIR__ . '/../Controller/ReviewController.php';
+        $ctrl = new ReviewController();
+        return $ctrl->getByCourseId($courseId);
     }
-
-    public function getByUserId($userId) {
-        $sql = "SELECT r.*, c.title as course_title
-                FROM {$this->table} r
-                JOIN courses c ON r.course_id = c.id
-                WHERE r.user_id = ?
-                ORDER BY r.created_at DESC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId]);
-        return $stmt->fetchAll();
-    }
-
-    public function create($data) {
-        $sql = "INSERT INTO {$this->table} (user_id, course_id, rating, comment, created_at)
-                VALUES (?, ?, ?, ?, NOW())";
-        try {
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([
-                $data['user_id'],
-                $data['course_id'],
-                $data['rating'],
-                $data['comment'] ?? ''
-            ]);
-            return $this->db->lastInsertId();
-        } catch (PDOException $e) {
-            return false;
-        }
-    }
-
-    public function hasUserReviewed($userId, $courseId) {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE user_id = ? AND course_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $courseId]);
-        $result = $stmt->fetch();
-        return $result['count'] > 0;
-    }
-
+    
     public function getAverageRating($courseId) {
-        $sql = "SELECT AVG(rating) as avg, COUNT(*) as count FROM {$this->table} WHERE course_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$courseId]);
-        return $stmt->fetch();
+        require_once __DIR__ . '/../Controller/ReviewController.php';
+        $ctrl = new ReviewController();
+        return $ctrl->getAverageRating($courseId);
     }
-
-    public function delete($id): bool {
-        $sql = "DELETE FROM {$this->table} WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$id]);
+    
+    public function hasUserReviewed($userId, $courseId) {
+        require_once __DIR__ . '/../Controller/ReviewController.php';
+        $ctrl = new ReviewController();
+        return $ctrl->hasUserReviewed($userId, $courseId);
     }
 }

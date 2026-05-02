@@ -9,54 +9,77 @@ require_once __DIR__ . '/../Model/BaseModel.php';
 class Notification extends BaseModel {
     protected string $table = 'notifications';
 
-    public function getByUserId($userId, $limit = 20) {
-        $sql = "SELECT * FROM {$this->table} WHERE user_id = ? ORDER BY created_at DESC LIMIT ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $limit]);
-        return $stmt->fetchAll();
+    private ?int $id;
+    private ?int $user_id;
+    private ?string $title;
+    private ?string $message;
+    private ?string $type;
+    private ?string $link;
+    private ?int $is_read;
+    private ?string $created_at;
+
+    public function __construct(
+        ?int $id = null,
+        ?int $user_id = null,
+        ?string $title = null,
+        ?string $message = null,
+        ?string $type = null,
+        ?string $link = null,
+        ?int $is_read = null,
+        ?string $created_at = null
+    ) {
+        parent::__construct();
+        
+        $this->id = $id;
+        $this->user_id = $user_id;
+        $this->title = $title;
+        $this->message = $message;
+        $this->type = $type;
+        $this->link = $link;
+        $this->is_read = $is_read;
+        $this->created_at = $created_at;
     }
 
+    public function getId(): ?int { return $this->id; }
+    public function setId(?int $id): self { $this->id = $id; return $this; }
+
+    public function getUserId(): ?int { return $this->user_id; }
+    public function setUserId(?int $user_id): self { $this->user_id = $user_id; return $this; }
+
+    public function getTitle(): ?string { return $this->title; }
+    public function setTitle(?string $title): self { $this->title = $title; return $this; }
+
+    public function getMessage(): ?string { return $this->message; }
+    public function setMessage(?string $message): self { $this->message = $message; return $this; }
+
+    public function getType(): ?string { return $this->type; }
+    public function setType(?string $type): self { $this->type = $type; return $this; }
+
+    public function getLink(): ?string { return $this->link; }
+    public function setLink(?string $link): self { $this->link = $link; return $this; }
+
+    public function getIsRead(): ?int { return $this->is_read; }
+    public function setIsRead(?int $is_read): self { $this->is_read = $is_read; return $this; }
+
+    public function getCreatedAt(): ?string { return $this->created_at; }
+    public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
+    
+    // Delegate methods for backward compatibility
     public function getUnreadCount($userId) {
-        $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE user_id = ? AND is_read = 0";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId]);
-        $result = $stmt->fetch();
-        return $result['count'] ?? 0;
+        require_once __DIR__ . '/../Controller/NotificationController.php';
+        $ctrl = new NotificationController();
+        return $ctrl->getUnreadCount($userId);
     }
-
-    public function create($data) {
-        $sql = "INSERT INTO {$this->table} (user_id, title, message, type, link, created_at)
-                VALUES (?, ?, ?, ?, ?, NOW())";
-        try {
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([
-                $data['user_id'],
-                $data['title'],
-                $data['message'],
-                $data['type'] ?? 'info',
-                $data['link'] ?? null
-            ]);
-            return $this->db->lastInsertId();
-        } catch (PDOException $e) {
-            return false;
-        }
+    
+    public function getByUserId($userId) {
+        require_once __DIR__ . '/../Controller/NotificationController.php';
+        $ctrl = new NotificationController();
+        return $ctrl->getByUserId($userId);
     }
-
-    public function markAsRead($id) {
-        $sql = "UPDATE {$this->table} SET is_read = 1 WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$id]);
-    }
-
+    
     public function markAllAsRead($userId) {
-        $sql = "UPDATE {$this->table} SET is_read = 1 WHERE user_id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$userId]);
-    }
-
-    public function delete($id): bool {
-        $sql = "DELETE FROM {$this->table} WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$id]);
+        require_once __DIR__ . '/../Controller/NotificationController.php';
+        $ctrl = new NotificationController();
+        return $ctrl->markAllAsRead($userId);
     }
 }

@@ -9,115 +9,70 @@ require_once __DIR__ . '/../Model/BaseModel.php';
 class LessonProgress extends BaseModel {
     protected string $table = 'lesson_progress';
 
-    public function getByUserAndCourse($userId, $courseId) {
-        $sql = "SELECT lp.*, l.title as lesson_title, ch.title as chapter_title
-                FROM {$this->table} lp
-                JOIN lessons l ON lp.lesson_id = l.id
-                JOIN chapters ch ON l.chapter_id = ch.id
-                WHERE lp.user_id = ? AND ch.course_id = ?
-                ORDER BY ch.chapter_order, l.lesson_order";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $courseId]);
-        return $stmt->fetchAll();
-    }
+    private ?int $id;
+    private ?int $user_id;
+    private ?int $lesson_id;
+    private ?int $completed;
+    private ?int $watch_time;
+    private ?string $completed_at;
 
-    public function getByLesson($userId, $lessonId) {
-        $sql = "SELECT * FROM {$this->table} WHERE user_id = ? AND lesson_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $lessonId]);
-        return $stmt->fetch();
-    }
-
-    public function markComplete($userId, $lessonId) {
-        $exists = $this->getByLesson($userId, $lessonId);
+    public function __construct(
+        ?int $id = null,
+        ?int $user_id = null,
+        ?int $lesson_id = null,
+        ?int $completed = null,
+        ?int $watch_time = null,
+        ?string $completed_at = null
+    ) {
+        parent::__construct();
         
-        if ($exists) {
-            $sql = "UPDATE {$this->table} SET completed = 1, completed_at = NOW() WHERE user_id = ? AND lesson_id = ?";
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([$userId, $lessonId]);
-        } else {
-            $sql = "INSERT INTO {$this->table} (user_id, lesson_id, completed, completed_at) VALUES (?, ?, 1, NOW())";
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([$userId, $lessonId]);
-        }
+        $this->id = $id;
+        $this->user_id = $user_id;
+        $this->lesson_id = $lesson_id;
+        $this->completed = $completed;
+        $this->watch_time = $watch_time;
+        $this->completed_at = $completed_at;
     }
 
-    public function markCompleteNoDuplicate($userId, $lessonId) {
-        $sql = "INSERT INTO {$this->table} (user_id, lesson_id, completed, completed_at) 
-                VALUES (?, ?, 1, NOW())
-                ON DUPLICATE KEY UPDATE completed = 1, completed_at = NOW()";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$userId, $lessonId]);
-    }
+    public function getId(): ?int { return $this->id; }
+    public function setId(?int $id): self { $this->id = $id; return $this; }
 
-    public function markIncomplete($userId, $lessonId) {
-        $sql = "UPDATE {$this->table} SET completed = 0, completed_at = NULL WHERE user_id = ? AND lesson_id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$userId, $lessonId]);
-    }
+    public function getUserId(): ?int { return $this->user_id; }
+    public function setUserId(?int $user_id): self { $this->user_id = $user_id; return $this; }
 
-    public function getCompletedCount($userId, $courseId) {
-        $sql = "SELECT COUNT(DISTINCT lp.lesson_id) as count
-                FROM {$this->table} lp
-                JOIN lessons l ON lp.lesson_id = l.id
-                JOIN chapters ch ON l.chapter_id = ch.id
-                WHERE lp.user_id = ? AND ch.course_id = ? AND lp.completed = 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $courseId]);
-        $result = $stmt->fetch();
-        return $result['count'] ?? 0;
-    }
+    public function getLessonId(): ?int { return $this->lesson_id; }
+    public function setLessonId(?int $lesson_id): self { $this->lesson_id = $lesson_id; return $this; }
 
-    public function getTotalLessons($courseId) {
-        $sql = "SELECT COUNT(*) as count
-                FROM lessons l
-                JOIN chapters ch ON l.chapter_id = ch.id
-                WHERE ch.course_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$courseId]);
-        $result = $stmt->fetch();
-        return $result['count'] ?? 0;
-    }
+    public function getCompleted(): ?int { return $this->completed; }
+    public function setCompleted(?int $completed): self { $this->completed = $completed; return $this; }
 
-    public function calculateProgress($userId, $courseId) {
-        $completed = $this->getCompletedCount($userId, $courseId);
-        $total = $this->getTotalLessons($courseId);
-        
-        if ($total == 0) return 0;
-        return round(($completed / $total) * 100);
-    }
+    public function getWatchTime(): ?int { return $this->watch_time; }
+    public function setWatchTime(?int $watch_time): self { $this->watch_time = $watch_time; return $this; }
 
-    public function updateWatchTime($userId, $lessonId, $seconds) {
-        $exists = $this->getByLesson($userId, $lessonId);
-        
-        if ($exists) {
-            $sql = "UPDATE {$this->table} SET watch_time = ? WHERE user_id = ? AND lesson_id = ?";
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([$seconds, $userId, $lessonId]);
-        } else {
-            $sql = "INSERT INTO {$this->table} (user_id, lesson_id, watch_time) VALUES (?, ?, ?)";
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([$userId, $lessonId, $seconds]);
-        }
-    }
-
-    public function isLessonCompleted($userId, $lessonId) {
-        $progress = $this->getByLesson($userId, $lessonId);
-        return $progress && $progress['completed'] == 1;
-    }
-
-    public function getCourseCompletionPercentage($userId, $courseId) {
-        return $this->calculateProgress($userId, $courseId);
-    }
-
+    public function getCompletedAt(): ?string { return $this->completed_at; }
+    public function setCompletedAt(?string $completed_at): self { $this->completed_at = $completed_at; return $this; }
+    
     public function getCompletedLessons($userId, $courseId) {
-        $sql = "SELECT lp.lesson_id
-                FROM {$this->table} lp
-                JOIN lessons l ON lp.lesson_id = l.id
-                JOIN chapters ch ON l.chapter_id = ch.id
-                WHERE lp.user_id = ? AND ch.course_id = ? AND lp.completed = 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $courseId]);
-        return $stmt->fetchAll();
+        require_once __DIR__ . '/../Controller/LessonProgressController.php';
+        $ctrl = new LessonProgressController();
+        return $ctrl->getCompletedLessons($userId, $courseId);
+    }
+    
+    public function getTotalLessons($courseId) {
+        require_once __DIR__ . '/../Controller/LessonProgressController.php';
+        $ctrl = new LessonProgressController();
+        return $ctrl->getTotalLessons($courseId);
+    }
+    
+    public function getCompletedCount($userId, $courseId) {
+        require_once __DIR__ . '/../Controller/LessonProgressController.php';
+        $ctrl = new LessonProgressController();
+        return $ctrl->getCompletedCount($userId, $courseId);
+    }
+    
+    public function markCompleteNoDuplicate($userId, $lessonId) {
+        require_once __DIR__ . '/../Controller/LessonProgressController.php';
+        $ctrl = new LessonProgressController();
+        return $ctrl->markCompleteNoDuplicate($userId, $lessonId);
     }
 }

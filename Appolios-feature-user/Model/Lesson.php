@@ -4,132 +4,100 @@
  * Manages course lessons (videos, text, PDFs)
  */
 
+require_once __DIR__ . '/../Model/BaseModel.php';
+
 class Lesson extends BaseModel {
     protected string $table = 'lessons';
     protected string $primaryKey = 'id';
 
-    public function getByChapterId($chapterId) {
-        $sql = "SELECT * FROM {$this->table} WHERE chapter_id = ? ORDER BY lesson_order ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$chapterId]);
-        return $stmt->fetchAll();
-    }
+    private ?int $id;
+    private ?int $chapter_id;
+    private ?string $title;
+    private ?string $lesson_type;
+    private ?string $video_url;
+    private ?string $content;
+    private ?string $pdf_path;
+    private ?int $duration;
+    private ?int $lesson_order;
+    private ?string $created_at;
 
-    public function getByCourseId($courseId) {
-        $sql = "SELECT l.*, c.title as chapter_title, c.chapter_order 
-                FROM {$this->table} l 
-                JOIN chapters c ON l.chapter_id = c.id 
-                WHERE c.course_id = ? 
-                ORDER BY c.chapter_order ASC, l.lesson_order ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$courseId]);
-        return $stmt->fetchAll();
-    }
-
-    public function deleteByChapterId($chapterId) {
-        $sql = "DELETE FROM {$this->table} WHERE chapter_id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$chapterId]);
-    }
-
-    public function createLesson($data) {
-        $maxOrder = $this->getMaxOrder($data['chapter_id'] ?? 0);
-        $data['lesson_order'] = $maxOrder + 1;
+    public function __construct(
+        ?int $id = null,
+        ?int $chapter_id = null,
+        ?string $title = null,
+        ?string $lesson_type = null,
+        ?string $video_url = null,
+        ?string $content = null,
+        ?string $pdf_path = null,
+        ?int $duration = null,
+        ?int $lesson_order = null,
+        ?string $created_at = null
+    ) {
+        parent::__construct();
         
-        if (!isset($data['lesson_type'])) {
-            $data['lesson_type'] = 'video';
-        }
-
-        return $this->create($data);
+        $this->id = $id;
+        $this->chapter_id = $chapter_id;
+        $this->title = $title;
+        $this->lesson_type = $lesson_type;
+        $this->video_url = $video_url;
+        $this->content = $content;
+        $this->pdf_path = $pdf_path;
+        $this->duration = $duration;
+        $this->lesson_order = $lesson_order;
+        $this->created_at = $created_at;
     }
 
-    private function getMaxOrder($chapterId) {
-        $sql = "SELECT MAX(lesson_order) as max_order FROM {$this->table} WHERE chapter_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$chapterId]);
-        $result = $stmt->fetch();
-        return $result ? (int)$result['max_order'] : 0;
-    }
+    public function getId(): ?int { return $this->id; }
+    public function setId(?int $id): self { $this->id = $id; return $this; }
 
-    public function updateOrder($id, $newOrder) {
-        return $this->update($id, ['lesson_order' => $newOrder]);
-    }
+    public function getChapterId(): ?int { return $this->chapter_id; }
+    public function setChapterId(?int $chapter_id): self { $this->chapter_id = $chapter_id; return $this; }
 
-    public function getTotalDuration($courseId) {
-        $sql = "SELECT SUM(l.duration) as total 
-                FROM {$this->table} l 
-                JOIN chapters c ON l.chapter_id = c.id 
-                WHERE c.course_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$courseId]);
-        $result = $stmt->fetch();
-        return $result ? (int)$result['total'] : 0;
-    }
+    public function getTitle(): ?string { return $this->title; }
+    public function setTitle(?string $title): self { $this->title = $title; return $this; }
 
+    public function getLessonType(): ?string { return $this->lesson_type; }
+    public function setLessonType(?string $lesson_type): self { $this->lesson_type = $lesson_type; return $this; }
+
+    public function getVideoUrl(): ?string { return $this->video_url; }
+    public function setVideoUrl(?string $video_url): self { $this->video_url = $video_url; return $this; }
+
+    public function getContent(): ?string { return $this->content; }
+    public function setContent(?string $content): self { $this->content = $content; return $this; }
+
+    public function getPdfPath(): ?string { return $this->pdf_path; }
+    public function setPdfPath(?string $pdf_path): self { $this->pdf_path = $pdf_path; return $this; }
+
+    public function getDuration(): ?int { return $this->duration; }
+    public function setDuration(?int $duration): self { $this->duration = $duration; return $this; }
+
+    public function getLessonOrder(): ?int { return $this->lesson_order; }
+    public function setLessonOrder(?int $lesson_order): self { $this->lesson_order = $lesson_order; return $this; }
+
+    public function getCreatedAt(): ?string { return $this->created_at; }
+    public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
+    
+    public function getByChapterId($chapterId) {
+        require_once __DIR__ . '/../Controller/LessonController.php';
+        $ctrl = new LessonController();
+        return $ctrl->getByChapterId($chapterId);
+    }
+    
+    public function getByCourseId($courseId) {
+        require_once __DIR__ . '/../Controller/LessonController.php';
+        $ctrl = new LessonController();
+        return $ctrl->getByCourseId($courseId);
+    }
+    
     public function getLessonCount($courseId) {
-        $sql = "SELECT COUNT(l.id) as count 
-                FROM {$this->table} l 
-                JOIN chapters c ON l.chapter_id = c.id 
-                WHERE c.course_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$courseId]);
-        $result = $stmt->fetch();
-        return $result ? (int)$result['count'] : 0;
+        require_once __DIR__ . '/../Controller/LessonController.php';
+        $ctrl = new LessonController();
+        return $ctrl->getLessonCount($courseId);
     }
-
-public function create($data) {
-        $sql = "INSERT INTO {$this->table} (chapter_id, title, lesson_type, video_url, content, pdf_path, duration, lesson_order, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-
-        try {
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([
-                $data['chapter_id'],
-                $data['title'],
-                $data['lesson_type'] ?? 'video',
-                $data['video_url'] ?? null,
-                $data['content'] ?? null,
-                $data['pdf_path'] ?? null,
-                $data['duration'] ?? 0,
-                $data['lesson_order'] ?? 1
-            ]);
-            return $this->db->lastInsertId();
-        } catch (PDOException $e) {
-            error_log("Lesson create error: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    public function update($id, $data) {
-        $fields = [];
-        $values = [];
-
-        foreach ($data as $key => $value) {
-            $fields[] = "$key = ?";
-            $values[] = $value;
-        }
-        $values[] = $id;
-
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute($values);
-    }
-
-    public function findById($id) {
-        $sql = "SELECT * FROM {$this->table} WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        return $stmt->fetch();
-    }
-
-    public function findByCourseId($courseId) {
-        $sql = "SELECT l.*, c.title as chapter_title, c.chapter_order
-                FROM {$this->table} l
-                JOIN chapters c ON l.chapter_id = c.id
-                WHERE c.course_id = ?
-                ORDER BY c.chapter_order ASC, l.lesson_order ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$courseId]);
-        return $stmt->fetchAll();
+    
+    public function getTotalDuration($courseId) {
+        require_once __DIR__ . '/../Controller/LessonController.php';
+        $ctrl = new LessonController();
+        return $ctrl->getTotalDuration($courseId);
     }
 }

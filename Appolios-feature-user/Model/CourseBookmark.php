@@ -7,49 +7,54 @@
 require_once __DIR__ . '/../Model/BaseModel.php';
 
 class CourseBookmark extends BaseModel {
-    protected string = 'course_bookmarks';
+    protected string $table = 'course_bookmarks';
 
-    public function getUserBookmarks($userId) {
-        $sql = "SELECT cb.*, c.title, c.description, c.image, c.price, u.name as creator_name
-                FROM course_bookmarks cb
-                JOIN courses c ON cb.course_id = c.id
-                JOIN users u ON c.created_by = u.id
-                WHERE cb.user_id = ?
-                ORDER BY cb.created_at DESC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId]);
-        return $stmt->fetchAll();
+    private ?int $id;
+    private ?int $user_id;
+    private ?int $course_id;
+    private ?string $created_at;
+
+    public function __construct(
+        ?int $id = null,
+        ?int $user_id = null,
+        ?int $course_id = null,
+        ?string $created_at = null
+    ) {
+        parent::__construct();
+        
+        $this->id = $id;
+        $this->user_id = $user_id;
+        $this->course_id = $course_id;
+        $this->created_at = $created_at;
     }
 
-    public function addBookmark($userId, $courseId) {
-        $sql = "INSERT INTO course_bookmarks (user_id, course_id, created_at) VALUES (?, ?, NOW())";
-        try {
-            $stmt = $this->db->prepare($sql);
-            return $stmt->execute([$userId, $courseId]);
-        } catch (PDOException $e) {
-            return false;
-        }
-    }
+    public function getId(): ?int { return $this->id; }
+    public function setId(?int $id): self { $this->id = $id; return $this; }
 
-    public function removeBookmark($userId, $courseId) {
-        $sql = "DELETE FROM course_bookmarks WHERE user_id = ? AND course_id = ?";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$userId, $courseId]);
-    }
+    public function getUserId(): ?int { return $this->user_id; }
+    public function setUserId(?int $user_id): self { $this->user_id = $user_id; return $this; }
 
+    public function getCourseId(): ?int { return $this->course_id; }
+    public function setCourseId(?int $course_id): self { $this->course_id = $course_id; return $this; }
+
+    public function getCreatedAt(): ?string { return $this->created_at; }
+    public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
+    
     public function isBookmarked($userId, $courseId) {
-        $sql = "SELECT COUNT(*) as count FROM course_bookmarks WHERE user_id = ? AND course_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $courseId]);
-        $result = $stmt->fetch();
-        return $result['count'] > 0;
+        require_once __DIR__ . '/../Controller/CourseBookmarkController.php';
+        $ctrl = new CourseBookmarkController();
+        return $ctrl->isBookmarked($userId, $courseId);
     }
-
-    public function getBookmarksCount($userId) {
-        $sql = "SELECT COUNT(*) as count FROM course_bookmarks WHERE user_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId]);
-        $result = $stmt->fetch();
-        return $result['count'] ?? 0;
+    
+    public function addBookmark($userId, $courseId) {
+        require_once __DIR__ . '/../Controller/CourseBookmarkController.php';
+        $ctrl = new CourseBookmarkController();
+        return $ctrl->addBookmark($userId, $courseId);
+    }
+    
+    public function removeBookmark($userId, $courseId) {
+        require_once __DIR__ . '/../Controller/CourseBookmarkController.php';
+        $ctrl = new CourseBookmarkController();
+        return $ctrl->removeBookmark($userId, $courseId);
     }
 }

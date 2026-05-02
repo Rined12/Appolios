@@ -34,7 +34,7 @@ class CourseRecommendation {
     }
     
     private function getUserCourses($userId) {
-        $sql = "SELECT c.id, c.title, c.description, c.price
+        $sql = "SELECT c.id, c.title, c.description, c.price, c.image
                 FROM courses c
                 JOIN enrollments e ON c.id = e.course_id
                 WHERE e.user_id = ? AND c.status = 'approved'";
@@ -44,7 +44,7 @@ class CourseRecommendation {
     }
     
     private function getAvailableCourses($userId) {
-        $sql = "SELECT c.id, c.title, c.description, c.price, u.name as creator_name
+        $sql = "SELECT c.id, c.title, c.description, c.price, c.image, u.name as creator_name
                 FROM courses c
                 JOIN users u ON c.created_by = u.id
                 WHERE c.status = 'approved' 
@@ -162,7 +162,7 @@ Return ONLY a JSON array of course IDs (no other text):";
     }
     
     private function getPopularCourses($limit) {
-        $sql = "SELECT c.id, c.title, c.description, c.price, u.name as creator_name,
+        $sql = "SELECT c.id, c.title, c.description, c.price, c.image, u.name as creator_name,
                 (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as enrollment_count
                 FROM courses c
                 JOIN users u ON c.created_by = u.id

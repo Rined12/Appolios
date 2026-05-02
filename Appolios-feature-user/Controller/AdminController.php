@@ -773,6 +773,22 @@ class AdminController extends BaseController {
                 $image = 'uploads/images/' . $filename;
             }
         }
+        
+        // AI Image Generation (if no image provided)
+        if (empty($image)) {
+            require_once __DIR__ . '/../Service/ImageGenerator.php';
+            $imageGen = new ImageGenerator();
+            $categoryName = '';
+            if (!empty($categoryId)) {
+                $categoryModel = $this->model('Category');
+                $cat = $categoryModel->getById($categoryId);
+                $categoryName = $cat['name'] ?? '';
+            }
+            $generatedImage = $imageGen->generateAIPrompt($title, $categoryName);
+            if ($generatedImage) {
+                $image = $generatedImage;
+            }
+        }
 
         if (empty($title)) {
             $_SESSION['errors'] = ['title' => 'Course title is required'];
