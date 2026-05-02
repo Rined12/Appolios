@@ -9,7 +9,7 @@ require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Enrollment.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
-require_once __DIR__ . '/../Model/AvatarGenerator.php';
+require_once __DIR__ . '/../Controller/AvatarGenerator.php';
 
 class StudentController extends BaseController {
 

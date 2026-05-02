@@ -36,6 +36,7 @@ class AvatarGenerator
 
             $avatarId = $this->saveAvatar($userId, $imageData, $faceData);
 
+            // Path updated to account for being in Controller folder
             $uploadDir = __DIR__ . '/../uploads/avatars/';
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
@@ -102,13 +103,6 @@ class AvatarGenerator
 
     /**
      * Picks the best emoji from detected characteristics.
-     *
-     * Logic:
-     *  1. Age  → child / senior / adult
-     *  2. Gender
-     *  3. Hair luminance → bald / white / blonde / dark
-     *  4. Hair hue      → reddish / neutral
-     *  5. Male + beard  → 🧔
      */
     private function selectEmoji(string $skinTone, string $hairColor, string $gender, float $age): string
     {
@@ -119,9 +113,6 @@ class AvatarGenerator
         $isBlonde        = ($hairLuminance > 160);
         $isWhiteOrGray   = ($hairLuminance > 200 && abs($rH - $gH) < 15 && abs($gH - $bH) < 15);
         $isBald          = ($hairLuminance > 220);
-
-        // ── Skin analysis ──────────────────────────────────────────────────
-        [$rS, $gS, $bS] = sscanf(ltrim($skinTone, '#'), '%02x%02x%02x');
 
         // ── Age groups ─────────────────────────────────────────────────────
         if ($age < 10) {
@@ -134,23 +125,23 @@ class AvatarGenerator
             return ($gender === 'female') ? '👵' : '👴';
         }
         if ($age > 50) {
-            return ($gender === 'female') ? '👩‍🦳' : '👨‍🦳';
+            return ($gender === 'female') ? '👩🦳' : '👨🦳';
         }
 
         // ── Adults ─────────────────────────────────────────────────────────
         if ($gender === 'female') {
-            if ($isBald)        return '👩‍🦲';
-            if ($isWhiteOrGray) return '👩‍🦳';
-            if ($isRedHair)     return '👩‍🦰';
-            if ($isBlonde)      return '👱‍♀️';
+            if ($isBald)        return '👩🦲';
+            if ($isWhiteOrGray) return '👩🦳';
+            if ($isRedHair)     return '👩🦰';
+            if ($isBlonde)      return '👱♀️';
             return '👩';
         }
 
         // Male
-        if ($isBald)        return '👨‍🦲';
-        if ($isWhiteOrGray) return '👨‍🦳';
-        if ($isRedHair)     return '👨‍🦰';
-        if ($isBlonde)      return '👱‍♂️';
+        if ($isBald)        return '👨🦲';
+        if ($isWhiteOrGray) return '👨🦳';
+        if ($isRedHair)     return '👨🦰';
+        if ($isBlonde)      return '👱♂️';
         return '🧔';   // default adult male → bearded
     }
 
