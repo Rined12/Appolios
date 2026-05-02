@@ -323,3 +323,177 @@ CREATE TABLE IF NOT EXISTS chatbot_context (
     INDEX idx_session_id (session_id),
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- COURSE CATEGORIES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    color VARCHAR(20) DEFAULT '#667eea',
+    icon VARCHAR(50) DEFAULT 'fa-book',
+    parent_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_slug (slug),
+    INDEX idx_parent_id (parent_id),
+    FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- COURSE REVIEWS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS course_reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    course_id INT NOT NULL,
+    rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    review_text TEXT,
+    is_approved TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_course (user_id, course_id),
+    INDEX idx_course_id (course_id),
+    INDEX idx_rating (rating)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- USER XP POINTS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_xp (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    xp_points INT DEFAULT 0,
+    level INT DEFAULT 1,
+    total_courses_completed INT DEFAULT 0,
+    total_lessons_completed INT DEFAULT 0,
+    total_quizzes_passed INT DEFAULT 0,
+    streak_days INT DEFAULT 0,
+    last_activity_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- XP TRANSACTIONS LOG
+-- ============================================
+CREATE TABLE IF NOT EXISTS xp_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    xp_amount INT NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- COURSE BOOKMARKS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS course_bookmarks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    course_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_course (user_id, course_id),
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- USER NOTIFICATIONS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type ENUM('info', 'success', 'warning', 'error', 'achievement', 'badge', 'course', 'event') DEFAULT 'info',
+    is_read TINYINT(1) DEFAULT 0,
+    link VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_is_read (is_read),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- COURSE CERTIFICATES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS certificates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    course_id INT NOT NULL,
+    certificate_code VARCHAR(50) NOT NULL UNIQUE,
+    issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    download_url VARCHAR(500),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_course (user_id, course_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_course_id (course_id),
+    INDEX idx_code (certificate_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- BADGES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS badges (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    icon VARCHAR(50) DEFAULT 'fa-award',
+    color VARCHAR(20) DEFAULT '#667eea',
+    xp_reward INT DEFAULT 0,
+    criteria_type VARCHAR(50),
+    criteria_value INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- USER BADGES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_badges (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    badge_id INT NOT NULL,
+    earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (badge_id) REFERENCES badges(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_badge (user_id, badge_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_badge_id (badge_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- SAMPLE CATEGORIES
+-- ============================================
+INSERT INTO categories (name, slug, description, color, icon) VALUES
+('Web Development', 'web-development', 'Learn to build websites and web applications', '#667eea', 'fa-code'),
+('Mobile Development', 'mobile-development', 'Create mobile apps for iOS and Android', '#764ba2', 'fa-mobile-alt'),
+('Data Science', 'data-science', 'Analyze data and build ML models', '#f093fb', 'fa-database'),
+('DevOps', 'devops', 'Learn CI/CD, containers, and cloud', '#4facfe', 'fa-cloud'),
+('Design', 'design', 'UI/UX design and graphic design', '#43e97b', 'fa-palette');
+
+-- ============================================
+-- SAMPLE BADGES
+-- ============================================
+INSERT INTO badges (name, slug, description, icon, color, xp_reward, criteria_type, criteria_value) VALUES
+('First Steps', 'first-steps', 'Complete your first lesson', 'fa-star', '#ffd700', 10, 'lessons_completed', 1),
+('Quick Learner', 'quick-learner', 'Complete 5 lessons', 'fa-bolt', '#ff6b6b', 25, 'lessons_completed', 5),
+('Course Master', 'course-master', 'Complete your first course', 'fa-trophy', '#4facfe', 100, 'courses_completed', 1),
+('Dedicated Student', 'dedicated-student', 'Complete 3 courses', 'fa-graduation-cap', '#667eea', 250, 'courses_completed', 3),
+('XP Champion', 'xp-champion', 'Earn 500 XP points', 'fa-medal', '#f093fb', 50, 'xp_earned', 500),
+('Streak Starter', 'streak-starter', 'Maintain a 3-day streak', 'fa-fire', '#ff9a9e', 30, 'streak_days', 3),
+('Perfect Score', 'perfect-score', 'Pass a quiz with 100%', 'fa-check-circle', '#43e97b', 20, 'quiz_perfect', 1),
+('Bookworm', 'bookworm', 'Bookmark 5 courses', 'fa-bookmark', '#764ba2', 15, 'bookmarks', 5);

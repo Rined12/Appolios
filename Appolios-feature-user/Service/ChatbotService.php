@@ -142,7 +142,7 @@ class ChatbotService {
         $messages[] = ['role' => 'user', 'content' => $userMessage];
         
         $data = [
-            'model' => $config['model'] ?? 'microsoft phi-3.5-mini-instruct-free',
+            'model' => $config['model'] ?? 'meta-llama/llama-3.1-8b-instruct',
             'messages' => $messages,
             'temperature' => 0.7,
             'max_tokens' => 500

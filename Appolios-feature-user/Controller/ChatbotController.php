@@ -16,12 +16,6 @@ class ChatbotController {
     public function handleRequest() {
         header('Content-Type: application/json');
         
-        $debug = [
-            'url' => $_GET['url'] ?? '',
-            'action' => $_GET['action'] ?? '',
-            'post' => file_get_contents('php://input')
-        ];
-        
         $action = $_GET['action'] ?? '';
         
         switch ($action) {

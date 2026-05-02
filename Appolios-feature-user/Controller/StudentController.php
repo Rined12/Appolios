@@ -778,9 +778,39 @@ class StudentController extends BaseController {
             'flash' => $this->getFlash()
         ];
 
-        $this->view('FrontOffice/student/badges', $data);
+$this->view('FrontOffice/student/badges', $data);
     }
-
+    
+    /**
+     * Certificates page
+     */
+    public function certificates() {
+        if (!$this->isLoggedIn()) {
+            $this->setFlash('error', 'Please login to view certificates.');
+            $this->redirect('login');
+            return;
+        }
+        
+        if ($_SESSION['role'] !== 'student') {
+            $this->setFlash('error', 'Access denied.');
+            $this->redirect('login');
+            return;
+        }
+        
+        require_once __DIR__ . '/../Service/CertificateService.php';
+        $certService = new CertificateService();
+        $certificates = $certService->getUserCertificates($_SESSION['user_id']);
+        
+        $data = [
+            'title' => 'My Certificates - APPOLIOS',
+            'description' => 'Your earned certificates',
+            'certificates' => $certificates,
+            'flash' => $this->getFlash()
+        ];
+        
+        $this->view('FrontOffice/student/certificates', $data);
+    }
+    
     /**
      * Edit profile page
      */

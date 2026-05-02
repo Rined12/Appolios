@@ -319,6 +319,15 @@ class AuthController extends BaseController {
      * Logout
      */
     public function logout() {
+        // Clear chatbot conversation from database if user was logged in
+        if (isset($_SESSION['user_id'])) {
+            require_once __DIR__ . '/../Service/ChatbotService.php';
+            if (isset($_SESSION['chatbot_session'])) {
+                $chatbot = new ChatbotService();
+                $chatbot->clearConversation($_SESSION['chatbot_session']);
+            }
+        }
+        
         // Destroy session
         $_SESSION = [];
 

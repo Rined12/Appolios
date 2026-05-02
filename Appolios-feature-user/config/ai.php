@@ -23,8 +23,8 @@ return [
     
     // OpenRouter API - Free tier (sign up at https://openrouter.ai)
     'openrouter' => [
-        'api_key' => getenv('OPENROUTER_API_KEY') ?: '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',
-        'model' => 'microsoft/phi-3.5-mini-instruct-free',
+        'api_key' => getenv('OPENROUTER_API_KEY') ?: '',
+        'model' => 'meta-llama/llama-3.1-8b-instruct',
         'endpoint' => 'https://openrouter.ai/api/v1/chat/completions',
         'referer' => 'appolios',
         'title' => 'Appolios E-Learning'

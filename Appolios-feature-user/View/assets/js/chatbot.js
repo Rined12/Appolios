@@ -3,6 +3,25 @@
 (function() {
     'use strict';
     
+    // For direct API calls - relative path works best
+    var APP_API = 'api/chatbot.php';
+    
+    // Check if we're on login page - if so, this is a fresh visit after logout
+    const isLoginPage = window.location.href.indexOf('login') > -1 || window.location.href.indexOf('logout') > -1;
+    const wasLoggedIn = localStorage.getItem('chatbot_was_logged_in');
+    
+    // Clear conversation if logging in fresh or after logout
+    if ((isLoginPage && wasLoggedIn === 'true') || (isLoginPage && !localStorage.getItem('chatbot_session'))) {
+        localStorage.removeItem('chatbot_session');
+        localStorage.setItem('chatbot_session', generateSessionId());
+    }
+    
+    // Track logged in status
+    const hasHeader = document.querySelector('.neo-header');
+    if (hasHeader) {
+        localStorage.setItem('chatbot_was_logged_in', 'true');
+    }
+    
     let sessionId = localStorage.getItem('chatbot_session') || generateSessionId();
     localStorage.setItem('chatbot_session', sessionId);
     
@@ -279,8 +298,10 @@
         
         showTyping();
         
-        const url = APP_ENTRY + '?url=chatbot/handle&action=chat';
-        console.log('Chatbot URL:', url);
+        // Try direct API endpoint
+        const url = 'api/chatbot.php?action=chat';
+        
+        console.log('Sending to:', url);
         
         fetch(url, {
             method: 'POST',
@@ -291,22 +312,30 @@
             })
         })
         .then(res => {
-            console.log('Chatbot response status:', res.status);
-            return res.json();
+            console.log('Status:', res.status);
+            return res.text().then(text => {
+                console.log('Raw response:', text.substring(0, 200));
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.log('JSON parse error:', e.message);
+                    throw new Error('Invalid JSON: ' + text.substring(0, 100));
+                }
+            });
         })
         .then(data => {
-            console.log('Chatbot data:', data);
+            console.log('Data:', data);
             hideTyping();
             if (data.success) {
                 addMessage(data.response, 'assistant');
             } else {
-                addMessage('Sorry, something went wrong: ' + (data.error || 'Unknown error'), 'assistant');
+                addMessage('Error: ' + (data.error || 'unknown'), 'assistant');
             }
         })
         .catch(err => {
-            console.error('Chatbot fetch error:', err);
+            console.error('Error:', err);
             hideTyping();
-            addMessage('Sorry, I could not connect. Please check your internet.', 'assistant');
+            addMessage('Error: ' + err.message, 'assistant');
         });
     }
     
@@ -341,7 +370,7 @@
     }
     
     function loadHistory() {
-        fetch(APP_ENTRY + '?url=chatbot/handle&action=history&session_id=' + encodeURIComponent(sessionId))
+        fetch('api/chatbot.php?action=history&session_id=' + encodeURIComponent(sessionId))
         .then(res => res.json())
         .then(data => {
             if (data.success && data.history && data.history.length > 0) {
@@ -356,7 +385,7 @@
     }
     
     function clearConversation() {
-        fetch(APP_ENTRY + '?url=chatbot/handle&action=clear', {
+        fetch('api/chatbot.php?action=clear', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
