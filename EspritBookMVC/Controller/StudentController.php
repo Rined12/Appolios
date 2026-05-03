@@ -25,16 +25,14 @@ class StudentController extends BaseController {
     }
 
     /**
-     * Reads and clears discussion composer republish keys from the session (HTTP only).
-     *
      * @return array{old: array<string, mixed>, errors: array<string, mixed>}
      */
-    private function consumeDiscussionComposerSession(): array
+    private function consumeGroupPostComposerSession(): array
     {
-        $old = $_SESSION['discussion_old'] ?? [];
-        unset($_SESSION['discussion_old']);
-        $errors = $_SESSION['discussion_errors'] ?? [];
-        unset($_SESSION['discussion_errors']);
+        $old = $_SESSION['group_post_old'] ?? [];
+        unset($_SESSION['group_post_old']);
+        $errors = $_SESSION['group_post_errors'] ?? [];
+        unset($_SESSION['group_post_errors']);
 
         return [
             'old' => is_array($old) ? $old : [],
@@ -57,11 +55,11 @@ class StudentController extends BaseController {
         if ($first === 'create') {
             $old = $_SESSION['discussion_old'] ?? [];
             unset($_SESSION['discussion_old']);
-            $approvedOwnedGroups = $this->model('StudentQueryService')->approvedOwnedGroupsForUser($groupeRepository, (int) $_SESSION['user_id']);
+            $discussionGroups = $groupeRepository->fetchApprovedGroupsWhereUserCanParticipate((int) $_SESSION['user_id']);
             $data = $this->withFoContext([
                 'title' => 'Create Discussion - APPOLIOS',
                 'studentSidebarActive' => 'discussions',
-                'groups' => $approvedOwnedGroups,
+                'groups' => $discussionGroups,
                 'old' => $old,
                 'errors' => $_SESSION['discussion_errors'] ?? [],
                 'flash' => $this->sessionService()->flashConsumeForView()
@@ -190,13 +188,12 @@ class StudentController extends BaseController {
             $this->studentGroupesDelete($groupeRepository, $discussionRepository, $id);
             return;
         }
-        if ($second === 'discussions' && $third === 'store' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->studentGroupesDiscussionStore($groupeRepository, $id);
+        if ($second === 'posts' && $third === 'store' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->studentGroupesPostStore($groupeRepository, $id);
             return;
         }
-        if ($second === 'discussions' && $fourth === 'delete' && ctype_digit((string) $third) && (int) $third > 0) {
-            $discussionRepository = $this->model('DiscussionRepository');
-            $this->studentGroupDiscussionDeleteFromPage($groupeRepository, $discussionRepository, $id, (int) $third);
+        if ($second === 'posts' && $fourth === 'delete' && ctype_digit((string) $third) && (int) $third > 0) {
+            $this->studentGroupesPostDelete($groupeRepository, $id, (int) $third);
             return;
         }
 
@@ -728,33 +725,49 @@ class StudentController extends BaseController {
         $uid = (int) $_SESSION['user_id'];
         $approval = (string) ($groupe['approval_statut'] ?? '');
         $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
-        $isGroupCreatorViewer = $isCreator;
         if ($approval !== 'approuve' && !$isCreator) {
             $this->sessionService()->flashPersist('error', 'Ce groupe est encore en cours d approbation. Seul le createur peut le consulter.');
             $this->foRedirect('groupes');
             return;
         }
 
-        $discussionRepository = $this->model('DiscussionRepository');
-        $composerSession = $this->consumeDiscussionComposerSession();
-        $discussionRepublish = DiscussionPresenter::groupDetailComposerPayload($composerSession['old'], $composerSession['errors']);
+        $groupPostRepository = $this->model('GroupPostRepository');
+        $postComposerSession = $this->consumeGroupPostComposerSession();
+        $groupPostErrors = array_values(array_map(
+            static fn($m): string => (string) $m,
+            $postComposerSession['errors']
+        ));
 
-        $discussionRows = $discussionRepository->fetchByGroupForViewer(
-            $id,
-            $uid,
-            (int) ($groupe['id_createur'] ?? 0)
-        );
         $prefix = $this->frontOfficeRoutePrefix();
+        $isMember = $groupeRepository->estMembre($id, $uid);
+        $canPostWall = $approval === 'approuve' && ($isCreator || $isMember);
+        $show_group_join_cta = $approval === 'approuve' && !$isCreator && !$isMember;
+
+        $groupPostRows = $groupPostRepository->fetchByGroup($id, 80);
+        $group_post_cards = [];
+        foreach ($groupPostRows as $pr) {
+            $pid = (int) ($pr['id'] ?? 0);
+            $authorId = (int) ($pr['id_user'] ?? 0);
+            $group_post_cards[] = [
+                'body' => (string) ($pr['body'] ?? ''),
+                'author_name' => (string) ($pr['author_name'] ?? ''),
+                'created_at' => (string) ($pr['created_at'] ?? ''),
+                'can_delete' => $pid > 0 && ($authorId === $uid || $isCreator),
+                'url_delete' => APP_ENTRY . '?url=' . rawurlencode($prefix . '/groupes/' . $id . '/posts/' . $pid . '/delete'),
+            ];
+        }
 
         $data = $this->withFoContext([
             'title' => 'Detail groupe - APPOLIOS',
             'groupe' => $groupe,
             'is_owner_viewer' => $isCreator,
+            'can_post_wall' => $canPostWall,
+            'show_group_join_cta' => $show_group_join_cta,
             'group_cover_url' => GroupPresenter::detailCoverUrl($groupe),
             'member_chips' => GroupPresenter::formatMembers($groupeRepository->fetchMembres($id)),
-            'discussion_cards' => DiscussionPresenter::groupShowCards($discussionRows, $uid, $prefix, $id, $isGroupCreatorViewer, APP_ENTRY),
-            'discussion_old' => $discussionRepublish['old'],
-            'discussion_error_messages' => $discussionRepublish['error_messages'],
+            'group_post_cards' => $group_post_cards,
+            'group_post_old' => $postComposerSession['old'],
+            'group_post_error_messages' => $groupPostErrors,
             'flash' => $this->sessionService()->flashConsumeForView(),
             'studentSidebarActive' => 'groupes',
         ], 'groupes');
@@ -778,9 +791,9 @@ class StudentController extends BaseController {
             $this->foRedirect('groupes');
             return;
         }
-        if ($approval === 'approuve' && !$isCreator && !$groupeRepository->estMembre($id, $uid)) {
-            $this->sessionService()->flashPersist('error', 'Access denied.');
-            $this->foRedirect('groupes');
+        if (!$isCreator) {
+            $this->sessionService()->flashPersist('error', 'Only the group creator can export the activity report (PDF).');
+            $this->foRedirect('groupes/' . $id);
             return;
         }
 
@@ -798,7 +811,7 @@ class StudentController extends BaseController {
         $this->renderStandaloneView('Reports/group_activity_report_pdf', $report);
     }
 
-    private function studentGroupesDiscussionStore($groupeRepository, int $groupId): void
+    private function studentGroupesPostStore($groupeRepository, int $groupId): void
     {
         $groupe = $groupeRepository->findById($groupId);
         if (!$groupe) {
@@ -806,44 +819,62 @@ class StudentController extends BaseController {
             $this->foRedirect('groupes');
             return;
         }
-        if ((int) ($groupe['id_createur'] ?? 0) !== (int) $_SESSION['user_id']) {
-            $this->sessionService()->flashPersist('error', 'Only the group creator can create discussions.');
+        $uid = (int) $_SESSION['user_id'];
+        $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
+        if ((string) ($groupe['approval_statut'] ?? '') !== 'approuve') {
+            $this->sessionService()->flashPersist('error', 'Posts are available only after the group is approved.');
             $this->foRedirect('groupes/' . $groupId);
             return;
         }
-        if ((string) ($groupe['approval_statut'] ?? $groupe['approval_status'] ?? '') !== 'approuve') {
-            $this->sessionService()->flashPersist('error', 'You can create discussions only after the group is approved.');
-            $this->foRedirect('groupes/' . $groupId);
-            return;
-        }
-
-        $payload = [
-            'titre' => trim((string) ($_POST['titre'] ?? '')),
-            'contenu' => trim((string) ($_POST['contenu'] ?? '')),
-        ];
-        $errors = [];
-        if ($payload['titre'] === '' || strlen($payload['titre']) < 3 || strlen($payload['titre']) > 200) {
-            $errors['titre'] = 'Title must be between 3 and 200 characters.';
-        }
-        if ($payload['contenu'] === '' || strlen($payload['contenu']) < 5 || strlen($payload['contenu']) > 5000) {
-            $errors['contenu'] = 'Content must be between 5 and 5000 characters.';
-        }
-        if (!empty($errors)) {
-            $_SESSION['discussion_errors'] = $errors;
-            $_SESSION['discussion_old'] = $_POST;
+        if (!$isCreator && !$groupeRepository->estMembre($groupId, $uid)) {
+            $this->sessionService()->flashPersist('error', 'Join the group to post updates.');
             $this->foRedirect('groupes/' . $groupId);
             return;
         }
 
-        $discussionRepository = $this->model('DiscussionRepository');
-        $ok = $discussionRepository->createForGroup(
+        $body = trim((string) ($_POST['body'] ?? ''));
+        if ($body === '' || strlen($body) < 1 || strlen($body) > 5000) {
+            $_SESSION['group_post_errors'] = ['Message must be between 1 and 5000 characters.'];
+            $_SESSION['group_post_old'] = $_POST;
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+
+        $groupPostRepository = $this->model('GroupPostRepository');
+        $ok = $groupPostRepository->create(
             $groupId,
-            (int) $_SESSION['user_id'],
-            htmlspecialchars($payload['titre'], ENT_QUOTES, 'UTF-8'),
-            htmlspecialchars($payload['contenu'], ENT_QUOTES, 'UTF-8'),
-            'approuve'
+            $uid,
+            htmlspecialchars($body, ENT_QUOTES, 'UTF-8')
         );
-        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion creee. Vous pouvez l utiliser tout de suite (chat, fichiers).' : 'Failed to create discussion.');
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Post published.' : 'Could not publish your post.');
+        $this->foRedirect('groupes/' . $groupId);
+    }
+
+    private function studentGroupesPostDelete($groupeRepository, int $groupId, int $postId): void
+    {
+        $groupe = $groupeRepository->findById($groupId);
+        if (!$groupe) {
+            $this->sessionService()->flashPersist('error', 'Group not found.');
+            $this->foRedirect('groupes');
+            return;
+        }
+        $uid = (int) $_SESSION['user_id'];
+        $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
+        $groupPostRepository = $this->model('GroupPostRepository');
+        $row = $groupPostRepository->fetchPostById($postId);
+        if (!$row || (int) ($row['id_groupe'] ?? 0) !== $groupId) {
+            $this->sessionService()->flashPersist('error', 'Post not found.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $authorId = (int) ($row['id_user'] ?? 0);
+        if ($authorId !== $uid && !$isCreator) {
+            $this->sessionService()->flashPersist('error', 'You cannot delete this post.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $ok = $groupPostRepository->deleteByIdForGroup($postId, $groupId);
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Post removed.' : 'Could not delete the post.');
         $this->foRedirect('groupes/' . $groupId);
     }
 
@@ -1003,11 +1034,11 @@ class StudentController extends BaseController {
             'contenu' => trim((string) ($_POST['contenu'] ?? '')),
             'id_groupe' => (int) ($_POST['id_groupe'] ?? 0),
         ];
-        $groups = $this->model('StudentQueryService')->approvedOwnedGroupsForUser($groupeRepository, (int) $_SESSION['user_id']);
-        $ownedGroupIds = array_map(static fn($g) => (int) ($g['id_groupe'] ?? 0), $groups);
+        $groups = $groupeRepository->fetchApprovedGroupsWhereUserCanParticipate((int) $_SESSION['user_id']);
+        $allowedGroupIds = array_map(static fn($g) => (int) ($g['id_groupe'] ?? 0), $groups);
         $errors = [];
-        if ($payload['id_groupe'] === 0 || !in_array($payload['id_groupe'], $ownedGroupIds, true)) {
-            $errors['id_groupe'] = 'Please select an approved group that you own.';
+        if ($payload['id_groupe'] === 0 || !in_array($payload['id_groupe'], $allowedGroupIds, true)) {
+            $errors['id_groupe'] = 'Please select an approved group you belong to (as a member or owner).';
         }
         if ($payload['titre'] === '') {
             $errors['titre'] = 'Discussion title should not be empty.';
@@ -1122,7 +1153,7 @@ class StudentController extends BaseController {
             'studentSidebarActive' => 'discussions',
             'discussion_edit' => $form,
             'discussion_stats' => $discussionStats,
-            'groups' => $this->model('StudentQueryService')->approvedOwnedGroupsForUser($groupeRepository, (int) $_SESSION['user_id']),
+            'groups' => $groupeRepository->fetchApprovedGroupsWhereUserCanParticipate((int) $_SESSION['user_id']),
             'errors' => $_SESSION['discussion_errors'] ?? [],
             'flash' => $this->sessionService()->flashConsumeForView()
         ], 'discussions');
@@ -1143,11 +1174,11 @@ class StudentController extends BaseController {
             'contenu' => trim((string) ($_POST['contenu'] ?? '')),
             'id_groupe' => (int) ($_POST['id_groupe'] ?? 0),
         ];
-        $groups = $this->model('StudentQueryService')->approvedOwnedGroupsForUser($groupeRepository, (int) $_SESSION['user_id']);
-        $ownedGroupIds = array_map(static fn($g) => (int) ($g['id_groupe'] ?? 0), $groups);
+        $groups = $groupeRepository->fetchApprovedGroupsWhereUserCanParticipate((int) $_SESSION['user_id']);
+        $allowedGroupIds = array_map(static fn($g) => (int) ($g['id_groupe'] ?? 0), $groups);
         $errors = [];
-        if ($payload['id_groupe'] === 0 || !in_array($payload['id_groupe'], $ownedGroupIds, true)) {
-            $errors['id_groupe'] = 'Please select an approved group that you own.';
+        if ($payload['id_groupe'] === 0 || !in_array($payload['id_groupe'], $allowedGroupIds, true)) {
+            $errors['id_groupe'] = 'Please select an approved group you belong to (as a member or owner).';
         }
         if ($payload['titre'] === '') {
             $errors['titre'] = 'Discussion title should not be empty.';
@@ -1297,13 +1328,6 @@ class StudentController extends BaseController {
         return $discussionRepository->deleteByPrimaryKey($discussionId);
     }
 
-    private function studentGroupDiscussionDeleteFromPage($groupeRepository, $discussionRepository, int $groupId, int $discussionId): void
-    {
-        $ok = $this->studentDiscussionDeleteAuthorized($discussionRepository, $groupeRepository, $discussionId, $groupId);
-        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion supprimee.' : 'Suppression impossible (non autorisee).');
-        $this->foRedirect('groupes/' . $groupId);
-    }
-
     private function studentGroupesDelete($groupeRepository, $discussionRepository, int $id): void
     {
         $uid = (int) $_SESSION['user_id'];
@@ -1316,6 +1340,7 @@ class StudentController extends BaseController {
         $img = $this->groupeImageUrlFromRow($groupe);
         $this->deleteGroupPhotoFileIfManaged($img);
         $discussionRepository->deleteAllForGroup($id);
+        $this->model('GroupPostRepository')->deleteAllForGroup($id);
         $groupeRepository->deleteMembresForGroup($id);
         $ok = $groupeRepository->delete($id);
         $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Groupe supprime.' : 'Impossible de supprimer le groupe.');

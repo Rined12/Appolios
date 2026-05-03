@@ -958,6 +958,7 @@ class AdminController extends BaseController {
         if ($id > 0 && $second === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $discussionRepository = $this->model('DiscussionRepository');
             $discussionRepository->deleteAllForGroup($id);
+            $this->model('GroupPostRepository')->deleteAllForGroup($id);
             $groupeRepository->deleteMembresForGroup($id);
             $ok = $groupeRepository->delete($id);
             $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Group deleted.' : 'Failed to delete group.');

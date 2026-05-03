@@ -757,6 +757,40 @@
     line-height: 1.55;
 }
 
+.collab-hub .collab-feed-panel .collab-feed-compose {
+    margin-bottom: 1.25rem;
+}
+
+.collab-hub .collab-feed-post__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.collab-hub .collab-feed-post__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #0f172a;
+    background: linear-gradient(135deg, #e0f2fe, #cffafe);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.collab-hub .collab-feed-post__body {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--ch-slate);
+    line-height: 1.55;
+    word-break: break-word;
+}
+
 /* ---- Forms (create / edit discussion) ---- */
 .collab-hub .collab-form-shell {
     max-width: 720px;

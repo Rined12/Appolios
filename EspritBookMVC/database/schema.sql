@@ -246,5 +246,18 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
+-- GROUP WALL POSTS (member feed on group page; also auto-created by app if missing)
+-- ============================================
+CREATE TABLE IF NOT EXISTS groupe_post (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_groupe INT NOT NULL,
+    id_user INT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_groupe_created (id_groupe, created_at),
+    INDEX idx_user (id_user)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
 -- END OF DATABASE SCHEMA
 -- ============================================

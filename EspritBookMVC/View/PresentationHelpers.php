@@ -147,32 +147,6 @@ final class DiscussionPresenter
     }
 
     /**
-     * @param array<int, array<string, mixed>> $rows
-     * @return array<int, array<string, mixed>>
-     */
-    public static function groupShowCards(array $rows, int $viewerId, string $foPrefix, int $groupId, bool $isGroupCreatorViewer, string $appEntry): array
-    {
-        $cards = [];
-        foreach ($rows as $d) {
-            $discId = (int) ($d['id_discussion'] ?? $d['id'] ?? 0);
-            $discAuthorId = (int) ($d['id_auteur'] ?? $d['created_by'] ?? 0);
-            $canDelDisc = $discId > 0 && ($discAuthorId === $viewerId || $isGroupCreatorViewer);
-            $cards[] = [
-                'title' => (string) ($d['titre'] ?? 'Discussion'),
-                'excerpt' => substr((string) ($d['contenu'] ?? ''), 0, 180),
-                'author_name' => (string) ($d['auteur_name'] ?? 'Unknown'),
-                'can_delete' => $canDelDisc,
-                'can_chat' => $discId > 0,
-                'disc_id' => $discId,
-                'url_chat' => $appEntry . '?url=' . rawurlencode($foPrefix . '/discussions/' . $discId . '/chat'),
-                'url_delete' => $appEntry . '?url=' . rawurlencode($foPrefix . '/groupes/' . $groupId . '/discussions/' . $discId . '/delete'),
-            ];
-        }
-
-        return $cards;
-    }
-
-    /**
      * @param array<string, mixed> $discussionRow
      * @return array<string, mixed>
      */
@@ -200,18 +174,6 @@ final class DiscussionPresenter
         return [
             'back_url' => $appEntry . '?url=' . rawurlencode($foPrefix . '/discussions'),
             'upload_url' => $appEntry . '?url=' . rawurlencode($foPrefix . '/discussions/' . $id . '/upload'),
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $fieldErrors
-     * @return array{old: array<string, mixed>, error_messages: array<int, string>}
-     */
-    public static function groupDetailComposerPayload(array $old, array $fieldErrors): array
-    {
-        return [
-            'old' => $old,
-            'error_messages' => self::flattenFieldErrors($fieldErrors),
         ];
     }
 

@@ -18,7 +18,7 @@ $groups = $groups ?? [];
                         <div>
                             <div class="collab-eyebrow"><i class="bi bi-pencil-square" aria-hidden="true"></i> New thread</div>
                             <h1>Create discussion</h1>
-                            <p>Anchor a conversation inside an approved group you own — members will see it instantly in their hub.</p>
+                            <p>Start a discussion in any approved group you belong to (member or owner). Others in the group can join live chat from their hub.</p>
                         </div>
                         <div class="collab-hero-actions">
                             <a href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions" class="collab-btn-ghost">
@@ -32,7 +32,7 @@ $groups = $groups ?? [];
                     <?php if (empty($groups)): ?>
                         <div class="collab-alert-soft">
                             <strong style="display:block;margin-bottom:.35rem;">No eligible group yet</strong>
-                            You can create discussions only inside groups you created that are already approved by an admin.
+                            Join an approved group (or create one and wait for admin approval) to start a discussion here.
                         </div>
                     <?php endif; ?>
                     <form method="POST" action="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions/store">

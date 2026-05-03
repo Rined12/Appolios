@@ -755,6 +755,123 @@ class DiscussionRepository extends BaseRepository
 }
 
 /**
+ * Simple wall posts on a group (member-authored updates, separate from threaded discussions).
+ */
+class GroupPostRepository extends BaseRepository
+{
+    private bool $schemaEnsured = false;
+
+    protected function tableName(): string
+    {
+        return 'groupe_post';
+    }
+
+    public function ensureSchema(): void
+    {
+        if ($this->schemaEnsured) {
+            return;
+        }
+        try {
+            $this->openConnection()->exec(
+                "CREATE TABLE IF NOT EXISTS groupe_post (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id_groupe INT NOT NULL,
+                    id_user INT NOT NULL,
+                    body TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_groupe_created (id_groupe, created_at),
+                    INDEX idx_user (id_user)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            );
+        } catch (Throwable $e) {
+        }
+        $this->schemaEnsured = true;
+    }
+
+    public function create(int $groupId, int $userId, string $body): bool
+    {
+        $this->ensureSchema();
+        try {
+            $stmt = $this->openConnection()->prepare(
+                "INSERT INTO {$this->tableName()} (id_groupe, id_user, body) VALUES (?, ?, ?)"
+            );
+
+            return $stmt->execute([$groupId, $userId, $body]);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchByGroup(int $groupId, int $limit = 80): array
+    {
+        $this->ensureSchema();
+        $limit = max(1, min(200, $limit));
+        try {
+            $stmt = $this->openConnection()->prepare(
+                "SELECT p.id, p.id_groupe, p.id_user, p.body, p.created_at, u.name AS author_name
+                 FROM {$this->tableName()} p
+                 INNER JOIN users u ON u.id = p.id_user
+                 WHERE p.id_groupe = ?
+                 ORDER BY p.created_at DESC
+                 LIMIT {$limit}"
+            );
+            $stmt->execute([$groupId]);
+
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            return [];
+        }
+    }
+
+    public function fetchPostById(int $postId): ?array
+    {
+        $this->ensureSchema();
+        try {
+            $stmt = $this->openConnection()->prepare(
+                "SELECT p.*, u.name AS author_name FROM {$this->tableName()} p
+                 INNER JOIN users u ON u.id = p.id_user
+                 WHERE p.id = ? LIMIT 1"
+            );
+            $stmt->execute([$postId]);
+            $row = $stmt->fetch();
+
+            return $row ?: null;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
+    public function deleteByIdForGroup(int $postId, int $groupId): bool
+    {
+        $this->ensureSchema();
+        try {
+            $stmt = $this->openConnection()->prepare(
+                "DELETE FROM {$this->tableName()} WHERE id = ? AND id_groupe = ? LIMIT 1"
+            );
+
+            return $stmt->execute([$postId, $groupId]);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function deleteAllForGroup(int $groupId): bool
+    {
+        $this->ensureSchema();
+        try {
+            $stmt = $this->openConnection()->prepare("DELETE FROM {$this->tableName()} WHERE id_groupe = ?");
+
+            return $stmt->execute([$groupId]);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+}
+
+/**
  * APPOLIOS Enrollment Model
  * Handles student course enrollments
  */
@@ -1761,6 +1878,41 @@ class GroupeRepository extends BaseRepository
         );
         $stmt->execute([$idCreateur]);
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Approved groups the user can host discussions in: member of the group or group creator.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchApprovedGroupsWhereUserCanParticipate(int $userId): array
+    {
+        $this->ensureApprovalSchema();
+        $approvalCol = $this->approvalColumn();
+        $creatorCol = $this->creatorColumn();
+        $statutCol = $this->statutColumn();
+        if ($approvalCol === '') {
+            return [];
+        }
+        $approvalSelect = "g.{$approvalCol} AS approval_statut";
+        $statutSelect = $statutCol !== '' ? "g.{$statutCol} AS statut" : "'actif' AS statut";
+        $uid = (int) $userId;
+        try {
+            $stmt = $this->openConnection()->prepare(
+                "SELECT DISTINCT g.*, {$approvalSelect}, {$statutSelect}, u.name AS createur_name
+                 FROM groupe g
+                 LEFT JOIN users u ON u.id = g.{$creatorCol}
+                 LEFT JOIN groupe_user gu ON gu.id_groupe = g.id_groupe AND gu.id_user = ?
+                 WHERE g.{$approvalCol} = 'approuve'
+                   AND (g.{$creatorCol} = ? OR gu.id_user IS NOT NULL)
+                 ORDER BY g.date_creation DESC"
+            );
+            $stmt->execute([$uid, $uid]);
+
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            return [];
+        }
     }
 }
 
