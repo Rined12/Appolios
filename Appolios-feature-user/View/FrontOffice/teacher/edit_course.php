@@ -73,6 +73,11 @@ foreach ($categories as $cat) {
                                     <?php endif; ?>
                                 </select>
                             </div>
+
+                            <div class="form-group">
+                                <label for="price">Price ($)</label>
+                                <input type="number" id="price" name="price" value="<?= htmlspecialchars($course['price'] ?? '') ?>" step="0.01" min="0" placeholder="0.00 (leave empty or 0 for free)" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem;">
+                                <small style="color: #64748b; font-size: 0.85rem;">Set to 0 or leave empty for a free course</small>
                             </div>
 
                             <div class="form-group">
@@ -158,20 +163,16 @@ foreach ($categories as $cat) {
                                                                                 <input type="hidden" name="chapters[<?= $chapterIndex ?>][lessons][<?= $lessonIndex ?>][pdf_path]" value="<?= htmlspecialchars($lesson['pdf_path']) ?>">
                                                                             <?php endif; ?>
                                                                         </div>
-</div>
+                                                            </div>
                                                         </div>
-                                                    <?php endforeach; ?>
-                                                <?php endif; ?>
-                                            </div>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
                                         </div>
-                                    <?php endforeach; ?>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
 
                             <div id="no-chapters" style="text-align: center; padding: 2rem; color: #6b7280; border: 2px dashed #e5e7eb; border-radius: 12px; <?= !empty($chapters) ? 'display: none;' : '' ?>">
                                 Click "Add Chapter" to add course content
@@ -329,14 +330,8 @@ function validateFormEdit() {
             const typeSelect = lesson.querySelector('select[name$="[lesson_type]"]');
             const type = typeSelect.value;
             
-            if (type === 'video') {
-                const videoUrl = lesson.querySelector('input[name$="[video_url]"]');
-                if (videoUrl && !videoUrl.value.trim()) {
-                    showFieldErrorEdit(videoUrl, 'Video URL is required');
-                    isValid = false;
-                }
-            } else if (type === 'text') {
-                const textContent = lesson.querySelector('input[name$="[text_content]"]');
+            if (type === 'text' || type === 'both') {
+                const textContent = lesson.querySelector('input[name$="[content]"]');
                 if (textContent && !textContent.value.trim()) {
                     showFieldErrorEdit(textContent, 'Text content is required');
                     isValid = false;

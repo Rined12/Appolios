@@ -84,23 +84,4 @@ class Course extends BaseModel {
 
     public function getCreatedAt(): ?string { return $this->created_at; }
     public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
-    
-    // Delegate methods for backward compatibility
-    public function getAllWithCreator() {
-        require_once __DIR__ . '/../Controller/CourseController.php';
-        $ctrl = new CourseController();
-        return $ctrl->getAllWithCreator();
-    }
-    
-    public function getWithChapters($id) {
-        require_once __DIR__ . '/../Controller/CourseController.php';
-        $ctrl = new CourseController();
-        return $ctrl->getWithChapters($id);
-    }
-    
-    public function findById($id) {
-        require_once __DIR__ . '/../Controller/CourseController.php';
-        $ctrl = new CourseController();
-        return $ctrl->findById($id);
-    }
 }

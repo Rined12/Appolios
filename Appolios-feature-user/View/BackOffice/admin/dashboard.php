@@ -72,8 +72,28 @@
                         </div>
                     </div>
 
-                    <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6; display: flex; align-items: center; gap: 1.2rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+<div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6; display: flex; align-items: center; gap: 1.2rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
                         <div style="width: 54px; height: 54px; border-radius: 14px; background: #fef2f2; color: #ef4444; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 0.2rem 0; font-size: 1.6rem; font-weight: 800; color: #1e293b; line-height: 1;"><?= $totalEnrollments ?? 0 ?></h3>
+                            <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 600;">Enrollments</p>
+                        </div>
+                    </div>
+
+                    <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3); border: none; display: flex; align-items: center; gap: 1.2rem; color: white;">
+                        <div style="width: 54px; height: 54px; border-radius: 14px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 0.2rem 0; font-size: 1.6rem; font-weight: 800; color: white; line-height: 1;">$<?= number_format($totalRevenue ?? 0, 2) ?></h3>
+                            <p style="margin: 0; font-size: 0.9rem; font-weight: 600; opacity: 0.9;">Total Platform Revenue</p>
+                        </div>
+                    </div>
+
+                    <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6; display: flex; align-items: center; gap: 1.2rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="width: 54px; height: 54px; border-radius: 14px; background: #f0fdf4; color: #22c55e; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                         </div>
                         <div>
@@ -107,29 +127,44 @@
                             <span style="margin-left: auto; background: #22c55e; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">Pending</span>
                         <?php endif; ?>
                     </a>
-                </div>
+</div>
 
-                 <div class="pro-dashboard-grid">
+                <!-- Earnings by Teacher -->
+                <?php if (!empty($earningsByTeacher)): ?>
+                <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden; margin-top: 2rem;">
+                    <div style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; font-weight: 700;">Earnings by Teacher</h3>
+                        <span style="background: #ecfdf5; color: #059669; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;"><?= count($earningsByTeacher) ?> Teachers</span>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="background: #f8fafc;">
+                                    <th style="padding: 1rem 2rem; font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0;">Teacher</th>
+                                    <th style="padding: 1rem 2rem; font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0;">Payments</th>
+                                    <th style="padding: 1rem 2rem; font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; text-align: right;">Total Earnings</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($earningsByTeacher as $teacher): ?>
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 1rem 2rem; font-size: 0.95rem; color: #1e293b; font-weight: 600;"><?= htmlspecialchars($teacher['teacher_name']) ?></td>
+                                    <td style="padding: 1rem 2rem; font-size: 0.95rem; color: #64748b;"><?= $teacher['payment_count'] ?? 0 ?></td>
+                                    <td style="padding: 1rem 2rem; font-size: 0.95rem; color: #059669; font-weight: 700; text-align: right;">$<?= number_format($teacher['total_earnings'] ?? 0, 2) ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <?php endif; ?>
+
+                  <div class="pro-dashboard-grid">
                       
                      <!-- LEFT COLUMN -->
                      <div class="pro-main-col" style="display: flex; flex-direction: column; gap: 2rem;">
                          
-                         <!-- Charts Section -->
-                         <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden;">
-                             <div style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9;">
-                                 <h3 style="margin: 0; font-size: 1.25rem; color: #1e293b; font-weight: 700;">Dashboard Statistics</h3>
-                             </div>
-                             <div style="padding: 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                                 <div>
-                                     <h4 style="margin: 0 0 1rem; font-size: 1rem; color: #475569;">Course Status Distribution</h4>
-                                     <canvas id="statusChart"></canvas>
-                                 </div>
-                                 <div>
-                                     <h4 style="margin: 0 0 1rem; font-size: 1rem; color: #475569;">Monthly Course Additions</h4>
-                                     <canvas id="monthlyChart"></canvas>
-                                 </div>
-                             </div>
-                         </div>
+
                          
                          <!-- Recent Evenements Table -->
                          <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden;">

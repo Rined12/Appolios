@@ -57,33 +57,26 @@ foreach ($categories as $cat) {
 
 <div class="form-group">
                                 <label for="category_id">Category *</label>
-                                <div style="position: relative;">
-                                    <select id="category_id" name="category_id" onchange="loadCourseTypes()" style="width: 100%; padding: 14px 40px 14px 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: #f8fafc; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none; transition: all 0.3s; background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%2394a3b8" d="M6 9L1 4h10z"/></svg>'); background-repeat: no-repeat; background-position: right 15px center;"
-                                        onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'; this.style.background='white'"
-                                        onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'; this.style.background='#f8fafc'">
-                                        <option value="">Select a category...</option>
-                                        <?php foreach ($categories as $cat): ?>
-                                            <option value="<?= $cat['id'] ?>" <?= (($old['category_id'] ?? '') == $cat['id']) ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
+                                <select id="category_id" name="category_id" onchange="loadCourseTypes()" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem;">
+                                    <option value="">Select a category...</option>
+                                    <?php foreach ($categories as $cat): ?>
+                                        <option value="<?= $cat['id'] ?>" <?= (($old['category_id'] ?? '') == $cat['id']) ? 'selected' : '' ?>><?= htmlspecialchars($cat['name']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
 
                             <div class="form-group" id="courseTypeField" style="display: none;">
                                 <label for="course_type">Course Type *</label>
-                                <div style="position: relative;">
-                                    <select id="course_type" name="course_type" style="width: 100%; padding: 14px 40px 14px 16px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; background: #f8fafc; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none; transition: all 0.3s; background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%2394a3b8" d="M6 9L1 4h10z"/></svg>'); background-repeat: no-repeat; background-position: right 15px center;"
-                                        onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.1)'; this.style.background='white'"
-                                        onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'; this.style.background='#f8fafc'">
-                                        <option value="">Select a course type...</option>
-                                    </select>
-                                </div>
-                                <?php if (isset($errors['course_type'])): ?><small style="color: #ef4444; font-size: 0.85rem; margin-top: 4px; display: block;"><?= htmlspecialchars($errors['course_type']) ?></small><?php endif; ?>
+                                <select id="course_type" name="course_type" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem;">
+                                    <option value="">Select a course type...</option>
+                                </select>
                             </div>
-                                </div>
+
+                            <div class="form-group">
+                                <label for="price">Price ($)</label>
+                                <input type="number" id="price" name="price" value="<?= htmlspecialchars($old['price'] ?? '') ?>" step="0.01" min="0" placeholder="0.00 (leave empty or 0 for free)" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem;">
+                                <small style="color: #64748b; font-size: 0.85rem;">Set to 0 or leave empty for a free course</small>
                             </div>
-                            <?php if (isset($errors['course_type'])): ?><small style="color: #ef4444; font-size: 0.85rem; margin-top: 4px; display: block;"><?= htmlspecialchars($errors['course_type']) ?></small><?php endif; ?>
-                        </div>
 
                         <div class="form-group">
                             <label for="image">Course Image</label>
@@ -435,14 +428,8 @@ function validateForm() {
             const typeSelect = lesson.querySelector('select[name$="[lesson_type]"]');
             const type = typeSelect.value;
             
-            if (type === 'video') {
-                const videoUrl = lesson.querySelector('input[name$="[video_url]"]');
-                if (!videoUrl.value.trim()) {
-                    showFieldError(videoUrl, 'Video URL is required');
-                    isValid = false;
-                }
-            } else if (type === 'text') {
-                const textContent = lesson.querySelector('input[name$="[text_content]"]');
+            if (type === 'text' || type === 'both') {
+                const textContent = lesson.querySelector('input[name$="[content]"]');
                 if (!textContent.value.trim()) {
                     showFieldError(textContent, 'Text content is required');
                     isValid = false;

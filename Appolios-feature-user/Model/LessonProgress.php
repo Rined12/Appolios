@@ -51,28 +51,4 @@ class LessonProgress extends BaseModel {
 
     public function getCompletedAt(): ?string { return $this->completed_at; }
     public function setCompletedAt(?string $completed_at): self { $this->completed_at = $completed_at; return $this; }
-    
-    public function getCompletedLessons($userId, $courseId) {
-        require_once __DIR__ . '/../Controller/LessonProgressController.php';
-        $ctrl = new LessonProgressController();
-        return $ctrl->getCompletedLessons($userId, $courseId);
-    }
-    
-    public function getTotalLessons($courseId) {
-        require_once __DIR__ . '/../Controller/LessonProgressController.php';
-        $ctrl = new LessonProgressController();
-        return $ctrl->getTotalLessons($courseId);
-    }
-    
-    public function getCompletedCount($userId, $courseId) {
-        require_once __DIR__ . '/../Controller/LessonProgressController.php';
-        $ctrl = new LessonProgressController();
-        return $ctrl->getCompletedCount($userId, $courseId);
-    }
-    
-    public function markCompleteNoDuplicate($userId, $lessonId) {
-        require_once __DIR__ . '/../Controller/LessonProgressController.php';
-        $ctrl = new LessonProgressController();
-        return $ctrl->markCompleteNoDuplicate($userId, $lessonId);
-    }
 }

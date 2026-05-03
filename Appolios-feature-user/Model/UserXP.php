@@ -45,23 +45,4 @@ class UserXP extends BaseModel {
 
     public function getLastXpAt(): ?string { return $this->last_xp_at; }
     public function setLastXpAt(?string $last_xp_at): self { $this->last_xp_at = $last_xp_at; return $this; }
-    
-    // Delegate methods for backward compatibility
-    public function getByUserId($userId) {
-        require_once __DIR__ . '/../Controller/UserXPController.php';
-        $ctrl = new UserXPController();
-        return $ctrl->getByUserId($userId);
-    }
-    
-    public function addXP($userId, $amount, $reason = '') {
-        require_once __DIR__ . '/../Controller/UserXPController.php';
-        $ctrl = new UserXPController();
-        return $ctrl->addXP($userId, $amount, $reason);
-    }
-    
-    public function getLevel($totalXP) {
-        require_once __DIR__ . '/../Controller/UserXPController.php';
-        $ctrl = new UserXPController();
-        return $ctrl->getLevel($totalXP);
-    }
 }

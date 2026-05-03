@@ -393,7 +393,7 @@ class CourseController extends BaseModel {
      * @return float
      */
     public function getTotalEarnings() {
-        $sql = "SELECT COALESCE(SUM(price), 0) as total FROM {$this->table} WHERE price > 0";
+        $sql = "SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status IN ('succeeded', 'pending', 'completed')";
         $stmt = $this->db->query($sql);
         $result = $stmt->fetch();
         return (float)($result['total'] ?? 0);
@@ -404,10 +404,14 @@ class CourseController extends BaseModel {
      * @return array
      */
     public function getEarningsByStatus() {
-        $sql = "SELECT status, SUM(price) as earnings, COUNT(*) as count 
-                FROM {$this->table} 
-                WHERE price > 0 
-                GROUP BY status";
+        $sql = "SELECT 
+                    c.status,
+                    COALESCE(SUM(p.amount), 0) as earnings,
+                    COUNT(DISTINCT c.id) as course_count
+                FROM courses c
+                LEFT JOIN payments p ON c.id = p.course_id AND p.status = 'succeeded'
+                WHERE c.price > 0
+                GROUP BY c.status";
         $stmt = $this->db->query($sql);
         return $stmt->fetchAll();
     }

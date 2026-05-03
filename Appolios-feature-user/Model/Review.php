@@ -51,23 +51,4 @@ class Review extends BaseModel {
 
     public function getCreatedAt(): ?string { return $this->created_at; }
     public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
-    
-    // Delegate methods for backward compatibility
-    public function getByCourseId($courseId) {
-        require_once __DIR__ . '/../Controller/ReviewController.php';
-        $ctrl = new ReviewController();
-        return $ctrl->getByCourseId($courseId);
-    }
-    
-    public function getAverageRating($courseId) {
-        require_once __DIR__ . '/../Controller/ReviewController.php';
-        $ctrl = new ReviewController();
-        return $ctrl->getAverageRating($courseId);
-    }
-    
-    public function hasUserReviewed($userId, $courseId) {
-        require_once __DIR__ . '/../Controller/ReviewController.php';
-        $ctrl = new ReviewController();
-        return $ctrl->hasUserReviewed($userId, $courseId);
-    }
 }

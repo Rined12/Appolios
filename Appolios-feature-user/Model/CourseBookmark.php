@@ -39,22 +39,4 @@ class CourseBookmark extends BaseModel {
 
     public function getCreatedAt(): ?string { return $this->created_at; }
     public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
-    
-    public function isBookmarked($userId, $courseId) {
-        require_once __DIR__ . '/../Controller/CourseBookmarkController.php';
-        $ctrl = new CourseBookmarkController();
-        return $ctrl->isBookmarked($userId, $courseId);
-    }
-    
-    public function addBookmark($userId, $courseId) {
-        require_once __DIR__ . '/../Controller/CourseBookmarkController.php';
-        $ctrl = new CourseBookmarkController();
-        return $ctrl->addBookmark($userId, $courseId);
-    }
-    
-    public function removeBookmark($userId, $courseId) {
-        require_once __DIR__ . '/../Controller/CourseBookmarkController.php';
-        $ctrl = new CourseBookmarkController();
-        return $ctrl->removeBookmark($userId, $courseId);
-    }
 }

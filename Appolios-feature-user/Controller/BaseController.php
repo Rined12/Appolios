@@ -2,6 +2,8 @@
 
 abstract class BaseController
 {
+    public function __construct() {}
+
     // Mapping from model names to controller names
     private array $controllerMap = [
         'Course' => 'CourseController',
@@ -22,6 +24,7 @@ abstract class BaseController
         'CourseBookmark' => 'CourseBookmarkController',
         'CourseBadge' => 'CourseBadgeController',
         'UserXP' => 'UserXPController',
+        'Payment' => 'PaymentController',
     ];
 
     public function model(string $model)

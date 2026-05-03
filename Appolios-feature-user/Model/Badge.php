@@ -51,23 +51,4 @@ class Badge extends BaseModel {
 
     public function getEarnedAt(): ?string { return $this->earned_at; }
     public function setEarnedAt(?string $earned_at): self { $this->earned_at = $earned_at; return $this; }
-    
-    // Delegate methods for backward compatibility
-    public function getByUserId($userId) {
-        require_once __DIR__ . '/../Controller/BadgeController.php';
-        $ctrl = new BadgeController();
-        return $ctrl->getByUserId($userId);
-    }
-    
-    public function hasBadge($userId, $badgeName) {
-        require_once __DIR__ . '/../Controller/BadgeController.php';
-        $ctrl = new BadgeController();
-        return $ctrl->hasBadge($userId, $badgeName);
-    }
-    
-    public function awardBadge($userId, $badgeName, $icon, $description) {
-        require_once __DIR__ . '/../Controller/BadgeController.php';
-        $ctrl = new BadgeController();
-        return $ctrl->awardBadge($userId, $badgeName, $icon, $description);
-    }
 }

@@ -205,6 +205,8 @@ class TeacherController extends BaseController {
             return;
         }
 
+        $price = isset($_POST['price']) ? (float)$_POST['price'] : 0;
+        
         $courseModel = $this->model('Course');
         $courseId = $courseModel->create([
             'title' => $title,
@@ -212,6 +214,7 @@ class TeacherController extends BaseController {
             'image' => $image,
             'course_type' => $courseType,
             'category_id' => $categoryId ?: null,
+            'price' => $price,
             'status' => 'pending',
             'created_by' => $_SESSION['user_id']
         ]);
@@ -230,46 +233,59 @@ class TeacherController extends BaseController {
     /**
      * Save chapters and lessons for a course
      */
-    private function saveCourseChapters($courseId, $postData) {
-        $chapterModel = $this->model('Chapter');
-        $lessonModel = $this->model('Lesson');
+private function saveCourseChapters($courseId, $postData) {
+        require_once __DIR__ . '/ChapterController.php';
+        require_once __DIR__ . '/LessonController.php';
+        
+        $chapterController = new ChapterController();
+        $lessonController = new LessonController();
 
         $chapters = $postData['chapters'] ?? [];
-
+        
         if (empty($chapters)) {
+            error_log("No chapters in post data");
             return;
         }
-
+        
+        error_log("Chapters count: " . count($chapters));
+        
         foreach ($chapters as $chapterIndex => $chapterData) {
             $chapterTitle = $this->sanitize($chapterData['title'] ?? '');
+            error_log("Chapter $chapterIndex: $chapterTitle");
+            
             if (empty($chapterTitle)) continue;
 
-            $chapterId = $chapterModel->create([
+            $chapterId = $chapterController->create([
                 'course_id' => $courseId,
                 'title' => $chapterTitle,
                 'description' => $this->sanitize($chapterData['description'] ?? ''),
                 'chapter_order' => $chapterIndex + 1
             ]);
+            
+            error_log("Created chapter ID: $chapterId");
 
-            if (!$chapterId) continue;
+            if (!$chapterId) {
+                error_log("Failed to create chapter $chapterIndex");
+                continue;
+            }
 
-            // Save lessons for this chapter
             $lessons = $chapterData['lessons'] ?? [];
+            error_log("Lessons count for chapter $chapterIndex: " . count($lessons));
+            
             foreach ($lessons as $lessonIndex => $lessonData) {
                 $lessonTitle = $this->sanitize($lessonData['title'] ?? '');
+                error_log("  Lesson $lessonIndex: $lessonTitle");
+                
                 if (empty($lessonTitle)) continue;
 
                 $lessonType = $lessonData['lesson_type'] ?? 'text';
                 $content = $this->sanitize($lessonData['content'] ?? '');
-                $videoUrl = '';
                 $pdfPath = '';
                 
                 // Handle PDF upload
-                $chapterKey = $chapterIndex;
-                $lessonKey = $lessonIndex;
-                
                 if (isset($_FILES['lessons'])) {
-                    // Check for new PDF uploads
+                    $chapterKey = $chapterIndex;
+                    $lessonKey = $lessonIndex;
                     $pdfFiles = $_FILES['lessons'][$chapterKey] ?? [];
                     if (isset($pdfFiles[$lessonKey]['pdf_file'])) {
                         $fileData = $pdfFiles[$lessonKey]['pdf_file'];
@@ -290,26 +306,22 @@ class TeacherController extends BaseController {
                     }
                 }
                 
-                // Use existing PDF path if no new upload
                 if (empty($pdfPath) && !empty($lessonData['pdf_path'])) {
                     $pdfPath = $lessonData['pdf_path'];
                 }
-                
-                if ($lessonType === 'video') {
-                    $videoUrl = $this->sanitize($lessonData['video_url'] ?? '');
-                }
 
-                $lessonModel->createLesson([
+                $lessonId = $lessonController->createLesson([
                     'chapter_id' => $chapterId,
                     'title' => $lessonTitle,
                     'content' => $content,
-                    'video_url' => $videoUrl,
                     'pdf_path' => $pdfPath,
                     'lesson_type' => $lessonType,
                     'lesson_order' => $lessonIndex + 1
                 ]);
+                
+                error_log("  Created lesson ID: $lessonId");
             }
-        }
+}
     }
 
     /**
@@ -398,6 +410,7 @@ class TeacherController extends BaseController {
         $image = $this->sanitize($_POST['image'] ?? '');
         $courseType = $_POST['course_type'] ?? null;
         $categoryId = $_POST['category_id'] ?? null;
+        $price = isset($_POST['price']) ? (float)$_POST['price'] : 0;
         
         // Handle course image upload
         if (isset($_FILES['course_image']) && !empty($_FILES['course_image']['tmp_name'])) {
@@ -411,7 +424,7 @@ class TeacherController extends BaseController {
             }
         }
         
-        $status = $_POST['status'] ?? $course['status'] ?? 'approved';
+        $status = 'pending';
 
         $errors = [];
         if (empty($title)) $errors['title'] = 'Title is required';
@@ -431,6 +444,7 @@ class TeacherController extends BaseController {
             'image' => $image,
             'course_type' => $courseType,
             'category_id' => $categoryId ?: null,
+            'price' => $price,
             'status' => $status
         ]);
 
@@ -439,7 +453,7 @@ class TeacherController extends BaseController {
             $this->deleteCourseChapters($id);
             $this->saveCourseChapters($id, $_POST);
 
-            $this->setFlash('success', 'Course updated successfully!');
+            $this->setFlash('success', 'Course updated and pending admin approval!');
             $this->redirect('teacher/courses');
         } else {
             $this->setFlash('error', 'Failed to update course');

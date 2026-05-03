@@ -38,7 +38,7 @@ class LessonController extends BaseModel {
         $data['lesson_order'] = $maxOrder + 1;
         
         if (!isset($data['lesson_type'])) {
-            $data['lesson_type'] = 'video';
+            $data['lesson_type'] = 'text';
         }
 
         return $this->create($data);
@@ -79,16 +79,15 @@ class LessonController extends BaseModel {
     }
 
     public function create($data) {
-        $sql = "INSERT INTO {$this->table} (chapter_id, title, lesson_type, video_url, content, pdf_path, duration, lesson_order, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+        $sql = "INSERT INTO {$this->table} (chapter_id, title, lesson_type, content, pdf_path, duration, lesson_order, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
 
         try {
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 $data['chapter_id'],
                 $data['title'],
-                $data['lesson_type'] ?? 'video',
-                $data['video_url'] ?? null,
+                $data['lesson_type'] ?? 'text',
                 $data['content'] ?? null,
                 $data['pdf_path'] ?? null,
                 $data['duration'] ?? 0,

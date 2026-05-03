@@ -32,6 +32,11 @@ class AdminController extends BaseController {
         $evenementModel = $this->model('Evenement');
         $teacherAppModel = $this->model('TeacherApplication');
 
+        require_once __DIR__ . '/../Service/AnalyticsService.php';
+        $analytics = new AnalyticsService();
+        $stats = $analytics->getOverviewStats();
+        $earningsByTeacher = $analytics->getEarningsByTeacher();
+
         $data = [
             'title' => 'Admin Dashboard - APPOLIOS',
             'description' => 'Administrator control panel',
@@ -40,6 +45,8 @@ class AdminController extends BaseController {
             'totalCourses' => $courseModel->count(),
             'totalEnrollments' => $enrollmentModel->countAll(),
             'totalEvenements' => $evenementModel->count(),
+            'totalRevenue' => $stats['total_revenue'] ?? 0,
+            'earningsByTeacher' => $earningsByTeacher,
             'statusDistribution' => $courseModel->getStatusDistribution(),
             'monthlyCourseStats' => $courseModel->getMonthlyCourseStats(),
             'recentCourses' => $courseModel->getAllWithCreator(),

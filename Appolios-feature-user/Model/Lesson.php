@@ -76,28 +76,4 @@ class Lesson extends BaseModel {
 
     public function getCreatedAt(): ?string { return $this->created_at; }
     public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
-    
-    public function getByChapterId($chapterId) {
-        require_once __DIR__ . '/../Controller/LessonController.php';
-        $ctrl = new LessonController();
-        return $ctrl->getByChapterId($chapterId);
-    }
-    
-    public function getByCourseId($courseId) {
-        require_once __DIR__ . '/../Controller/LessonController.php';
-        $ctrl = new LessonController();
-        return $ctrl->getByCourseId($courseId);
-    }
-    
-    public function getLessonCount($courseId) {
-        require_once __DIR__ . '/../Controller/LessonController.php';
-        $ctrl = new LessonController();
-        return $ctrl->getLessonCount($courseId);
-    }
-    
-    public function getTotalDuration($courseId) {
-        require_once __DIR__ . '/../Controller/LessonController.php';
-        $ctrl = new LessonController();
-        return $ctrl->getTotalDuration($courseId);
-    }
 }

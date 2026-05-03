@@ -18,13 +18,17 @@ $studentSidebarActive = 'my-courses';
                     <div>
                         <h1><?= htmlspecialchars($course['title']) ?></h1>
                         <p style="color: #64748b; margin-top: 0.5rem;">
-                            Progress: <strong><?= (int) ($progress ?? 0) ?>%</strong>
+                            Progress: <strong style="color: <?= $progress >= 100 ? '#10b981' : '#3b82f6' ?>"><?= (int) ($progress ?? 0) ?>%</strong>
+                            <?php if($progress >= 100): ?><span style="margin-left:8px">🎉</span><?php endif; ?>
                         </p>
                     </div>
                     <?php if (!empty($progress)): ?>
                     <div style="width: 200px; background: #e2e8f0; border-radius: 99px; height: 12px; overflow: hidden;">
-                        <div style="height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); width: <?= (int) $progress ?>%;"></div>
+                        <div style="height: 100%; background: linear-gradient(90deg, <?= $progress >= 100 ? '#10b981' : '#3b82f6' ?>, <?= $progress >= 100 ? '#34d399' : '#60a5fa' ?>); width: <?= (int) $progress ?>%; transition: width 0.5s ease;"></div>
                     </div>
+                    <?php if($progress >= 100): ?>
+                    <div style="background:#dcfce7;color:#16a34a;padding:8px 16px;border-radius:8px;font-size:0.85rem;margin-top:8px">🎊 Congratulations! You completed this course!</div>
+                    <?php endif; ?>
                     <?php endif; ?>
                 </div>
 

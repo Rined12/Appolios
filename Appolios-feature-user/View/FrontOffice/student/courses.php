@@ -6,14 +6,14 @@
 $studentSidebarActive = 'courses';
 ?>
 
-<div class="dashboard student-events-page">
+<div class="dashboard student-events-page fade-in">
     <div class="container admin-dashboard-container">
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
 
-            <div class="admin-main">
-                <h1 style="margin: 0 0 0.5rem 0;">Browse Courses</h1>
-                <p style="color: #64748b; margin: 0 0 1rem 0;">
+            <div class="admin-main" style="grid-template-rows: min-content; align-items: start; height: auto; align-content: start;">
+                <h1 style="margin: 0; padding: 0; font-size: 24px; line-height: 1.1;">Browse Courses</h1>
+                <p style="color: #64748b; margin: 0; font-size: 0.85rem;">
                     <?= count($courses) ?> courses available
                     <?php if (!empty($recommendations)): ?>
                         <span style="margin-left: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem;">
@@ -22,11 +22,26 @@ $studentSidebarActive = 'courses';
                     <?php endif; ?>
                 </p>
 
-                <!-- Search Form -->
-                <form method="GET" style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
-                    <input type="text" name="search" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" placeholder="Search courses..." style="flex: 1; min-width: 200px; padding: 10px 14px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 0.95rem;">
-                    <button type="submit" style="background: #2B4865; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">Search</button>
-                </form>
+                <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+                    <input type="text" id="searchInput" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" placeholder="Search courses..." style="flex:1;min-width:200px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem" oninput="filterCourses(this.value)">
+                </div>
+                <script>
+                function filterCourses(value) {
+                    var filter = value.toLowerCase();
+                    var container = document.getElementById('courseContainer');
+                    if (!container) return;
+                    var cards = container.children;
+                    for (var i = 0; i < cards.length; i++) {
+                        var card = cards[i];
+                        var text = card.textContent || card.innerText;
+                        if (text.toLowerCase().indexOf(filter) > -1) {
+                            card.style.display = '';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    }
+                }
+                </script>
 
                 <?php 
                 $hasCourses = is_array($courses) && count($courses) > 0;
@@ -34,7 +49,7 @@ $studentSidebarActive = 'courses';
                 
                 if ($hasCourses || $hasRecommendations):
                 ?>
-                    <div id="courseContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+                    <div id="courseContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 0.5rem;">
                         <!-- AI Recommended Courses (highlighted) -->
                         <?php if ($hasRecommendations): ?>
                             <?php foreach ($recommendations as $rec): ?>

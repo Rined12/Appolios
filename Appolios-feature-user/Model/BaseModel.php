@@ -57,4 +57,23 @@ abstract class BaseModel
         $result = $stmt->fetch();
         return (int) ($result['count'] ?? 0);
     }
+    
+    public function __call($method, $args) {
+        $className = get_class($this);
+        $modelName = basename($className, '.php');
+        $controllerName = $modelName . 'Controller';
+        $controllerPath = __DIR__ . '/../Controller/' . $controllerName . '.php';
+        
+        if (file_exists($controllerPath)) {
+            require_once $controllerPath;
+            if (class_exists($controllerName)) {
+                $controller = new $controllerName();
+                if (method_exists($controller, $method)) {
+                    return call_user_func_array([$controller, $method], $args);
+                }
+            }
+        }
+        
+        throw new Exception("Method {$method} does not exist in " . get_class($this));
+    }
 }

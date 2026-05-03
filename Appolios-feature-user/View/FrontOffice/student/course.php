@@ -42,10 +42,19 @@ $chapters = $course['chapters'] ?? [];
                                 <h1 style="margin: 0.5rem 0 0; font-size: 1.75rem; color: #1e293b;"><?= htmlspecialchars($course['title']) ?></h1>
                                 <p style="margin: 0.5rem 0 0; color: #64748b;">By <?= htmlspecialchars($course['creator_name'] ?? 'Instructor') ?></p>
                             </div>
+                            <?php 
+                                $price = floatval($course['price'] ?? 0);
+                                $isPaid = $price > 0;
+                            ?>
                             <?php if ($isEnrolled): ?>
                                 <span style="background: #dcfce7; color: #16a34a; padding: 8px 16px; border-radius: 20px; font-weight: 600;">Enrolled</span>
+                            <?php elseif ($isPaid): ?>
+                                <div style="display:flex;align-items:center;gap:10px">
+                                    <span style="font-size:1.25rem;font-weight:700;color:#10b981">$<?= number_format($price, 2) ?></span>
+                                    <a href="<?= APP_ENTRY ?>?url=payment/checkout/<?= $course['id'] ?>" onclick="showLoader()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 20px; border-radius: 20px; font-weight: 600; text-decoration: none;">Buy Now</a>
+                                </div>
                             <?php else: ?>
-                                <a href="<?= APP_ENTRY ?>?url=student/enroll/<?= $course['id'] ?>" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 20px; font-weight: 600; text-decoration: none;">Enroll Now</a>
+                                <a href="<?= APP_ENTRY ?>?url=student/enroll/<?= $course['id'] ?>" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 20px; font-weight: 600; text-decoration: none;">Enroll Free</a>
                             <?php endif; ?>
                             <?php if (isset($_SESSION['user_id'])): ?>
                                 <button onclick="toggleBookmark(<?= $course['id'] ?>)" id="bookmark-btn-<?= $course['id'] ?>" style="background: <?= ($isBookmarked ?? false) ? '#fbbf24' : '#f1f5f9' ?>; border: none; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 1.2rem;" title="Bookmark">
@@ -57,6 +66,15 @@ $chapters = $course['chapters'] ?? [];
 
                     <!-- Course Info -->
                     <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                        <?php if ($isPaid): ?>
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-size: 0.85rem; opacity: 0.9;">Course Price</span>
+                                <div style="font-size: 1.75rem; font-weight: 700;">$<?= number_format($price, 2) ?></div>
+                            </div>
+                            <a href="<?= APP_ENTRY ?>?url=payment/checkout/<?= $course['id'] ?>" onclick="showLoader()" style="background: white; color: #667eea; padding: 8px 16px; border-radius: 6px; font-weight: 600; text-decoration: none;">Buy Now</a>
+                        </div>
+                        <?php endif; ?>
                         <h2 style="margin: 0 0 1rem 0; font-size: 1.2rem; color: #1e293b;"><?= htmlspecialchars($course['description'] ?? '') ?></h2>
                         <?php if (!empty($chapters)): ?>
                             <div style="display: flex; gap: 0.75rem;">

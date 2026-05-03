@@ -63,23 +63,4 @@ class Notification extends BaseModel {
 
     public function getCreatedAt(): ?string { return $this->created_at; }
     public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
-    
-    // Delegate methods for backward compatibility
-    public function getUnreadCount($userId) {
-        require_once __DIR__ . '/../Controller/NotificationController.php';
-        $ctrl = new NotificationController();
-        return $ctrl->getUnreadCount($userId);
-    }
-    
-    public function getByUserId($userId) {
-        require_once __DIR__ . '/../Controller/NotificationController.php';
-        $ctrl = new NotificationController();
-        return $ctrl->getByUserId($userId);
-    }
-    
-    public function markAllAsRead($userId) {
-        require_once __DIR__ . '/../Controller/NotificationController.php';
-        $ctrl = new NotificationController();
-        return $ctrl->markAllAsRead($userId);
-    }
 }

@@ -46,10 +46,27 @@ class AnalyticsService {
     }
     
     private function getTotalRevenue() {
-        $sql = "SELECT COUNT(*) as count FROM certificates";
+        $sql = "SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'succeeded'";
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
-        return $stmt->fetch()['count'];
+        return (float) $stmt->fetch()['total'];
+    }
+    
+    public function getEarningsByTeacher() {
+        $sql = "SELECT 
+                    u.id as teacher_id,
+                    u.name as teacher_name,
+                    COALESCE(SUM(p.amount), 0) as total_earnings,
+                    COUNT(p.id) as payment_count
+                FROM users u
+                LEFT JOIN courses c ON c.created_by = u.id
+                LEFT JOIN payments p ON p.course_id = c.id AND p.status = 'succeeded'
+                WHERE u.role = 'teacher'
+                GROUP BY u.id
+                ORDER BY total_earnings DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
     }
     
     public function getUserStats() {
@@ -65,13 +82,13 @@ class AnalyticsService {
         $result = $stmt->fetchAll();
         $stats = ['students' => 0, 'teachers' => 0, 'admins' => 0];
         
-        foreach ($result) {
-            if ($result['role'] === 'student') {
-                $stats['students'] = $result['count'];
-            } elseif ($result['role'] === 'teacher') {
-                $stats['teachers'] = $result['count'];
-            } elseif ($result['role'] === 'admin') {
-                $stats['admins'] = $result['count'];
+        foreach ($result as $row) {
+            if ($row['role'] === 'student') {
+                $stats['students'] = $row['count'];
+            } elseif ($row['role'] === 'teacher') {
+                $stats['teachers'] = $row['count'];
+            } elseif ($row['role'] === 'admin') {
+                $stats['admins'] = $row['count'];
             }
         }
         

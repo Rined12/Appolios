@@ -52,10 +52,4 @@ class Chapter extends BaseModel {
 
     public function getCreatedAt(): ?string { return $this->created_at; }
     public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
-    
-    public function getByCourseId($courseId) {
-        require_once __DIR__ . '/../Controller/ChapterController.php';
-        $ctrl = new ChapterController();
-        return $ctrl->getByCourseId($courseId);
-    }
 }

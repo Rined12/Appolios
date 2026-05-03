@@ -41,6 +41,7 @@ $certificates = $certService->getUserCertificates($_SESSION['user_id'] ?? 0);
                                 <p style="margin-top: 1rem; font-size: 0.85rem; opacity: 0.8;">
                                     Issued: <?= date('M d, Y', strtotime($cert['issued_at'])) ?>
                                 </p>
+                                <button onclick="Swal.fire({icon:'info',title:'Certificate',html:'<pre style=\\'text-align:left\\'>Certificate Code: <?= htmlspecialchars($cert['certificate_code']) ?>\nStudent: <?= htmlspecialchars($cert['student_name']) ?>\nCourse: <?= htmlspecialchars($cert['course_title']) ?>\nDate: <?= date('M d, Y', strtotime($cert['issued_at'])) ?></pre>',confirmButtonColor:'#667eea'})" style="margin-top:10px;background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.3);color:white;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600">View Certificate</button>
                             </div>
                         <?php endforeach; ?>
                     </div>

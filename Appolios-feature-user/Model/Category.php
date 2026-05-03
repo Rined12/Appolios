@@ -51,17 +51,4 @@ class Category extends BaseModel {
 
     public function getCreatedAt(): ?string { return $this->created_at; }
     public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
-    
-    // Delegate methods for backward compatibility
-    public function getAll() {
-        require_once __DIR__ . '/../Controller/CategoryController.php';
-        $ctrl = new CategoryController();
-        return $ctrl->getAllCategories();
-    }
-    
-    public function getById($id) {
-        require_once __DIR__ . '/../Controller/CategoryController.php';
-        $ctrl = new CategoryController();
-        return $ctrl->getById($id);
-    }
 }

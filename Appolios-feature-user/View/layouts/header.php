@@ -54,8 +54,55 @@ $bodyClassAttr = implode(' ', $bodyClasses);
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/mvc-pro.css">
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/neo-ui.css">
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/dark-mode.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="<?= htmlspecialchars($bodyClassAttr) ?>">
+<!-- Global Loading Spinner -->
+<div id="globalLoader" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;backdrop-filter:blur(4px)">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;background:white;padding:30px 50px;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.2)">
+        <div style="width:50px;height:50px;border:4px solid #f3f3f3;border-top:4px solid #2B4865;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto"></div>
+        <p style="margin-top:15px;color:#2B4865;font-weight:600;font-size:1rem">Loading...</p>
+    </div>
+</div>
+<style>@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.fade-in{animation:fadeIn 0.5s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+input.error,select.error,textarea.error{border-color:#dc3545!important;box-shadow:0 0 0 2px rgba(220,53,69,0.1)}
+input.success,select.success,textarea.success{border-color:#198754!important;box-shadow:0 0 0 2px rgba(25,135,84,0.1)}
+.form-error{color:#dc3545;font-size:0.8rem;margin-top:4px}</style>
+<script>
+// Real-time form validation
+document.addEventListener('DOMContentLoaded',function(){
+    document.querySelectorAll('input[required],select[required],textarea[required]').forEach(function(el){
+        el.addEventListener('blur',function(){
+            if(this.value.trim()){
+                this.classList.remove('error');
+                this.classList.add('success');
+            }else{
+                this.classList.add('error');
+                this.classList.remove('success');
+            }
+        })
+        el.addEventListener('input',function(){
+            if(this.value.trim()){
+                this.classList.remove('error');
+            }
+        })
+    })
+})
+</script>
+<script>
+function showLoader(){document.getElementById('globalLoader').style.display='flex'}
+function hideLoader(){document.getElementById('globalLoader').style.display='none'}
+document.addEventListener('click',function(e){
+    if(e.target.tagName==='A'&&!e.target.href.includes('#')&&!e.target.href.includes('javascript')){
+        showLoader()
+    }
+})
+window.addEventListener('beforeunload',showLoader)
+window.addEventListener('load',hideLoader)
+</script>
 <?php if (!$isAuthPage): ?>
 <style>
 /* Neo Header Styles */
@@ -247,6 +294,20 @@ body.dark-mode .dark-mode-toggle {
     var APP_ENTRY = '<?= APP_ENTRY ?>';
     var APP_URL = '<?= APP_URL ?>';
 </script>
+
+<!-- Swal Fire for Flash Messages -->
+<?php if (isset($_SESSION['flash'])): ?>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: '<?= $_SESSION['flash']['type'] === 'error' ? 'error' : 'success' ?>',
+        title: '<?= $_SESSION['flash']['type'] === 'error' ? 'Oops...' : 'Success!' ?>',
+        text: '<?= addslashes($_SESSION['flash']['message']) ?>',
+        confirmButtonColor: '<?= $_SESSION['flash']['type'] === 'error' ? '#dc3545' : '#198754' ?>'
+    });
+});
+</script>
+<?php unset($_SESSION['flash']); endif; ?>
 
 <!-- Dark Mode Script -->
 <script>
