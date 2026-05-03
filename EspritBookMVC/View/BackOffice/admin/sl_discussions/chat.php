@@ -1,47 +1,46 @@
 <?php $adminSidebarActive = 'sl-discussions'; ?>
-<div class="dashboard student-events-page">
+<div class="dashboard student-events-page collab-hub collab-chat-root">
     <div class="container admin-dashboard-container">
         <div class="admin-layout">
             <?php require __DIR__ . '/../partials/sidebar.php'; ?>
             <div class="admin-main">
-                <div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <h1>Admin Live Chat</h1>
-                        <p>Discussion: <strong><?= htmlspecialchars((string) ($discussion['titre'] ?? $discussion['title'] ?? 'Discussion')) ?></strong></p>
+                <?php require __DIR__ . '/../../../FrontOffice/student/partials/collab_hub_styles.php'; ?>
+
+                <div class="collab-chat-layout">
+                    <div class="header collab-chat-head">
+                        <div>
+                            <div class="collab-chat-live"><span class="collab-chat-dot" aria-hidden="true"></span> Admin room</div>
+                            <h2>Live discussion</h2>
+                            <p class="collab-chat-sub">
+                                <strong><?= htmlspecialchars((string) ($discussion['titre'] ?? $discussion['title'] ?? 'Discussion')) ?></strong>
+                                <span style="opacity:.65;"> · </span>
+                                Moderator view
+                            </p>
+                        </div>
+                        <a class="collab-btn-ghost" href="<?= APP_ENTRY ?>?url=admin/sl-discussions">
+                            <i class="bi bi-arrow-left" aria-hidden="true"></i> Back
+                        </a>
                     </div>
-                    <a class="btn btn-secondary" href="<?= APP_ENTRY ?>?url=admin/sl-discussions">Back</a>
-                </div>
 
-                <style>
-                    .chat-shell { background:#fff; border:1px solid #e2e8f0; border-radius:14px; overflow:hidden; }
-                    .chat-messages { height:420px; overflow-y:auto; padding:14px; background:#f8fafc; }
-                    .chat-row { margin-bottom:10px; display:flex; }
-                    .chat-row.self { justify-content:flex-end; }
-                    .chat-bubble { max-width:70%; border-radius:12px; padding:10px 12px; background:#fff; border:1px solid #e2e8f0; }
-                    .chat-row.self .chat-bubble { background:#dbeafe; border-color:#bfdbfe; }
-                    .chat-author { font-size:12px; font-weight:700; color:#334155; margin-bottom:4px; }
-                    .chat-text { color:#0f172a; white-space:pre-wrap; word-break:break-word; }
-                    .chat-meta { font-size:11px; color:#64748b; margin-top:4px; }
-                    .chat-input-wrap { border-top:1px solid #e2e8f0; padding:12px; display:flex; gap:10px; align-items:center; }
-                    .chat-input-wrap input { flex:1; border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; }
-                    .chat-attach-btn { border:1px solid #cbd5e1; border-radius:10px; background:#fff; width:38px; height:38px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; font-size:16px; transition:all .2s ease; }
-                    .chat-attach-btn:hover { border-color:#94a3b8; background:#f8fafc; transform:translateY(-1px); }
-                    .chat-attach-btn.recording { background:#fee2e2; border-color:#ef4444; color:#991b1b; }
-                    .chat-uploading { font-size:12px; color:#64748b; margin-left:6px; }
-                </style>
+                    <div id="chatMessages" class="collab-chat-stream chat-messages"></div>
 
-                <div class="chat-shell">
-                    <div id="chatMessages" class="chat-messages"></div>
-                    <form id="chatForm" class="chat-input-wrap" data-skip-validation="1" novalidate>
+                    <form id="chatForm" class="collab-chat-composer chat-input-wrap" data-skip-validation="1" novalidate>
                         <input id="chatFileInput" type="file" style="display:none;" />
                         <button id="pickImageBtn" class="chat-attach-btn" type="button" title="Send image" aria-label="Send image"><i class="bi bi-image"></i></button>
                         <button id="pickFileBtn" class="chat-attach-btn" type="button" title="Send attachment" aria-label="Send attachment"><i class="bi bi-paperclip"></i></button>
                         <button id="recordBtn" class="chat-attach-btn" type="button" title="Record voice note" aria-label="Record voice note"><i class="bi bi-mic-fill"></i></button>
-                        <input id="chatInput" type="text" placeholder="Type your message..." autocomplete="off" />
+                        <input id="chatInput" type="text" placeholder="Type your message…" autocomplete="off" />
                         <button class="btn btn-primary" type="submit">Send</button>
                         <span id="chatUploadState" class="chat-uploading"></span>
                     </form>
                 </div>
+                <style>
+                    .collab-chat-root .chat-attach-btn { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 1rem; transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease; }
+                    .collab-chat-root .chat-attach-btn:hover { transform: translateY(-1px); }
+                    .collab-chat-root .chat-attach-btn.recording { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+                    .collab-chat-root .chat-uploading { font-size: 12px; color: var(--ch-muted); margin-left: 6px; flex: 1 1 100%; }
+                    @media (min-width: 520px) { .collab-chat-root .chat-uploading { flex: 0 0 auto; } }
+                </style>
             </div>
         </div>
     </div>

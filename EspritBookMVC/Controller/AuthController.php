@@ -6,7 +6,7 @@
 
 require_once __DIR__ . '/../Controller/BaseController.php';
 require_once __DIR__ . '/../Model/Repositories.php';
-require_once __DIR__ . '/../Model/PresentationHelpers.php';
+require_once __DIR__ . '/../View/PresentationHelpers.php';
 
 class AuthController extends BaseController {
 

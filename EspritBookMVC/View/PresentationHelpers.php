@@ -1,8 +1,12 @@
 <?php
 declare(strict_types=1);
 
-require_once __DIR__ . '/SessionEntities.php';
-require_once __DIR__ . '/Repositories.php';
+/**
+ * View-layer presenters and display formatters (no DB/session; GroupPresenter receives repository from controller).
+ */
+require_once __DIR__ . '/../Model/SessionEntities.php';
+require_once __DIR__ . '/../Model/Repositories.php';
+
 /**
  * Date/text formatting for views (called from controllers only).
  */

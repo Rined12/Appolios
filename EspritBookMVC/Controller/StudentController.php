@@ -6,7 +6,7 @@
 
 require_once __DIR__ . '/../Controller/BaseController.php';
 require_once __DIR__ . '/../Model/Repositories.php';
-require_once __DIR__ . '/../Model/PresentationHelpers.php';
+require_once __DIR__ . '/../View/PresentationHelpers.php';
 
 class StudentController extends BaseController {
 
@@ -1612,6 +1612,33 @@ class StudentController extends BaseController {
                     return $studentQuery->sortKeyDiscussionId($b) <=> $studentQuery->sortKeyDiscussionId($a);
                 });
         }
+    }
+
+    /** Student query helpers (moved from Model StudentQueryService). */
+    public static function layerStudentQuery_approvedOwnedGroupsForUser($repo, int $userId): array
+    {
+        $groups = $repo->fetchByCreator($userId);
+
+        return array_values(array_filter(
+            $groups,
+            static function (array $g): bool {
+                $a = (string) ($g['approval_statut'] ?? $g['approval_status'] ?? '');
+
+                return $a === 'approuve';
+            }
+        ));
+    }
+
+    /** @return mixed */
+    public static function layerStudentQuery_sortKeyGroupId(array $row)
+    {
+        return (int) ($row['id_groupe'] ?? $row['id'] ?? 0);
+    }
+
+    /** @return mixed */
+    public static function layerStudentQuery_sortKeyDiscussionId(array $row)
+    {
+        return (int) ($row['id_discussion'] ?? $row['id'] ?? 0);
     }
 
     public function downloadTicket($pId) {
