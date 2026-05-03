@@ -509,6 +509,7 @@ abstract class BaseController
             'image/png' => ['ext' => 'png', 'type' => 'image'],
             'image/gif' => ['ext' => 'gif', 'type' => 'image'],
             'image/webp' => ['ext' => 'webp', 'type' => 'image'],
+            'video/mp4' => ['ext' => 'mp4', 'type' => 'video'],
             'audio/webm' => ['ext' => 'webm', 'type' => 'audio'],
             // MediaRecorder / libmagic often label opus-in-webm as video (same container as audio-only WebM).
             'video/webm' => ['ext' => 'webm', 'type' => 'audio'],

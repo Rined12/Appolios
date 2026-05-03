@@ -778,6 +778,9 @@ class GroupPostRepository extends BaseRepository
                     id_groupe INT NOT NULL,
                     id_user INT NOT NULL,
                     body TEXT NOT NULL,
+                    media_url VARCHAR(600) NULL DEFAULT NULL,
+                    media_type VARCHAR(32) NULL DEFAULT NULL,
+                    media_filename VARCHAR(255) NULL DEFAULT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_groupe_created (id_groupe, created_at),
                     INDEX idx_user (id_user)
@@ -785,18 +788,77 @@ class GroupPostRepository extends BaseRepository
             );
         } catch (Throwable $e) {
         }
+        $this->ensureGroupePostMediaColumns();
         $this->schemaEnsured = true;
     }
 
-    public function create(int $groupId, int $userId, string $body): bool
+    private function groupePostColumnNames(): array
+    {
+        try {
+            $stmt = $this->openConnection()->query('SHOW COLUMNS FROM ' . $this->tableName());
+            $out = [];
+            foreach ($stmt->fetchAll() as $row) {
+                $out[] = (string) ($row['Field'] ?? '');
+            }
+
+            return $out;
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    private function ensureGroupePostMediaColumns(): void
+    {
+        $cols = $this->groupePostColumnNames();
+        $alters = [
+            'media_url' => 'ALTER TABLE groupe_post ADD COLUMN media_url VARCHAR(600) NULL DEFAULT NULL',
+            'media_type' => "ALTER TABLE groupe_post ADD COLUMN media_type VARCHAR(32) NULL DEFAULT NULL COMMENT 'image|video|audio|file'",
+            'media_filename' => 'ALTER TABLE groupe_post ADD COLUMN media_filename VARCHAR(255) NULL DEFAULT NULL',
+        ];
+        foreach ($alters as $name => $sql) {
+            if (in_array($name, $cols, true)) {
+                continue;
+            }
+            try {
+                $this->openConnection()->exec($sql);
+            } catch (Throwable $e) {
+            }
+        }
+    }
+
+    /**
+     * @return int|false insert id
+     */
+    public function create(int $groupId, int $userId, string $body, ?string $mediaUrl, ?string $mediaType, ?string $mediaFilename)
     {
         $this->ensureSchema();
+        $cols = $this->groupePostColumnNames();
+        $hasMedia = in_array('media_url', $cols, true);
         try {
-            $stmt = $this->openConnection()->prepare(
-                "INSERT INTO {$this->tableName()} (id_groupe, id_user, body) VALUES (?, ?, ?)"
-            );
+            if ($hasMedia) {
+                $stmt = $this->openConnection()->prepare(
+                    "INSERT INTO {$this->tableName()} (id_groupe, id_user, body, media_url, media_type, media_filename)
+                     VALUES (?, ?, ?, ?, ?, ?)"
+                );
+                $ok = $stmt->execute([
+                    $groupId,
+                    $userId,
+                    $body,
+                    $mediaUrl,
+                    $mediaType,
+                    $mediaFilename,
+                ]);
+            } else {
+                $stmt = $this->openConnection()->prepare(
+                    "INSERT INTO {$this->tableName()} (id_groupe, id_user, body) VALUES (?, ?, ?)"
+                );
+                $ok = $stmt->execute([$groupId, $userId, $body]);
+            }
+            if (!$ok) {
+                return false;
+            }
 
-            return $stmt->execute([$groupId, $userId, $body]);
+            return (int) $this->openConnection()->lastInsertId();
         } catch (PDOException $e) {
             return false;
         }
@@ -809,9 +871,13 @@ class GroupPostRepository extends BaseRepository
     {
         $this->ensureSchema();
         $limit = max(1, min(200, $limit));
+        $cols = $this->groupePostColumnNames();
+        $mediaSel = in_array('media_url', $cols, true)
+            ? 'p.media_url, p.media_type, p.media_filename,'
+            : 'NULL AS media_url, NULL AS media_type, NULL AS media_filename,';
         try {
             $stmt = $this->openConnection()->prepare(
-                "SELECT p.id, p.id_groupe, p.id_user, p.body, p.created_at, u.name AS author_name
+                "SELECT p.id, p.id_groupe, p.id_user, p.body, p.created_at, {$mediaSel} u.name AS author_name
                  FROM {$this->tableName()} p
                  INNER JOIN users u ON u.id = p.id_user
                  WHERE p.id_groupe = ?
@@ -847,6 +913,8 @@ class GroupPostRepository extends BaseRepository
     public function deleteByIdForGroup(int $postId, int $groupId): bool
     {
         $this->ensureSchema();
+        $eng = new GroupPostEngagementRepository();
+        $eng->deleteAllForPost($postId);
         try {
             $stmt = $this->openConnection()->prepare(
                 "DELETE FROM {$this->tableName()} WHERE id = ? AND id_groupe = ? LIMIT 1"
@@ -861,6 +929,8 @@ class GroupPostRepository extends BaseRepository
     public function deleteAllForGroup(int $groupId): bool
     {
         $this->ensureSchema();
+        $eng = new GroupPostEngagementRepository();
+        $eng->deleteAllForGroup($groupId);
         try {
             $stmt = $this->openConnection()->prepare("DELETE FROM {$this->tableName()} WHERE id_groupe = ?");
 
@@ -868,6 +938,334 @@ class GroupPostRepository extends BaseRepository
         } catch (PDOException $e) {
             return false;
         }
+    }
+}
+
+/**
+ * Comments, reactions, and discussion-shares for group wall posts.
+ */
+class GroupPostEngagementRepository
+{
+    private bool $schemaEnsured = false;
+
+    private function db(): PDO
+    {
+        require_once __DIR__ . '/../config/database.php';
+
+        return getConnection();
+    }
+
+    public function ensureSchema(): void
+    {
+        if ($this->schemaEnsured) {
+            return;
+        }
+        $pdo = $this->db();
+        try {
+            $pdo->exec(
+                'CREATE TABLE IF NOT EXISTS groupe_post_comment (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id_post INT NOT NULL,
+                    id_user INT NOT NULL,
+                    body TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_post_created (id_post, created_at),
+                    INDEX idx_user (id_user)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+            $pdo->exec(
+                'CREATE TABLE IF NOT EXISTS groupe_post_reaction (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id_post INT NOT NULL,
+                    id_user INT NOT NULL,
+                    reaction VARCHAR(24) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_post_user (id_post, id_user),
+                    INDEX idx_post (id_post)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+            $pdo->exec(
+                'CREATE TABLE IF NOT EXISTS groupe_post_share (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    id_post INT NOT NULL,
+                    id_discussion INT NOT NULL,
+                    id_user INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_post (id_post),
+                    INDEX idx_discussion (id_discussion)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        } catch (Throwable $e) {
+        }
+        $this->schemaEnsured = true;
+    }
+
+    public function deleteAllForPost(int $postId): void
+    {
+        $this->ensureSchema();
+        $pid = (int) $postId;
+        if ($pid <= 0) {
+            return;
+        }
+        try {
+            $this->db()->prepare('DELETE FROM groupe_post_comment WHERE id_post = ?')->execute([$pid]);
+            $this->db()->prepare('DELETE FROM groupe_post_reaction WHERE id_post = ?')->execute([$pid]);
+            $this->db()->prepare('DELETE FROM groupe_post_share WHERE id_post = ?')->execute([$pid]);
+        } catch (Throwable $e) {
+        }
+    }
+
+    public function deleteAllForGroup(int $groupId): void
+    {
+        $this->ensureSchema();
+        $gid = (int) $groupId;
+        if ($gid <= 0) {
+            return;
+        }
+        try {
+            $sql = 'DELETE c FROM groupe_post_comment c
+                    INNER JOIN groupe_post p ON p.id = c.id_post
+                    WHERE p.id_groupe = ?';
+            $this->db()->prepare($sql)->execute([$gid]);
+            $sql = 'DELETE r FROM groupe_post_reaction r
+                    INNER JOIN groupe_post p ON p.id = r.id_post
+                    WHERE p.id_groupe = ?';
+            $this->db()->prepare($sql)->execute([$gid]);
+            $sql = 'DELETE s FROM groupe_post_share s
+                    INNER JOIN groupe_post p ON p.id = s.id_post
+                    WHERE p.id_groupe = ?';
+            $this->db()->prepare($sql)->execute([$gid]);
+        } catch (Throwable $e) {
+        }
+    }
+
+    public function addComment(int $postId, int $userId, string $body): bool
+    {
+        $this->ensureSchema();
+        try {
+            $stmt = $this->db()->prepare(
+                'INSERT INTO groupe_post_comment (id_post, id_user, body) VALUES (?, ?, ?)'
+            );
+
+            return $stmt->execute([(int) $postId, (int) $userId, $body]);
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchCommentsForPost(int $postId, int $limit = 40): array
+    {
+        $this->ensureSchema();
+        $limit = max(1, min(100, $limit));
+        try {
+            $stmt = $this->db()->prepare(
+                "SELECT c.id, c.body, c.created_at, c.id_user, u.name AS author_name
+                 FROM groupe_post_comment c
+                 INNER JOIN users u ON u.id = c.id_user
+                 WHERE c.id_post = ?
+                 ORDER BY c.created_at ASC
+                 LIMIT {$limit}"
+            );
+            $stmt->execute([(int) $postId]);
+
+            return $stmt->fetchAll();
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * @param array<int> $postIds
+     * @return array<int, array{counts: array<string, int>, mine: ?string}>
+     */
+    public function fetchReactionSummariesForPosts(array $postIds): array
+    {
+        $this->ensureSchema();
+        $postIds = array_values(array_filter(array_map('intval', $postIds), static fn($v) => $v > 0));
+        if ($postIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        $out = [];
+        foreach ($postIds as $pid) {
+            $out[$pid] = ['counts' => [], 'mine' => null];
+        }
+        try {
+            $stmt = $this->db()->prepare(
+                "SELECT id_post, reaction, COUNT(*) AS c
+                 FROM groupe_post_reaction
+                 WHERE id_post IN ({$placeholders})
+                 GROUP BY id_post, reaction"
+            );
+            $stmt->execute($postIds);
+            foreach ($stmt->fetchAll() as $row) {
+                $pid = (int) ($row['id_post'] ?? 0);
+                $r = (string) ($row['reaction'] ?? '');
+                if ($pid <= 0 || $r === '') {
+                    continue;
+                }
+                if (!isset($out[$pid])) {
+                    $out[$pid] = ['counts' => [], 'mine' => null];
+                }
+                $out[$pid]['counts'][$r] = (int) ($row['c'] ?? 0);
+            }
+        } catch (Throwable $e) {
+        }
+
+        return $out;
+    }
+
+    public function fetchUserReactionsForPosts(array $postIds, int $userId): array
+    {
+        $this->ensureSchema();
+        $postIds = array_values(array_filter(array_map('intval', $postIds), static fn($v) => $v > 0));
+        if ($postIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        $params = $postIds;
+        $params[] = $userId;
+        try {
+            $stmt = $this->db()->prepare(
+                "SELECT id_post, reaction FROM groupe_post_reaction
+                 WHERE id_post IN ({$placeholders}) AND id_user = ?"
+            );
+            $stmt->execute($params);
+            $mine = [];
+            foreach ($stmt->fetchAll() as $row) {
+                $mine[(int) $row['id_post']] = (string) ($row['reaction'] ?? '');
+            }
+
+            return $mine;
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    public function setReaction(int $postId, int $userId, string $reaction): bool
+    {
+        $this->ensureSchema();
+        try {
+            $stmt = $this->db()->prepare(
+                'INSERT INTO groupe_post_reaction (id_post, id_user, reaction) VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE reaction = VALUES(reaction), created_at = CURRENT_TIMESTAMP'
+            );
+
+            return $stmt->execute([(int) $postId, (int) $userId, $reaction]);
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    public function clearReaction(int $postId, int $userId): bool
+    {
+        $this->ensureSchema();
+        try {
+            $stmt = $this->db()->prepare('DELETE FROM groupe_post_reaction WHERE id_post = ? AND id_user = ?');
+
+            return $stmt->execute([(int) $postId, (int) $userId]);
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    public function addShare(int $postId, int $discussionId, int $userId): bool
+    {
+        $this->ensureSchema();
+        try {
+            $stmt = $this->db()->prepare(
+                'INSERT INTO groupe_post_share (id_post, id_discussion, id_user) VALUES (?, ?, ?)'
+            );
+
+            return $stmt->execute([(int) $postId, (int) $discussionId, (int) $userId]);
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * @param array<int> $postIds
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function fetchCommentsGroupedByPost(array $postIds): array
+    {
+        $this->ensureSchema();
+        $postIds = array_values(array_filter(array_map('intval', $postIds), static fn($v) => $v > 0));
+        if ($postIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        $byPost = [];
+        try {
+            $stmt = $this->db()->prepare(
+                "SELECT c.id_post, c.id, c.body, c.created_at, c.id_user, u.name AS author_name
+                 FROM groupe_post_comment c
+                 INNER JOIN users u ON u.id = c.id_user
+                 WHERE c.id_post IN ({$placeholders})
+                 ORDER BY c.id_post ASC, c.created_at ASC"
+            );
+            $stmt->execute($postIds);
+            foreach ($stmt->fetchAll() as $row) {
+                $pid = (int) ($row['id_post'] ?? 0);
+                if ($pid <= 0) {
+                    continue;
+                }
+                if (!isset($byPost[$pid])) {
+                    $byPost[$pid] = [];
+                }
+                $byPost[$pid][] = [
+                    'id' => (int) ($row['id'] ?? 0),
+                    'body' => (string) ($row['body'] ?? ''),
+                    'created_at' => (string) ($row['created_at'] ?? ''),
+                    'author_name' => (string) ($row['author_name'] ?? ''),
+                ];
+            }
+        } catch (Throwable $e) {
+        }
+
+        return $byPost;
+    }
+
+    /**
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function fetchSharesGroupedByPost(array $postIds): array
+    {
+        $this->ensureSchema();
+        $postIds = array_values(array_filter(array_map('intval', $postIds), static fn($v) => $v > 0));
+        if ($postIds === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($postIds), '?'));
+        $byPost = [];
+        try {
+            $stmt = $this->db()->prepare(
+                "SELECT s.id_post, s.id_discussion, s.created_at
+                 FROM groupe_post_share s
+                 WHERE s.id_post IN ({$placeholders})
+                 ORDER BY s.created_at DESC"
+            );
+            $stmt->execute($postIds);
+            foreach ($stmt->fetchAll() as $row) {
+                $pid = (int) ($row['id_post'] ?? 0);
+                if ($pid <= 0) {
+                    continue;
+                }
+                if (!isset($byPost[$pid])) {
+                    $byPost[$pid] = [];
+                }
+                $byPost[$pid][] = [
+                    'id_discussion' => (int) ($row['id_discussion'] ?? 0),
+                    'created_at' => (string) ($row['created_at'] ?? ''),
+                ];
+            }
+        } catch (Throwable $e) {
+        }
+
+        return $byPost;
     }
 }
 

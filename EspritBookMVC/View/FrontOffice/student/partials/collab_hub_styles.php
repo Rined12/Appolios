@@ -757,30 +757,326 @@
     line-height: 1.55;
 }
 
-.collab-hub .collab-feed-panel .collab-feed-compose {
-    margin-bottom: 1.25rem;
+/* ---- Group feed (wall) — composer, cards, engagement ---- */
+.collab-hub .collab-feed-panel.collab-thread-panel {
+    background: linear-gradient(165deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%);
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    box-shadow: 0 14px 40px rgba(15, 23, 42, 0.06);
 }
 
-.collab-hub .collab-feed-post__meta {
+.collab-hub .collab-feed-panel__head {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1.35rem;
+}
+
+.collab-hub .collab-feed-panel__head-icon {
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: #0f172a;
+    background: linear-gradient(135deg, #e0f2fe, #fef3c7);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    box-shadow: 0 4px 14px rgba(56, 189, 248, 0.12);
+}
+
+.collab-hub .collab-feed-panel__title {
+    margin: 0 0 0.35rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--ch-slate);
+    letter-spacing: -0.02em;
+}
+
+.collab-hub .collab-feed-panel__subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--ch-muted);
+    max-width: 48rem;
+}
+
+.collab-hub .collab-feed-composer-card {
+    margin-bottom: 1.35rem;
+    padding: 1rem 1.1rem 1.05rem;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid rgba(226, 232, 240, 0.98);
+    box-shadow: 0 10px 32px rgba(15, 23, 42, 0.06);
+}
+
+.collab-hub .collab-feed-composer__head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.collab-hub .collab-feed-composer__avatar {
+    flex-shrink: 0;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #0f172a;
+    background: linear-gradient(135deg, #bae6fd, #fed7aa);
+    border: 2px solid #fff;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+}
+
+.collab-hub .collab-feed-composer__kicker {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ch-muted);
+}
+
+.collab-hub .collab-feed-composer__as {
+    font-size: 0.86rem;
+    color: var(--ch-slate);
+    margin-top: 0.1rem;
+}
+
+.collab-hub .collab-feed-composer__alert {
+    margin-bottom: 0.75rem;
+}
+
+.collab-hub .collab-feed-composer__textarea {
+    width: 100%;
+    min-height: 88px;
+    resize: vertical;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    padding: 0.75rem 0.85rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--ch-slate);
+    background: #f8fafc;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.collab-hub .collab-feed-composer__textarea:focus {
+    outline: none;
+    border-color: rgba(56, 189, 248, 0.55);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.collab-hub .collab-feed-composer__toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem 0.5rem;
-    margin-bottom: 0.5rem;
+    gap: 0.65rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #eef2f6;
+}
+
+.collab-hub .collab-feed-composer__attach {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    border: 1px dashed rgba(100, 116, 139, 0.45);
+    background: #fff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--ch-slate);
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.collab-hub .collab-feed-composer__attach:hover {
+    border-color: rgba(56, 189, 248, 0.55);
+    background: #f0f9ff;
+}
+
+.collab-hub .collab-feed-composer__attach input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 0;
+}
+
+.collab-hub .collab-feed-composer__attach-icon {
+    font-size: 1.05rem;
+    color: var(--ch-teal);
+}
+
+.collab-hub .collab-feed-composer__toolbar-hint {
+    flex: 1 1 160px;
+    font-size: 0.76rem;
+    color: var(--ch-muted);
+    font-weight: 600;
+}
+
+.collab-hub .collab-feed-composer__submit {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.5rem 1.15rem;
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.collab-hub .collab-feed-composer__submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(234, 88, 12, 0.42);
+}
+
+.collab-hub a.collab-feed-composer__submit {
+    text-decoration: none;
+}
+
+.collab-hub .collab-feed-join-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 1.35rem;
+    padding: 1.1rem 1.15rem;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid rgba(226, 232, 240, 0.98);
+    box-shadow: 0 8px 26px rgba(15, 23, 42, 0.05);
+}
+
+.collab-hub .collab-feed-join-card__icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: var(--ch-teal);
+    background: #ecfeff;
+    border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.collab-hub .collab-feed-join-card__text {
+    margin: 0;
+    flex: 1 1 200px;
+    font-size: 0.9rem;
+    color: var(--ch-muted);
+    line-height: 1.5;
+}
+
+.collab-hub .collab-feed-join-card__btn {
+    margin-left: auto;
+}
+
+.collab-hub .collab-feed-post {
+    position: relative;
+    margin-bottom: 1rem;
+    padding: 1rem 1.1rem 1.05rem;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    box-shadow: 0 8px 26px rgba(15, 23, 42, 0.05);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.collab-hub .collab-feed-post:last-of-type {
+    margin-bottom: 0;
+}
+
+.collab-hub .collab-feed-post:hover {
+    border-color: rgba(84, 140, 168, 0.28);
+    box-shadow: 0 12px 34px rgba(43, 72, 101, 0.08);
+}
+
+.collab-hub .collab-feed-post__hd {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+}
+
+.collab-hub .collab-feed-post__hd-main {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
 }
 
 .collab-hub .collab-feed-post__avatar {
+    flex-shrink: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
+    width: 2.35rem;
+    height: 2.35rem;
     border-radius: 999px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 800;
     color: #0f172a;
     background: linear-gradient(135deg, #e0f2fe, #cffafe);
     border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.collab-hub .collab-feed-post__who {
+    min-width: 0;
+}
+
+.collab-hub .collab-feed-post__name {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--ch-slate);
+    line-height: 1.25;
+}
+
+.collab-hub .collab-feed-post__time {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ch-muted);
+}
+
+.collab-hub .collab-feed-post__delete {
+    flex-shrink: 0;
+    width: 2.1rem;
+    height: 2.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: var(--ch-muted);
+    border: 1px solid transparent;
+    transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.collab-hub .collab-feed-post__delete:hover {
+    color: #b91c1c;
+    background: #fef2f2;
+    border-color: rgba(239, 68, 68, 0.25);
 }
 
 .collab-hub .collab-feed-post__body {
@@ -789,6 +1085,244 @@
     color: var(--ch-slate);
     line-height: 1.55;
     word-break: break-word;
+}
+
+.collab-hub .collab-feed-post__media {
+    margin-top: 0.75rem;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
+}
+
+.collab-hub .collab-feed-post__media img,
+.collab-hub .collab-feed-post__media video {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.collab-hub .collab-feed-post__media audio {
+    display: block;
+    width: 100%;
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
+}
+
+.collab-hub .collab-feed-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.9rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid #eef2f6;
+}
+
+.collab-hub .collab-feed-reactions__label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ch-muted);
+    margin-right: 0.2rem;
+}
+
+.collab-hub .collab-feed-reaction-form {
+    display: inline;
+    margin: 0;
+}
+
+.collab-hub .collab-feed-reaction-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 1rem;
+    cursor: pointer;
+    line-height: 1.2;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.collab-hub .collab-feed-reaction-btn:hover {
+    border-color: rgba(56, 189, 248, 0.5);
+    background: #f0f9ff;
+    transform: translateY(-1px);
+}
+
+.collab-hub .collab-feed-reaction-btn.is-active {
+    border-color: rgba(249, 115, 22, 0.55);
+    background: #fff7ed;
+    box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2);
+}
+
+.collab-hub .collab-feed-reaction-count {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--ch-muted);
+}
+
+.collab-hub .collab-feed-comments {
+    margin-top: 0.8rem;
+    padding: 0.55rem 0.75rem 0.65rem;
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+}
+
+.collab-hub .collab-feed-comment {
+    font-size: 0.87rem;
+    color: var(--ch-slate);
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.collab-hub .collab-feed-comment:last-child {
+    border-bottom: 0;
+}
+
+.collab-hub .collab-feed-comment__meta {
+    font-size: 0.7rem;
+    color: var(--ch-muted);
+    margin-left: 0.35rem;
+    font-weight: 600;
+}
+
+.collab-hub .collab-feed-comment-form {
+    margin-top: 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.collab-hub .collab-feed-comment-form textarea {
+    width: 100%;
+    min-height: 56px;
+    border-radius: 12px;
+    border: 1px solid var(--ch-line);
+    padding: 0.55rem 0.7rem;
+    font-size: 0.9rem;
+    background: #fff;
+}
+
+.collab-hub .collab-feed-share {
+    margin-top: 0.8rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 14px;
+    background: rgba(255, 247, 237, 0.65);
+    border: 1px solid rgba(253, 186, 116, 0.45);
+}
+
+.collab-hub .collab-feed-share__label {
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #9a3412;
+    margin-bottom: 0.5rem;
+}
+
+.collab-hub .collab-feed-share-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.collab-hub .collab-feed-share-form select {
+    flex: 1 1 200px;
+    min-width: 160px;
+    border-radius: 10px;
+    border: 1px solid rgba(251, 146, 60, 0.45);
+    padding: 0.45rem 0.55rem;
+    font-size: 0.88rem;
+    background: #fff;
+}
+
+.collab-hub .collab-feed-share__empty {
+    margin: 0;
+    font-size: 0.84rem;
+    color: #9a3412;
+    opacity: 0.9;
+}
+
+.collab-hub .collab-feed-shares-log {
+    margin-top: 0.65rem;
+    padding: 0.5rem 0.65rem;
+    font-size: 0.8rem;
+    color: var(--ch-muted);
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px dashed #e2e8f0;
+}
+
+.collab-hub .collab-feed-shares-log ul {
+    margin: 0.3rem 0 0;
+    padding-left: 1.1rem;
+}
+
+.collab-hub .collab-feed-shares-log__title {
+    font-weight: 800;
+    color: var(--ch-slate);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.collab-hub .collab-feed-shares-log__time {
+    opacity: 0.75;
+    margin-left: 0.35rem;
+}
+
+.collab-hub .collab-feed-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.65rem;
+    padding: 1.75rem 1.25rem;
+    margin-bottom: 0.35rem;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px dashed rgba(148, 163, 184, 0.55);
+}
+
+.collab-hub .collab-feed-empty__icon {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: var(--ch-muted);
+    background: #f1f5f9;
+}
+
+.collab-hub .collab-feed-empty__text {
+    margin: 0;
+    max-width: 26rem;
+    font-size: 0.92rem;
+    color: var(--ch-muted);
+    line-height: 1.55;
+}
+
+.collab-hub .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 /* ---- Forms (create / edit discussion) ---- */

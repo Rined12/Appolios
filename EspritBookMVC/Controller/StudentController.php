@@ -139,6 +139,7 @@ class StudentController extends BaseController {
         $second = $params[1] ?? null;
         $third = $params[2] ?? null;
         $fourth = $params[3] ?? null;
+        $fifth = $params[4] ?? null;
 
         if ($first === null) {
             $this->studentGroupesIndex($groupeRepository);
@@ -194,6 +195,18 @@ class StudentController extends BaseController {
         }
         if ($second === 'posts' && $fourth === 'delete' && ctype_digit((string) $third) && (int) $third > 0) {
             $this->studentGroupesPostDelete($groupeRepository, $id, (int) $third);
+            return;
+        }
+        if ($second === 'posts' && ctype_digit((string) $third) && $fourth === 'comments' && $fifth === 'store' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->studentGroupesPostCommentStore($groupeRepository, $id, (int) $third);
+            return;
+        }
+        if ($second === 'posts' && ctype_digit((string) $third) && $fourth === 'reactions' && $fifth === 'store' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->studentGroupesPostReactionStore($groupeRepository, $id, (int) $third);
+            return;
+        }
+        if ($second === 'posts' && ctype_digit((string) $third) && $fourth === 'share' && $fifth === 'store' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->studentGroupesPostShareStore($groupeRepository, $id, (int) $third);
             return;
         }
 
@@ -732,6 +745,8 @@ class StudentController extends BaseController {
         }
 
         $groupPostRepository = $this->model('GroupPostRepository');
+        $discussionRepository = $this->model('DiscussionRepository');
+        $postEngagementRepository = $this->model('GroupPostEngagementRepository');
         $postComposerSession = $this->consumeGroupPostComposerSession();
         $groupPostErrors = array_values(array_map(
             static fn($m): string => (string) $m,
@@ -744,16 +759,73 @@ class StudentController extends BaseController {
         $show_group_join_cta = $approval === 'approuve' && !$isCreator && !$isMember;
 
         $groupPostRows = $groupPostRepository->fetchByGroup($id, 80);
+        $postIds = [];
+        foreach ($groupPostRows as $pr) {
+            $pid = (int) ($pr['id'] ?? 0);
+            if ($pid > 0) {
+                $postIds[] = $pid;
+            }
+        }
+        $reactionSummaries = $postEngagementRepository->fetchReactionSummariesForPosts($postIds);
+        $mineReactions = $postEngagementRepository->fetchUserReactionsForPosts($postIds, $uid);
+        $commentsByPost = $postEngagementRepository->fetchCommentsGroupedByPost($postIds);
+        $sharesByPost = $postEngagementRepository->fetchSharesGroupedByPost($postIds);
+
+        $discussionRowsInGroup = $discussionRepository->fetchByGroup($id);
+        $discussions_for_share = [];
+        foreach ($discussionRowsInGroup as $dr) {
+            $did = (int) ($dr['id_discussion'] ?? $dr['id'] ?? 0);
+            if ($did <= 0) {
+                continue;
+            }
+            $discussions_for_share[] = [
+                'id' => $did,
+                'titre' => (string) ($dr['titre'] ?? $dr['title'] ?? 'Discussion'),
+            ];
+        }
+
         $group_post_cards = [];
         foreach ($groupPostRows as $pr) {
             $pid = (int) ($pr['id'] ?? 0);
             $authorId = (int) ($pr['id_user'] ?? 0);
+            $sum = $reactionSummaries[$pid] ?? ['counts' => [], 'mine' => null];
+            $counts = $sum['counts'] ?? [];
+            $mine = $mineReactions[$pid] ?? null;
+            $comments = $commentsByPost[$pid] ?? [];
+            $shares = $sharesByPost[$pid] ?? [];
+            foreach ($shares as &$sh) {
+                $did = (int) ($sh['id_discussion'] ?? 0);
+                $title = '';
+                foreach ($discussions_for_share as $opt) {
+                    if ((int) ($opt['id'] ?? 0) === $did) {
+                        $title = (string) ($opt['titre'] ?? '');
+                        break;
+                    }
+                }
+                $sh['discussion_title'] = $title !== '' ? $title : ('Discussion #' . $did);
+                $sh['chat_url'] = APP_ENTRY . '?url=' . rawurlencode($prefix . '/discussions/' . $did . '/chat');
+            }
+            unset($sh);
             $group_post_cards[] = [
+                'id' => $pid,
                 'body' => (string) ($pr['body'] ?? ''),
                 'author_name' => (string) ($pr['author_name'] ?? ''),
                 'created_at' => (string) ($pr['created_at'] ?? ''),
+                'media_url' => (string) ($pr['media_url'] ?? ''),
+                'media_type' => (string) ($pr['media_type'] ?? ''),
+                'media_filename' => (string) ($pr['media_filename'] ?? ''),
+                'reaction_counts' => $counts,
+                'user_reaction' => $mine !== null && $mine !== '' ? $mine : null,
+                'comments' => $comments,
+                'shares' => $shares,
                 'can_delete' => $pid > 0 && ($authorId === $uid || $isCreator),
+                'can_comment' => $canPostWall,
+                'can_react' => $canPostWall,
+                'can_share' => $canPostWall,
                 'url_delete' => APP_ENTRY . '?url=' . rawurlencode($prefix . '/groupes/' . $id . '/posts/' . $pid . '/delete'),
+                'url_comment_store' => APP_ENTRY . '?url=' . rawurlencode($prefix . '/groupes/' . $id . '/posts/' . $pid . '/comments/store'),
+                'url_reaction_store' => APP_ENTRY . '?url=' . rawurlencode($prefix . '/groupes/' . $id . '/posts/' . $pid . '/reactions/store'),
+                'url_share_store' => APP_ENTRY . '?url=' . rawurlencode($prefix . '/groupes/' . $id . '/posts/' . $pid . '/share/store'),
             ];
         }
 
@@ -765,9 +837,13 @@ class StudentController extends BaseController {
             'show_group_join_cta' => $show_group_join_cta,
             'group_cover_url' => GroupPresenter::detailCoverUrl($groupe),
             'member_chips' => GroupPresenter::formatMembers($groupeRepository->fetchMembres($id)),
+            'discussions_for_share' => $discussions_for_share,
+            'group_post_reaction_types' => $this->groupWallReactionTypes(),
             'group_post_cards' => $group_post_cards,
             'group_post_old' => $postComposerSession['old'],
             'group_post_error_messages' => $groupPostErrors,
+            'wall_composer_name' => trim((string) ($_SESSION['user_name'] ?? 'Member')),
+            'wall_composer_initial' => strtoupper(substr(trim((string) ($_SESSION['user_name'] ?? 'M')), 0, 1)),
             'flash' => $this->sessionService()->flashConsumeForView(),
             'studentSidebarActive' => 'groupes',
         ], 'groupes');
@@ -811,6 +887,69 @@ class StudentController extends BaseController {
         $this->renderStandaloneView('Reports/group_activity_report_pdf', $report);
     }
 
+    /**
+     * @return array<int, array{key: string, emoji: string, label: string}>
+     */
+    private function groupWallReactionTypes(): array
+    {
+        return [
+            ['key' => 'like', 'emoji' => '👍', 'label' => 'Like'],
+            ['key' => 'love', 'emoji' => '❤️', 'label' => 'Love'],
+            ['key' => 'haha', 'emoji' => '😂', 'label' => 'Haha'],
+            ['key' => 'wow', 'emoji' => '😮', 'label' => 'Wow'],
+            ['key' => 'sad', 'emoji' => '😢', 'label' => 'Sad'],
+            ['key' => 'angry', 'emoji' => '😠', 'label' => 'Angry'],
+        ];
+    }
+
+    private function groupWallReactionKeys(): array
+    {
+        return array_column($this->groupWallReactionTypes(), 'key');
+    }
+
+    private function userCanInteractWithGroupWall($groupeRepository, array $groupe, int $groupId, int $uid): bool
+    {
+        if ((string) ($groupe['approval_statut'] ?? '') !== 'approuve') {
+            return false;
+        }
+        $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
+
+        return $isCreator || $groupeRepository->estMembre($groupId, $uid);
+    }
+
+    private function deleteChatStyleUploadByPublicUrl(?string $url): void
+    {
+        if ($url === null || $url === '') {
+            return;
+        }
+        require_once __DIR__ . '/../config/config.php';
+        $path = parse_url($url, PHP_URL_PATH);
+        if (!is_string($path) || $path === '') {
+            return;
+        }
+        $base = basename($path);
+        if ($base === '' || $base === '.' || $base === '..') {
+            return;
+        }
+        $full = CHAT_UPLOAD_DIR . DIRECTORY_SEPARATOR . $base;
+        if (is_file($full)) {
+            @unlink($full);
+        }
+    }
+
+    private function mapChatUploadTypeToWallMedia(?string $messageType): ?string
+    {
+        $t = (string) $messageType;
+        $map = [
+            'image' => 'image',
+            'video' => 'video',
+            'audio' => 'audio',
+            'file' => 'file',
+        ];
+
+        return $map[$t] ?? null;
+    }
+
     private function studentGroupesPostStore($groupeRepository, int $groupId): void
     {
         $groupe = $groupeRepository->findById($groupId);
@@ -820,33 +959,70 @@ class StudentController extends BaseController {
             return;
         }
         $uid = (int) $_SESSION['user_id'];
-        $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
-        if ((string) ($groupe['approval_statut'] ?? '') !== 'approuve') {
-            $this->sessionService()->flashPersist('error', 'Posts are available only after the group is approved.');
-            $this->foRedirect('groupes/' . $groupId);
-            return;
-        }
-        if (!$isCreator && !$groupeRepository->estMembre($groupId, $uid)) {
+        if (!$this->userCanInteractWithGroupWall($groupeRepository, $groupe, $groupId, $uid)) {
             $this->sessionService()->flashPersist('error', 'Join the group to post updates.');
             $this->foRedirect('groupes/' . $groupId);
             return;
         }
 
-        $body = trim((string) ($_POST['body'] ?? ''));
-        if ($body === '' || strlen($body) < 1 || strlen($body) > 5000) {
-            $_SESSION['group_post_errors'] = ['Message must be between 1 and 5000 characters.'];
+        $bodyRaw = trim((string) ($_POST['body'] ?? ''));
+        $fileErr = (int) ($_FILES['attachment']['error'] ?? UPLOAD_ERR_NO_FILE);
+        $attemptedUpload = isset($_FILES['attachment']) && $fileErr !== UPLOAD_ERR_NO_FILE;
+        $upload = $this->layerFileUpload_handleChatAttachmentUpload('attachment');
+        $mediaUrl = null;
+        $mediaType = null;
+        $mediaFilename = null;
+        if ($attemptedUpload) {
+            if (empty($upload['ok'])) {
+                $_SESSION['group_post_errors'] = [(string) ($upload['error'] ?? 'Attachment upload failed.')];
+                $_SESSION['group_post_old'] = $_POST;
+                $this->foRedirect('groupes/' . $groupId);
+                return;
+            }
+            $mediaUrl = (string) ($upload['url'] ?? '');
+            $mediaType = $this->mapChatUploadTypeToWallMedia((string) ($upload['messageType'] ?? ''));
+            $mediaFilename = (string) ($upload['fileName'] ?? '');
+            if ($mediaUrl === '' || $mediaType === null) {
+                $_SESSION['group_post_errors'] = ['Could not process the attachment.'];
+                $_SESSION['group_post_old'] = $_POST;
+                $this->foRedirect('groupes/' . $groupId);
+                return;
+            }
+        }
+
+        if ($bodyRaw === '' && $mediaUrl === null) {
+            $_SESSION['group_post_errors'] = ['Add some text or attach an image, video, or file.'];
+            $_SESSION['group_post_old'] = $_POST;
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        if ($bodyRaw !== '' && (strlen($bodyRaw) > 5000)) {
+            $_SESSION['group_post_errors'] = ['Text must be at most 5000 characters.'];
             $_SESSION['group_post_old'] = $_POST;
             $this->foRedirect('groupes/' . $groupId);
             return;
         }
 
+        $bodyStore = $bodyRaw === '' ? '' : htmlspecialchars($bodyRaw, ENT_QUOTES, 'UTF-8');
+
         $groupPostRepository = $this->model('GroupPostRepository');
-        $ok = $groupPostRepository->create(
+        $newId = $groupPostRepository->create(
             $groupId,
             $uid,
-            htmlspecialchars($body, ENT_QUOTES, 'UTF-8')
+            $bodyStore,
+            $mediaUrl,
+            $mediaType,
+            $mediaFilename !== '' ? $mediaFilename : null
         );
-        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Post published.' : 'Could not publish your post.');
+        if ($newId === false || $newId <= 0) {
+            if ($mediaUrl !== null && $mediaUrl !== '') {
+                $this->deleteChatStyleUploadByPublicUrl($mediaUrl);
+            }
+            $this->sessionService()->flashPersist('error', 'Could not publish your post.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $this->sessionService()->flashPersist('success', 'Post published.');
         $this->foRedirect('groupes/' . $groupId);
     }
 
@@ -873,8 +1049,116 @@ class StudentController extends BaseController {
             $this->foRedirect('groupes/' . $groupId);
             return;
         }
+        $mediaUrl = (string) ($row['media_url'] ?? '');
+        if ($mediaUrl !== '') {
+            $this->deleteChatStyleUploadByPublicUrl($mediaUrl);
+        }
         $ok = $groupPostRepository->deleteByIdForGroup($postId, $groupId);
         $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Post removed.' : 'Could not delete the post.');
+        $this->foRedirect('groupes/' . $groupId);
+    }
+
+    private function studentGroupesPostCommentStore($groupeRepository, int $groupId, int $postId): void
+    {
+        $groupe = $groupeRepository->findById($groupId);
+        if (!$groupe || !$this->userCanInteractWithGroupWall($groupeRepository, $groupe, $groupId, (int) $_SESSION['user_id'])) {
+            $this->sessionService()->flashPersist('error', 'Access denied.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $groupPostRepository = $this->model('GroupPostRepository');
+        $post = $groupPostRepository->fetchPostById($postId);
+        if (!$post || (int) ($post['id_groupe'] ?? 0) !== $groupId) {
+            $this->sessionService()->flashPersist('error', 'Post not found.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $text = trim((string) ($_POST['body'] ?? ''));
+        if ($text === '' || strlen($text) > 2000) {
+            $this->sessionService()->flashPersist('error', 'Comment must be between 1 and 2000 characters.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $eng = $this->model('GroupPostEngagementRepository');
+        $ok = $eng->addComment($postId, (int) $_SESSION['user_id'], htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Comment added.' : 'Could not add comment.');
+        $this->foRedirect('groupes/' . $groupId);
+    }
+
+    private function studentGroupesPostReactionStore($groupeRepository, int $groupId, int $postId): void
+    {
+        $groupe = $groupeRepository->findById($groupId);
+        $uid = (int) $_SESSION['user_id'];
+        if (!$groupe || !$this->userCanInteractWithGroupWall($groupeRepository, $groupe, $groupId, $uid)) {
+            $this->sessionService()->flashPersist('error', 'Access denied.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $groupPostRepository = $this->model('GroupPostRepository');
+        $post = $groupPostRepository->fetchPostById($postId);
+        if (!$post || (int) ($post['id_groupe'] ?? 0) !== $groupId) {
+            $this->sessionService()->flashPersist('error', 'Post not found.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $react = trim((string) ($_POST['reaction'] ?? ''));
+        $allowed = $this->groupWallReactionKeys();
+        if (!in_array($react, $allowed, true)) {
+            $this->sessionService()->flashPersist('error', 'Invalid reaction.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $eng = $this->model('GroupPostEngagementRepository');
+        $mine = $eng->fetchUserReactionsForPosts([$postId], $uid);
+        $current = $mine[$postId] ?? '';
+        if ($current === $react) {
+            $eng->clearReaction($postId, $uid);
+            $this->sessionService()->flashPersist('success', 'Reaction removed.');
+        } else {
+            $eng->setReaction($postId, $uid, $react);
+            $this->sessionService()->flashPersist('success', 'Reaction saved.');
+        }
+        $this->foRedirect('groupes/' . $groupId);
+    }
+
+    private function studentGroupesPostShareStore($groupeRepository, int $groupId, int $postId): void
+    {
+        $groupe = $groupeRepository->findById($groupId);
+        $uid = (int) $_SESSION['user_id'];
+        if (!$groupe || !$this->userCanInteractWithGroupWall($groupeRepository, $groupe, $groupId, $uid)) {
+            $this->sessionService()->flashPersist('error', 'Access denied.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $groupPostRepository = $this->model('GroupPostRepository');
+        $post = $groupPostRepository->fetchPostById($postId);
+        if (!$post || (int) ($post['id_groupe'] ?? 0) !== $groupId) {
+            $this->sessionService()->flashPersist('error', 'Post not found.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $discussionId = (int) ($_POST['id_discussion'] ?? 0);
+        if ($discussionId <= 0) {
+            $this->sessionService()->flashPersist('error', 'Please select a discussion.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $discussionRepository = $this->model('DiscussionRepository');
+        $disc = $discussionRepository->fetchRowByPk($discussionId);
+        if (!$disc) {
+            $this->sessionService()->flashPersist('error', 'Discussion not found.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $discGroupId = (int) ($disc['id_groupe'] ?? $disc['group_id'] ?? 0);
+        if ($discGroupId !== $groupId) {
+            $this->sessionService()->flashPersist('error', 'You can only share to a discussion in this group.');
+            $this->foRedirect('groupes/' . $groupId);
+            return;
+        }
+        $eng = $this->model('GroupPostEngagementRepository');
+        $ok = $eng->addShare($postId, $discussionId, $uid);
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Post linked to the discussion — open live chat from Discussions.' : 'Could not record share.');
         $this->foRedirect('groupes/' . $groupId);
     }
 

@@ -253,9 +253,42 @@ CREATE TABLE IF NOT EXISTS groupe_post (
     id_groupe INT NOT NULL,
     id_user INT NOT NULL,
     body TEXT NOT NULL,
+    media_url VARCHAR(600) NULL DEFAULT NULL,
+    media_type VARCHAR(32) NULL DEFAULT NULL,
+    media_filename VARCHAR(255) NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_groupe_created (id_groupe, created_at),
     INDEX idx_user (id_user)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS groupe_post_comment (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_post INT NOT NULL,
+    id_user INT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_post_created (id_post, created_at),
+    INDEX idx_user (id_user)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS groupe_post_reaction (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_post INT NOT NULL,
+    id_user INT NOT NULL,
+    reaction VARCHAR(24) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_post_user (id_post, id_user),
+    INDEX idx_post (id_post)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS groupe_post_share (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    id_post INT NOT NULL,
+    id_discussion INT NOT NULL,
+    id_user INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_post (id_post),
+    INDEX idx_discussion (id_discussion)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
