@@ -118,10 +118,15 @@ class AuthController extends BaseController {
             return;
         }
 
+        $old = $_SESSION['old'] ?? [];
+        unset($_SESSION['old']);
+
         $data = [
             'title' => 'Sign Up - APPOLIOS',
             'description' => 'Create your APPOLIOS account',
-            'flash' => $this->getFlash()
+            'flash' => $this->getFlash(),
+            'old' => is_array($old) ? $old : [],
+            'errors' => $this->getErrors(),
         ];
 
         $this->view('FrontOffice/auth/register', $data);
@@ -180,7 +185,7 @@ class AuthController extends BaseController {
         }
 
         if (!empty($errors)) {
-            $_SESSION['errors'] = $errors;
+            $this->setErrors($errors);
             $_SESSION['old'] = ['name' => $name, 'email' => $email];
             $this->redirect('register');
             return;

@@ -3,17 +3,9 @@
  * APPOLIOS - Registration Page (Premium Neo Design)
  */
 
-// Get old input if available
-$old = $_SESSION['old'] ?? [];
-unset($_SESSION['old']);
-
-// Get flash messages
-$flash = $_SESSION['flash'] ?? null;
-unset($_SESSION['flash']);
-
-// Get errors
-$errors = $_SESSION['errors'] ?? [];
-unset($_SESSION['errors']);
+$old = isset($old) && is_array($old) ? $old : [];
+$flash = isset($flash) ? $flash : null;
+$errors = isset($errors) && is_array($errors) ? $errors : [];
 ?>
 
 <section class="neo-auth-wrap">

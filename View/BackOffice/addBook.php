@@ -8,18 +8,14 @@
     <link href="../assets/css/pro-theme.css" rel="stylesheet">
 </head>
 <body class="add-book-page">
-    <?php
-    require_once __DIR__ . "/../../Controller/BookController.php";
-    $controller = new BookController();
-    $categories = $controller->getAllCategories();
-    ?>
+    <?php $categories = isset($categories) && is_array($categories) ? $categories : []; ?>
 
     <nav class="navbar navbar-expand-lg app-navbar sticky-top">
         <div class="container">
-            <a class="navbar-brand fw-semibold" href="showBook.php">EspritBookMVC</a>
+            <a class="navbar-brand fw-semibold" href="<?= APP_ENTRY ?>?url=book/back-list">EspritBookMVC</a>
             <div class="ms-auto d-flex gap-2">
-                <a class="btn btn-sm btn-outline-light" href="showBook.php">Back Office</a>
-                <a class="btn btn-sm btn-light" href="../FrontOffice/listBooks.php">Front Office</a>
+                <a class="btn btn-sm btn-outline-light" href="<?= APP_ENTRY ?>?url=book/back-list">Back Office</a>
+                <a class="btn btn-sm btn-light" href="<?= APP_ENTRY ?>?url=book/front-list">Front Office</a>
             </div>
         </div>
     </nav>
@@ -31,7 +27,7 @@
                     <h1 class="h2 fw-bold mb-2">Ajouter un Livre</h1>
                     <p class="lead mb-0">Renseignez les informations du livre et publiez une fiche propre dans votre catalogue.</p>
                 </div>
-                <a class="btn btn-light" href="showBook.php">Voir la liste</a>
+                <a class="btn btn-light" href="<?= APP_ENTRY ?>?url=book/back-list">Voir la liste</a>
             </div>
         </section>
 
@@ -62,7 +58,7 @@
                         </div>
                     </div>
                     <div class="card-body p-3 p-lg-4">
-                        <form action="Verification.php" method="POST" class="row g-2 add-book-form">
+                        <form action="<?= APP_ENTRY ?>?url=book/create" method="POST" class="row g-2 add-book-form">
                             <div class="col-12">
                                 <label class="form-label" for="title">Titre</label>
                                 <input class="form-control" id="title" type="text" name="title" required>

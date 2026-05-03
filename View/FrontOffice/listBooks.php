@@ -1,29 +1,5 @@
 <?php
-require_once __DIR__ . "/../../Controller/BookController.php";
-
-$controller = new BookController();
-$books = $controller->findAll();
-
-function getBookCoverUrl(Book $book): string
-{
-    $category = strtolower($book->getCategory()->getName());
-
-    $covers = [
-        'science' => 'https://images.unsplash.com/photo-1532012197267-da84d127e765?auto=format&fit=crop&w=1100&q=80',
-        'technology' => 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=1100&q=80',
-        'literature' => 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=1100&q=80',
-        'history' => 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1100&q=80',
-        'arts' => 'https://images.unsplash.com/photo-1455885666463-9c87753fc601?auto=format&fit=crop&w=1100&q=80',
-    ];
-
-    foreach ($covers as $key => $url) {
-        if (str_contains($category, $key)) {
-            return $url;
-        }
-    }
-
-    return 'https://images.unsplash.com/photo-1524578271613-d550eacf6090?auto=format&fit=crop&w=1100&q=80';
-}
+$books = isset($books) && is_array($books) ? $books : [];
 ?>
 
 <!DOCTYPE html>
@@ -38,9 +14,9 @@ function getBookCoverUrl(Book $book): string
 <body>
     <nav class="navbar navbar-expand-lg app-navbar">
         <div class="container">
-            <a class="navbar-brand fw-semibold" href="listBooks.php">EspritBookMVC</a>
+            <a class="navbar-brand fw-semibold" href="<?= APP_ENTRY ?>?url=book/front-list">EspritBookMVC</a>
             <div class="ms-auto d-flex gap-2">
-                <a class="btn btn-sm btn-light" href="../BackOffice/showBook.php">Back Office</a>
+                <a class="btn btn-sm btn-light" href="<?= APP_ENTRY ?>?url=book/back-list">Back Office</a>
             </div>
         </div>
     </nav>
@@ -64,15 +40,15 @@ function getBookCoverUrl(Book $book): string
             <section class="book-grid">
                 <?php foreach ($books as $book): ?>
                     <article class="book-card">
-                        <img class="book-card-media" src="<?php echo htmlspecialchars(getBookCoverUrl($book)); ?>" alt="Photo livre">
+                        <img class="book-card-media" src="<?php echo htmlspecialchars((string) ($book['cover_url'] ?? '')); ?>" alt="Photo livre">
                         <div class="book-card-body">
                             <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-                                <h2 class="h6 mb-0 fw-bold"><?php echo htmlspecialchars($book->getTitle()); ?></h2>
-                                <span class="badge badge-category"><?php echo htmlspecialchars($book->getCategory()->getName()); ?></span>
+                                <h2 class="h6 mb-0 fw-bold"><?php echo htmlspecialchars((string) ($book['title'] ?? '')); ?></h2>
+                                <span class="badge badge-category"><?php echo htmlspecialchars((string) (($book['category']['name'] ?? '') ?: '')); ?></span>
                             </div>
-                            <p class="book-meta mb-2">Auteur: <?php echo htmlspecialchars($book->getAuthor()); ?></p>
-                            <p class="book-meta mb-3">Langue: <?php echo htmlspecialchars($book->getLanguage()); ?></p>
-                            <a class="btn btn-sm btn-outline-primary w-100" href="detailBook.php?id=<?php echo $book->getId(); ?>">Voir detail</a>
+                            <p class="book-meta mb-2">Auteur: <?php echo htmlspecialchars((string) ($book['author'] ?? '')); ?></p>
+                            <p class="book-meta mb-3">Langue: <?php echo htmlspecialchars((string) ($book['language'] ?? '')); ?></p>
+                            <a class="btn btn-sm btn-outline-primary w-100" href="<?= APP_ENTRY ?>?url=book/front-detail&id=<?php echo (int) ($book['id'] ?? 0); ?>">Voir detail</a>
                         </div>
                     </article>
                 <?php endforeach; ?>

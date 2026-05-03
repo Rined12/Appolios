@@ -3,9 +3,7 @@
  * APPOLIOS - Login Page (Premium Neo Design)
  */
 
-// Get flash messages
-$flash = $_SESSION['flash'] ?? null;
-unset($_SESSION['flash']);
+$flash = isset($flash) ? $flash : null;
 ?>
 
 <section class="neo-auth-wrap neo-login-page">
