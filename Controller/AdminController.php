@@ -1069,9 +1069,8 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
 
-        $statsRows = $quizService->getQuizStatsForAdmin();
+        $statsRows = $this->getQuizStatsForAdmin();
         $attemptsTotal = 0;
         $wSum = 0.0;
         foreach ($statsRows as $r) {
@@ -1087,7 +1086,7 @@ class AdminController extends BaseController {
 
         $this->view('BackOffice/admin/quizzes', [
             'title' => 'Quiz (admin) - ' . APP_NAME,
-            'quizzes' => $quizService->getAllForAdmin(),
+            'quizzes' => $this->getAllQuizzesForAdmin(),
             'quizTopStats' => $top,
             'flash' => $this->getFlash(),
         ]);
@@ -1098,10 +1097,9 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
         $this->view('BackOffice/admin/quiz_history', [
             'title' => 'Historique des quiz - ' . APP_NAME,
-            'quizzes' => $quizService->getQuizHistoryForAdmin(),
+            'quizzes' => $this->getQuizHistoryForAdmin(),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -1111,9 +1109,8 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
-        $rows = $quizService->getQuizStatsForAdmin();
-        $series = $quizService->getQuizAttemptSeriesMapForAdmin(120);
+        $rows = $this->getQuizStatsForAdmin();
+        $series = $this->getQuizAttemptSeriesMapForAdmin(120);
 
         $diffDist = [
             'beginner' => 0,
@@ -1157,7 +1154,7 @@ class AdminController extends BaseController {
 
         $overallAvg = $avgCount > 0 ? round($sumAvg / $avgCount, 1) : 0.0;
 
-        $trendRows = $quizService->getQuizAttemptsTrendForAdmin(21);
+        $trendRows = $this->getQuizAttemptsTrendForAdmin(21);
         $trendMap = [];
         foreach ($trendRows as $qid => $list) {
             foreach (($list ?? []) as $p) {
@@ -1210,12 +1207,11 @@ class AdminController extends BaseController {
         }
         $chapterModel = $this->model('Chapter');
         $chapters = $chapterModel->getAllWithCourseTitles();
-        $quizService = $this->service('QuizService');
         $this->view('BackOffice/admin/quiz_form', [
             'title' => 'Nouveau quiz - ' . APP_NAME,
             'quiz' => null,
             'chapters' => $chapters,
-            'questionBank' => $quizService->getQuestionBankForAdmin(),
+            'questionBank' => $this->getAllQuestionBankForAdmin(),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -1238,8 +1234,6 @@ class AdminController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
-
         $meta = QuizQuestionValidation::validateQuizMeta($_POST);
         if (!empty($meta['errors'])) {
             $this->setFlash('error', $meta['errors'][0]);
@@ -1248,8 +1242,8 @@ class AdminController extends BaseController {
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
-        $questions = $quizService->appendBankQuestions(
-            $quizService->normalizeQuestionsFromPost($_POST),
+        $questions = $this->appendBankQuestionsToQuiz(
+            $this->normalizeQuizQuestionsFromPost($_POST),
             $bankIds,
             null
         );
@@ -1267,16 +1261,15 @@ class AdminController extends BaseController {
             return;
         }
 
-        $createdId = $quizService->createAdminQuiz(
+        $createdId = $this->createAdminQuiz(
             (int) $_SESSION['user_id'],
             $chapterId,
-            [
-                'title' => $this->sanitize($meta['title']),
-                'difficulty' => $meta['difficulty'],
-                'tags' => $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
-                'time_limit_sec' => $meta['time_limit_sec'],
-            ],
-            $questions
+            $this->sanitize($meta['title']),
+            (string) $meta['difficulty'],
+            $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
+            $meta['time_limit_sec'],
+            $questions,
+            'approved'
         );
 
         if ($createdId === false) {
@@ -1294,8 +1287,7 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
-        $ok = $quizService->setQuizStatus((int) $id, 'approved');
+        $ok = $this->setQuizStatus((int) $id, 'approved');
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Quiz approuvé.' : 'Impossible d’approuver ce quiz.');
         $this->redirect('admin/quizzes');
     }
@@ -1305,8 +1297,7 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
-        $ok = $quizService->setQuizStatus((int) $id, 'rejected');
+        $ok = $this->setQuizStatus((int) $id, 'rejected');
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Quiz refusé.' : 'Impossible de refuser ce quiz.');
         $this->redirect('admin/quizzes');
     }
@@ -1316,8 +1307,7 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
-        $quiz = $quizService->findWithChapterCourse((int) $id);
+        $quiz = $this->findQuizWithChapterCourse((int) $id);
         if (!$quiz) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('admin/quizzes');
@@ -1329,7 +1319,7 @@ class AdminController extends BaseController {
             'title' => 'Modifier le quiz - ' . APP_NAME,
             'quiz' => $quiz,
             'chapters' => $chapters,
-            'questionBank' => $quizService->getQuestionBankForAdmin(),
+            'questionBank' => $this->getAllQuestionBankForAdmin(),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -1337,18 +1327,6 @@ class AdminController extends BaseController {
     public function updateQuiz($id) {
         if (!$this->isAdmin()) {
             $this->redirect('admin/login');
-            return;
-        }
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('admin/quizzes');
-            return;
-        }
-
-        $quizService = $this->service('QuizService');
-        $existing = $quizService->findWithChapterCourse((int) $id);
-        if (!$existing) {
-            $this->setFlash('error', 'Quiz introuvable.');
-            $this->redirect('admin/quizzes');
             return;
         }
 
@@ -1368,8 +1346,8 @@ class AdminController extends BaseController {
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
-        $questions = $quizService->appendBankQuestions(
-            $quizService->normalizeQuestionsFromPost($_POST),
+        $questions = $this->appendBankQuestionsToQuiz(
+            $this->normalizeQuizQuestionsFromPost($_POST),
             $bankIds,
             null
         );
@@ -1387,14 +1365,15 @@ class AdminController extends BaseController {
             return;
         }
 
-        $updated = $quizService->updateQuiz((int) $id, [
-            'chapter_id' => $chapterId,
-            'title' => $this->sanitize($meta['title']),
-            'difficulty' => $meta['difficulty'],
-            'tags' => $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
-            'time_limit_sec' => $meta['time_limit_sec'],
-            'questions' => $questions,
-        ]);
+        $updated = $this->updateAdminQuiz(
+            (int) $id,
+            $chapterId,
+            $this->sanitize($meta['title']),
+            (string) $meta['difficulty'],
+            $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
+            $meta['time_limit_sec'],
+            $questions
+        );
 
         if ($updated === false) {
             $this->setFlash('error', 'Impossible de mettre à jour le quiz (vérifiez la base de données).');
@@ -1411,14 +1390,13 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
-        $existing = $quizService->findWithChapterCourse((int) $id);
+        $existing = $this->findQuizWithChapterCourse((int) $id);
         if (!$existing) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('admin/quizzes');
             return;
         }
-        $quizService->deleteQuiz((int) $id);
+        $this->deleteAdminQuiz((int) $id);
         $this->setFlash('success', 'Quiz supprimé.');
         $this->redirect('admin/quizzes');
     }
@@ -1428,10 +1406,8 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
-
-        $questions = $quizService->getQuestionBankForAdmin();
-        $usage = $quizService->getQuestionBankUsageStatsForAdmin();
+        $questions = $this->getAllQuestionBankForAdmin();
+        $usage = $this->getQuestionBankUsageStatsMapForAdmin();
 
         $top = [
             'questions_total' => count($questions),
@@ -1506,16 +1482,15 @@ class AdminController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
-        $quizService->createQuestion([
-            'title' => $title !== '' ? $title : null,
-            'question_text' => $questionText,
-            'options' => $opts,
-            'correct_answer' => $correct,
-            'tags' => $tags !== '' ? $tags : null,
-            'difficulty' => $difficulty,
-            'created_by' => (int) $_SESSION['user_id'],
-        ]);
+        $this->createQuestionBankQuestion(
+            (int) $_SESSION['user_id'],
+            $title !== '' ? $title : null,
+            $questionText,
+            $opts,
+            $correct,
+            $tags !== '' ? $tags : null,
+            $difficulty
+        );
 
         $this->setFlash('success', 'Question enregistrée.');
         $this->redirect('admin/questions');
@@ -1526,8 +1501,7 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
-        $row = $quizService->findQuestionByIdDecoded((int) $id);
+        $row = $this->findQuestionByIdDecoded((int) $id);
         if (!$row) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('admin/questions');
@@ -1550,8 +1524,7 @@ class AdminController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
-        $existing = $quizService->findQuestionByIdDecoded((int) $id);
+        $existing = $this->findQuestionByIdDecoded((int) $id);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('admin/questions');
@@ -1573,14 +1546,15 @@ class AdminController extends BaseController {
             return;
         }
 
-        $quizService->updateQuestion((int) $id, [
-            'title' => $title !== '' ? $title : null,
-            'question_text' => $questionText,
-            'options' => $opts,
-            'correct_answer' => $correct,
-            'tags' => $tags !== '' ? $tags : null,
-            'difficulty' => $difficulty,
-        ]);
+        $this->updateQuestionBank(
+            (int) $id,
+            $title !== '' ? $title : null,
+            $questionText,
+            $opts,
+            $correct,
+            $tags !== '' ? $tags : null,
+            $difficulty
+        );
 
         $this->setFlash('success', 'Question mise à jour.');
         $this->redirect('admin/questions');
@@ -1591,16 +1565,505 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $quizService = $this->service('QuizService');
-        $existing = $quizService->findQuestionByIdDecoded((int) $id);
+        $existing = $this->findQuestionByIdDecoded((int) $id);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('admin/questions');
             return;
         }
-        $quizService->deleteQuestion((int) $id);
+        $this->deleteQuestionBank((int) $id);
         $this->setFlash('success', 'Question supprimée.');
         $this->redirect('admin/questions');
+    }
+
+    private function decodeQuestionsJson(string $json): array
+    {
+        $d = json_decode($json !== '' ? $json : '[]', true);
+        return is_array($d) ? $d : [];
+    }
+
+    private function getAllQuizzesForAdmin(): array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.*, ch.title AS chapter_title, c.title AS course_title, u.name AS author_name
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                JOIN users u ON u.id = q.created_by
+                ORDER BY q.created_at DESC";
+        $stmt = $db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll() : [];
+        foreach ($rows as &$r) {
+            $r['questions'] = $this->decodeQuestionsJson((string) ($r['questions_json'] ?? '[]'));
+        }
+        unset($r);
+        return $rows;
+    }
+
+    private function getQuizHistoryForAdmin(): array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.id, q.title, q.status, q.created_at, q.updated_at,
+                       ch.title AS chapter_title, c.title AS course_title,
+                       u.name AS author_name
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                JOIN users u ON u.id = q.created_by
+                ORDER BY q.updated_at DESC, q.created_at DESC";
+        $stmt = $db->query($sql);
+        return $stmt ? $stmt->fetchAll() : [];
+    }
+
+    private function getQuizStatsForAdmin(): array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.id, q.title, q.difficulty, q.status, q.created_at,
+                       ch.title AS chapter_title, c.title AS course_title,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       COALESCE(MAX(a.percentage), 0) AS best_percentage,
+                       COALESCE(MAX(a.score), 0) AS best_score,
+                       COALESCE(MAX(a.total), 0) AS best_total,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                LEFT JOIN quiz_attempts a ON a.quiz_id = q.id
+                GROUP BY q.id
+                ORDER BY attempts_count DESC, q.created_at DESC";
+        $stmt = $db->query($sql);
+        return $stmt ? $stmt->fetchAll() : [];
+    }
+
+    private function getQuizAttemptSeriesMapForAdmin(int $limitPerQuiz = 120): array
+    {
+        $limitPerQuiz = max(10, min(300, $limitPerQuiz));
+        $db = $this->db();
+
+        $sql = "SELECT a.quiz_id, a.submitted_at, a.percentage, a.score, a.total
+                FROM quiz_attempts a
+                JOIN (
+                    SELECT x.id
+                    FROM (
+                        SELECT a2.id,
+                               ROW_NUMBER() OVER (PARTITION BY a2.quiz_id ORDER BY a2.submitted_at ASC) AS rn
+                        FROM quiz_attempts a2
+                    ) x
+                ) keep ON keep.id = a.id
+                ORDER BY a.quiz_id ASC, a.submitted_at ASC";
+
+        $rows = [];
+        try {
+            $stmt = $db->query($sql);
+            $rows = $stmt ? $stmt->fetchAll() : [];
+        } catch (Throwable $e) {
+            $rows = [];
+        }
+
+        $out = [];
+        foreach ($rows as $r) {
+            $qid = (int) ($r['quiz_id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            if (!isset($out[$qid])) {
+                $out[$qid] = [];
+            }
+            $out[$qid][] = [
+                'at' => isset($r['submitted_at']) ? (string) $r['submitted_at'] : null,
+                'percentage' => (int) ($r['percentage'] ?? 0),
+                'score' => (int) ($r['score'] ?? 0),
+                'total' => (int) ($r['total'] ?? 0),
+            ];
+            if (count($out[$qid]) > $limitPerQuiz) {
+                array_shift($out[$qid]);
+            }
+        }
+        return $out;
+    }
+
+    private function getQuizAttemptsTrendForAdmin(int $days = 21): array
+    {
+        $days = max(1, min(90, $days));
+        $db = $this->db();
+        $sql = "SELECT a.quiz_id, DATE(a.submitted_at) AS day,
+                       COUNT(*) AS count,
+                       ROUND(AVG(a.percentage), 1) AS avg
+                FROM quiz_attempts a
+                WHERE a.submitted_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+                GROUP BY a.quiz_id, DATE(a.submitted_at)
+                ORDER BY a.quiz_id ASC, day ASC";
+        $stmt = $db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll() : [];
+        $out = [];
+        foreach ($rows as $r) {
+            $qid = (int) ($r['quiz_id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            if (!isset($out[$qid])) {
+                $out[$qid] = [];
+            }
+            $out[$qid][] = [
+                'day' => (string) ($r['day'] ?? ''),
+                'count' => (int) ($r['count'] ?? 0),
+                'avg' => (float) ($r['avg'] ?? 0),
+            ];
+        }
+        return $out;
+    }
+
+    private function findQuizWithChapterCourse(int $id): ?array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.*, ch.course_id, ch.title AS chapter_title, c.title AS course_title,
+                       c.created_by AS course_owner_id
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                WHERE q.id = ?
+                LIMIT 1";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $id]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return null;
+        }
+        $row['questions'] = $this->decodeQuestionsJson((string) ($row['questions_json'] ?? '[]'));
+        return $row;
+    }
+
+    private function ensureQuizLinkTable(): void
+    {
+        $db = $this->db();
+        $sql = "CREATE TABLE IF NOT EXISTS quiz_question_bank (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    quiz_id INT NOT NULL,
+                    question_bank_id INT NOT NULL,
+                    sort_order INT NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_quiz_question (quiz_id, question_bank_id),
+                    INDEX idx_quiz_sort (quiz_id, sort_order)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        try {
+            $db->exec($sql);
+        } catch (Throwable $e) {
+        }
+    }
+
+    private function ensureQuizStatusColumn(): void
+    {
+        $db = $this->db();
+        try {
+            $db->exec("ALTER TABLE quizzes ADD COLUMN status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved'");
+        } catch (Throwable $e) {
+        }
+    }
+
+    private function createAdminQuiz(int $adminId, int $chapterId, string $title, string $difficulty, ?string $tags, $timeLimitSec, array $questions, string $status)
+    {
+        $this->ensureQuizLinkTable();
+        $this->ensureQuizStatusColumn();
+        $db = $this->db();
+        $sql = "INSERT INTO quizzes (chapter_id, title, difficulty, tags, time_limit_sec, questions_json, created_by, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $db->prepare($sql);
+        $json = json_encode($questions);
+        $ok = $stmt->execute([
+            (int) $chapterId,
+            (string) $title,
+            (string) $difficulty,
+            $tags,
+            $timeLimitSec !== null && $timeLimitSec !== '' ? (int) $timeLimitSec : null,
+            $json !== false ? $json : '[]',
+            (int) $adminId,
+            (string) $status,
+        ]);
+        if (!$ok) {
+            return false;
+        }
+        $quizId = (int) $db->lastInsertId();
+
+        $bankIds = [];
+        foreach ($questions as $q) {
+            if (is_array($q) && isset($q['question_bank_id'])) {
+                $bid = (int) $q['question_bank_id'];
+                if ($bid > 0) {
+                    $bankIds[] = $bid;
+                }
+            }
+        }
+        $bankIds = array_values(array_unique($bankIds));
+        if (!empty($bankIds)) {
+            $ins = $db->prepare("INSERT IGNORE INTO quiz_question_bank (quiz_id, question_bank_id, sort_order) VALUES (?, ?, ?)");
+            foreach ($bankIds as $so => $bid) {
+                $ins->execute([$quizId, $bid, (int) $so]);
+            }
+        }
+
+        return $quizId;
+    }
+
+    private function updateAdminQuiz(int $quizId, int $chapterId, string $title, string $difficulty, ?string $tags, $timeLimitSec, array $questions): bool
+    {
+        $this->ensureQuizLinkTable();
+        $this->ensureQuizStatusColumn();
+        $db = $this->db();
+        $sql = "UPDATE quizzes
+                SET chapter_id = ?, title = ?, difficulty = ?, tags = ?, time_limit_sec = ?, questions_json = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?";
+        $json = json_encode($questions);
+        $stmt = $db->prepare($sql);
+        $ok = $stmt->execute([
+            (int) $chapterId,
+            (string) $title,
+            (string) $difficulty,
+            $tags,
+            $timeLimitSec !== null && $timeLimitSec !== '' ? (int) $timeLimitSec : null,
+            $json !== false ? $json : '[]',
+            (int) $quizId,
+        ]);
+        if (!$ok) {
+            return false;
+        }
+
+        $db->prepare("DELETE FROM quiz_question_bank WHERE quiz_id = ?")->execute([(int) $quizId]);
+        $bankIds = [];
+        foreach ($questions as $q) {
+            if (is_array($q) && isset($q['question_bank_id'])) {
+                $bid = (int) $q['question_bank_id'];
+                if ($bid > 0) {
+                    $bankIds[] = $bid;
+                }
+            }
+        }
+        $bankIds = array_values(array_unique($bankIds));
+        if (!empty($bankIds)) {
+            $ins = $db->prepare("INSERT IGNORE INTO quiz_question_bank (quiz_id, question_bank_id, sort_order) VALUES (?, ?, ?)");
+            foreach ($bankIds as $so => $bid) {
+                $ins->execute([(int) $quizId, (int) $bid, (int) $so]);
+            }
+        }
+        return true;
+    }
+
+    private function deleteAdminQuiz(int $quizId): bool
+    {
+        $db = $this->db();
+        try {
+            $db->prepare("DELETE FROM quiz_question_bank WHERE quiz_id = ?")->execute([(int) $quizId]);
+        } catch (Throwable $e) {
+        }
+        $stmt = $db->prepare("DELETE FROM quizzes WHERE id = ?");
+        return $stmt->execute([(int) $quizId]);
+    }
+
+    private function setQuizStatus(int $quizId, string $status): bool
+    {
+        $this->ensureQuizStatusColumn();
+        $status = in_array($status, ['pending', 'approved', 'rejected'], true) ? $status : 'approved';
+        $db = $this->db();
+        $stmt = $db->prepare("UPDATE quizzes SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        return $stmt->execute([(string) $status, (int) $quizId]);
+    }
+
+    private function normalizeQuizQuestionsFromPost(array $post): array
+    {
+        $raw = $post['questions'] ?? [];
+        if (!is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $q) {
+            if (!is_array($q)) {
+                continue;
+            }
+            $bankId = isset($q['question_bank_id']) ? (int) $q['question_bank_id'] : 0;
+            $text = isset($q['question']) ? trim((string) $q['question']) : '';
+            if ($text === '' && isset($q['question_text'])) {
+                $text = trim((string) $q['question_text']);
+            }
+            $opts = $q['options'] ?? [];
+            if (!is_array($opts)) {
+                $opts = [];
+            }
+            $opts = array_values(array_filter(array_map(static function ($o) {
+                return trim((string) $o);
+            }, $opts)));
+            $ca = isset($q['correctAnswer']) ? (int) $q['correctAnswer'] : (isset($q['correct_answer']) ? (int) $q['correct_answer'] : 0);
+            if ($text === '' || count($opts) < 2) {
+                continue;
+            }
+            if ($ca < 0 || $ca >= count($opts)) {
+                $ca = 0;
+            }
+
+            $item = [
+                'question' => $text,
+                'question_text' => $text,
+                'options' => $opts,
+                'correctAnswer' => $ca,
+                'correct_answer' => $ca,
+            ];
+            if ($bankId > 0) {
+                $item['question_bank_id'] = $bankId;
+            }
+            $out[] = $item;
+        }
+        return $out;
+    }
+
+    private function appendBankQuestionsToQuiz(array $baseQuestions, array $bankIds, ?int $restrictToUserId): array
+    {
+        $bankIds = array_map('intval', $bankIds);
+        $bankIds = array_values(array_filter($bankIds, static fn($v) => $v > 0));
+        if (empty($bankIds)) {
+            return $baseQuestions;
+        }
+
+        $db = $this->db();
+        $placeholders = implode(',', array_fill(0, count($bankIds), '?'));
+        $params = $bankIds;
+        $sql = "SELECT * FROM question_bank WHERE id IN ({$placeholders})";
+        if ($restrictToUserId !== null) {
+            $sql .= " AND created_by = ?";
+            $params[] = (int) $restrictToUserId;
+        }
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$r) {
+            $d = json_decode($r['options_json'] ?? '[]', true);
+            $r['options'] = is_array($d) ? $d : [];
+        }
+        unset($r);
+
+        $out = $baseQuestions;
+        foreach ($rows as $r) {
+            $opts = $r['options'] ?? [];
+            if (!is_array($opts)) {
+                $opts = [];
+            }
+            $out[] = [
+                'question_bank_id' => (int) ($r['id'] ?? 0),
+                'question' => (string) ($r['question_text'] ?? ''),
+                'question_text' => (string) ($r['question_text'] ?? ''),
+                'options' => array_values($opts),
+                'correctAnswer' => (int) ($r['correct_answer'] ?? 0),
+                'correct_answer' => (int) ($r['correct_answer'] ?? 0),
+            ];
+        }
+        return $out;
+    }
+
+    private function getAllQuestionBankForAdmin(): array
+    {
+        $db = $this->db();
+        $sql = "SELECT qb.*, u.name AS author_name
+                FROM question_bank qb
+                JOIN users u ON u.id = qb.created_by
+                ORDER BY qb.created_at DESC";
+        $stmt = $db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll() : [];
+        foreach ($rows as &$r) {
+            $d = json_decode($r['options_json'] ?? '[]', true);
+            $r['options'] = is_array($d) ? $d : [];
+        }
+        unset($r);
+        return $rows;
+    }
+
+    private function getQuestionBankUsageStatsMapForAdmin(): array
+    {
+        $db = $this->db();
+        $sql = "SELECT qb.id AS question_bank_id,
+                       COUNT(DISTINCT qqb.quiz_id) AS quizzes_count,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM question_bank qb
+                LEFT JOIN quiz_question_bank qqb ON qqb.question_bank_id = qb.id
+                LEFT JOIN quiz_attempts a ON a.quiz_id = qqb.quiz_id
+                GROUP BY qb.id";
+        $stmt = $db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll() : [];
+        $out = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['question_bank_id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $out[$id] = [
+                'quizzes' => (int) ($r['quizzes_count'] ?? 0),
+                'attempts' => (int) ($r['attempts_count'] ?? 0),
+                'avg' => (float) ($r['avg_percentage'] ?? 0),
+                'last_attempt_at' => isset($r['last_attempt_at']) ? (string) $r['last_attempt_at'] : null,
+            ];
+        }
+        return $out;
+    }
+
+    private function createQuestionBankQuestion(int $adminId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty)
+    {
+        $db = $this->db();
+        $sql = "INSERT INTO question_bank (title, question_text, options_json, correct_answer, tags, difficulty, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $db->prepare($sql);
+        $json = json_encode(is_array($options) ? array_values($options) : []);
+        $ok = $stmt->execute([
+            $title,
+            (string) $questionText,
+            $json !== false ? $json : '[]',
+            (int) $correctAnswer,
+            $tags,
+            (string) $difficulty,
+            (int) $adminId,
+        ]);
+        if (!$ok) {
+            return false;
+        }
+        return (int) $db->lastInsertId();
+    }
+
+    private function findQuestionByIdDecoded(int $questionId): ?array
+    {
+        $db = $this->db();
+        $stmt = $db->prepare("SELECT * FROM question_bank WHERE id = ? LIMIT 1");
+        $stmt->execute([(int) $questionId]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return null;
+        }
+        $d = json_decode($row['options_json'] ?? '[]', true);
+        $row['options'] = is_array($d) ? $d : [];
+        return $row;
+    }
+
+    private function updateQuestionBank(int $questionId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty): bool
+    {
+        $db = $this->db();
+        $sql = "UPDATE question_bank
+                SET title = ?, question_text = ?, options_json = ?, correct_answer = ?, tags = ?, difficulty = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?";
+        $stmt = $db->prepare($sql);
+        $json = json_encode(is_array($options) ? array_values($options) : []);
+        return $stmt->execute([
+            $title,
+            (string) $questionText,
+            $json !== false ? $json : '[]',
+            (int) $correctAnswer,
+            $tags,
+            (string) $difficulty,
+            (int) $questionId,
+        ]);
+    }
+
+    private function deleteQuestionBank(int $questionId): bool
+    {
+        $db = $this->db();
+        $stmt = $db->prepare("DELETE FROM question_bank WHERE id = ?");
+        return $stmt->execute([(int) $questionId]);
     }
 
     /**
