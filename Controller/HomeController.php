@@ -6,7 +6,6 @@
 
 require_once __DIR__ . '/../Controller/BaseController.php';
 require_once __DIR__ . '/../Model/Course.php';
-require_once __DIR__ . '/../Services/QuizService.php';
 
 class HomeController extends BaseController {
 
@@ -68,8 +67,16 @@ class HomeController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
-        $attempt = $quizService->findAttemptByIdWithDetails($aid);
+        $db = $this->db();
+        $sql = "SELECT a.*, q.title AS quiz_title, u.name AS student_name
+                FROM quiz_attempts a
+                JOIN quizzes q ON q.id = a.quiz_id
+                JOIN users u ON u.id = a.user_id
+                WHERE a.id = ?
+                LIMIT 1";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $aid]);
+        $attempt = $stmt->fetch();
         if (!$attempt) {
             $data['reason'] = 'Tentative introuvable.';
             $this->view('FrontOffice/home/verify_cert', $data);

@@ -11,10 +11,6 @@ require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
 require_once __DIR__ . '/../Model/Chapter.php';
 require_once __DIR__ . '/QuizQuestionValidation.php';
-require_once __DIR__ . '/../Model/Repositories/QuizRepository.php';
-require_once __DIR__ . '/../Model/Repositories/QuizAttemptRepository.php';
-require_once __DIR__ . '/../Model/Repositories/StudentRankRepository.php';
-require_once __DIR__ . '/../Model/Repositories/StudentQuizFlagRepository.php';
 
 class StudentController extends BaseController {
 
@@ -46,16 +42,13 @@ class StudentController extends BaseController {
         $evenementModel = $this->model('Evenement');
         $evenements = $evenementModel->findApprovedUpcoming();
 
-        $rankRepo = new StudentRankRepository();
-        $rank = $rankRepo->getOrCreate((int) $_SESSION['user_id']);
+        $rank = $this->getOrCreateStudentRank((int) $_SESSION['user_id']);
 
-        $attemptRepo = new QuizAttemptRepository();
         $rankProgress = $this->rankProgressInfo((int) ($rank['rating'] ?? 1000));
-        $spark = $attemptRepo->getLastPercentagesByUser((int) $_SESSION['user_id'], 7);
+        $spark = $this->getLastPercentagesByUser((int) $_SESSION['user_id'], 7);
 
-        $flagRepo = new StudentQuizFlagRepository();
-        $favoriteIds = $flagRepo->getFavoriteQuizIds((int) $_SESSION['user_id']);
-        $redoIds = $flagRepo->getRedoQuizIds((int) $_SESSION['user_id']);
+        $favoriteIds = $this->getFavoriteQuizIds((int) $_SESSION['user_id']);
+        $redoIds = $this->getRedoQuizIds((int) $_SESSION['user_id']);
 
         $data = [
             'title' => 'My Dashboard - APPOLIOS',
@@ -80,15 +73,12 @@ class StudentController extends BaseController {
 
         $uid = (int) $_SESSION['user_id'];
 
-        $rankRepo = new StudentRankRepository();
-        $rank = $rankRepo->getOrCreate($uid);
+        $rank = $this->getOrCreateStudentRank($uid);
 
-        $attemptRepo = new QuizAttemptRepository();
         $rankProgress = $this->rankProgressInfo((int) ($rank['rating'] ?? 1000));
-        $spark = $attemptRepo->getLastPercentagesByUser($uid, 7);
+        $spark = $this->getLastPercentagesByUser($uid, 7);
 
-        $quizRepo = new QuizRepository();
-        $all = $quizRepo->getForEnrolledStudent($uid);
+        $all = $this->getQuizzesForEnrolledStudent($uid);
 
         $chapterNames = [];
         foreach ($all as $q) {
@@ -103,7 +93,8 @@ class StudentController extends BaseController {
             }
         }
 
-        $chapterAverages = $attemptRepo->getChapterAveragesByUser($uid);
+        $chapterAverages = $this->getChapterAveragesByUser($uid);
+        $chapterRecent = $this->getRecentPercentagesByChapterForUser($uid, 60);
         uasort($chapterAverages, static function ($a, $b) {
             $av = (float) ($a['avg'] ?? 0);
             $bv = (float) ($b['avg'] ?? 0);
@@ -320,8 +311,7 @@ class StudentController extends BaseController {
         $attemptedCourseQuizCount = 0;
         $courseProgress = 0;
         if ($isEnrolled) {
-            $quizService = $this->service('QuizService');
-            $enrolledQuizzes = $quizService->getQuizzesForEnrolledStudent($userId);
+            $enrolledQuizzes = $this->getQuizzesForEnrolledStudent($userId);
             $courseQuizIds = [];
             foreach ($enrolledQuizzes as $quizRow) {
                 if ((int) ($quizRow['course_id'] ?? 0) === $courseId) {
@@ -331,7 +321,7 @@ class StudentController extends BaseController {
 
             $courseQuizCount = count($courseQuizIds);
             if ($courseQuizCount > 0) {
-                $attempts = $quizService->getAttemptsByUser($userId);
+                $attempts = $this->getAttemptsByUserWithQuizTitles($userId);
                 $attemptedQuizIds = [];
                 foreach ($attempts as $attempt) {
                     $attemptQuizId = (int) ($attempt['quiz_id'] ?? 0);
@@ -441,10 +431,9 @@ class StudentController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
         $uid = (int) $_SESSION['user_id'];
-        $chapters = $quizService->getChaptersForEnrolledStudent($uid);
-        $quizzes = $quizService->getQuizzesForEnrolledStudent($uid);
+        $chapters = $this->getChaptersForEnrolledStudent($uid);
+        $quizzes = $this->getQuizzesForEnrolledStudent($uid);
 
         $quizzesByChapter = [];
         foreach ($quizzes as $qz) {
@@ -491,20 +480,15 @@ class StudentController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
-        $rankRepo = new StudentRankRepository();
-        $rank = $rankRepo->getOrCreate((int) $_SESSION['user_id']);
-
-        $attemptRepo = new QuizAttemptRepository();
+        $rank = $this->getOrCreateStudentRank((int) $_SESSION['user_id']);
         $rankProgress = $this->rankProgressInfo((int) ($rank['rating'] ?? 1000));
-        $spark = $attemptRepo->getLastPercentagesByUser((int) $_SESSION['user_id'], 7);
+        $spark = $this->getLastPercentagesByUser((int) $_SESSION['user_id'], 7);
 
-        $flagRepo = new StudentQuizFlagRepository();
-        $flags = $flagRepo->getFlagsMapByUser((int) $_SESSION['user_id']);
+        $flags = $this->getFlagsMapByUser((int) $_SESSION['user_id']);
         $filter = (string) ($_GET['filter'] ?? '');
         $this->view('FrontOffice/student/quiz_list', [
             'title' => 'Mes quiz - ' . APP_NAME,
-            'quizzes' => $quizService->getQuizzesForEnrolledStudent((int) $_SESSION['user_id']),
+            'quizzes' => $this->getQuizzesForEnrolledStudent((int) $_SESSION['user_id']),
             'rank' => $rank,
             'rankProgress' => $rankProgress,
             'rankSpark' => $spark,
@@ -524,8 +508,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $flagRepo = new StudentQuizFlagRepository();
-        $flagRepo->toggleFavorite((int) $_SESSION['user_id'], $qid);
+        $this->toggleFavorite((int) $_SESSION['user_id'], $qid);
         $back = isset($_SERVER['HTTP_REFERER']) ? (string) $_SERVER['HTTP_REFERER'] : '';
         if ($back !== '') {
             header('Location: ' . $back);
@@ -544,8 +527,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $flagRepo = new StudentQuizFlagRepository();
-        $flagRepo->toggleRedo((int) $_SESSION['user_id'], $qid);
+        $this->toggleRedo((int) $_SESSION['user_id'], $qid);
         $back = isset($_SERVER['HTTP_REFERER']) ? (string) $_SERVER['HTTP_REFERER'] : '';
         if ($back !== '') {
             header('Location: ' . $back);
@@ -559,8 +541,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
-        $quiz = $quizService->findWithChapterCourse((int) $id);
+        $quiz = $this->findQuizWithChapterCourse((int) $id);
         if (!$quiz) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('student/quiz');
@@ -602,8 +583,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $quizService = $this->service('QuizService');
-        $quiz = $quizService->findWithChapterCourse((int) $id);
+        $quiz = $this->findQuizWithChapterCourse((int) $id);
         if (!$quiz) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('student/quiz');
@@ -646,24 +626,21 @@ class StudentController extends BaseController {
 
         $total = count($questions);
         $percentage = $total > 0 ? (int) round(($score / $total) * 100) : 0;
-        $attemptId = $quizService->recordAttemptAndGetId((int) $_SESSION['user_id'], (int) $id, $score, $total, $percentage);
+        $attemptId = $this->recordAttemptAndGetId((int) $_SESSION['user_id'], (int) $id, $score, $total, $percentage);
 
-        $quizRepo = new QuizRepository();
-        $attemptRepo = new QuizAttemptRepository();
-        $recommendations = $this->buildAfterQuizRecommendations($quizRepo, $attemptRepo, $quiz, $percentage, (int) $_SESSION['user_id']);
+        $recommendations = $this->buildAfterQuizRecommendations($quiz, $percentage, (int) $_SESSION['user_id']);
 
-        $rankRepo = new StudentRankRepository();
-        $rankBefore = $rankRepo->getOrCreate((int) $_SESSION['user_id']);
-        $ratingUpdate = $this->updateStudentRatingAfterQuiz($rankRepo, $rankBefore, $quiz, $percentage);
+        $rankBefore = $this->getOrCreateStudentRank((int) $_SESSION['user_id']);
+        $ratingUpdate = $this->updateStudentRatingAfterQuiz($rankBefore, $quiz, $percentage);
 
-        $rankAfter = $rankRepo->getOrCreate((int) $_SESSION['user_id']);
+        $rankAfter = $this->getOrCreateStudentRank((int) $_SESSION['user_id']);
         $rankProgress = $this->rankProgressInfo((int) ($rankAfter['rating'] ?? ($ratingUpdate['new_rating'] ?? 1000)));
-        $spark = $attemptRepo->getLastPercentagesByUser((int) $_SESSION['user_id'], 7);
+        $spark = $this->getLastPercentagesByUser((int) $_SESSION['user_id'], 7);
 
         $coach = $this->buildRankCoachMessage($quiz, $percentage, $ratingUpdate, $rankProgress);
 
-        $chapterAverages = $attemptRepo->getChapterAveragesByUser((int) $_SESSION['user_id']);
-        $chapterRecent = $attemptRepo->getRecentPercentagesByChapterForUser((int) $_SESSION['user_id'], 60);
+        $chapterAverages = $this->getChapterAveragesByUser((int) $_SESSION['user_id']);
+        $chapterRecent = $this->getRecentPercentagesByChapterForUser((int) $_SESSION['user_id'], 60);
         uasort($chapterAverages, static function ($a, $b) {
             $av = (float) ($a['avg'] ?? 0);
             $bv = (float) ($b['avg'] ?? 0);
@@ -671,7 +648,7 @@ class StudentController extends BaseController {
         });
 
         $chapterNames = [];
-        $enrolledQuizzes = $quizRepo->getForEnrolledStudent((int) $_SESSION['user_id']);
+        $enrolledQuizzes = $this->getQuizzesForEnrolledStudent((int) $_SESSION['user_id']);
         foreach ($enrolledQuizzes as $qz) {
             $cid = (int) ($qz['chapter_id'] ?? 0);
             if ($cid <= 0) {
@@ -715,6 +692,12 @@ class StudentController extends BaseController {
             $token = $b64 . '.' . $sigB64;
 
             $entry = (string) APP_ENTRY;
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host = isset($_SERVER['HTTP_HOST']) ? trim((string) $_SERVER['HTTP_HOST']) : '';
+            $script = isset($_SERVER['SCRIPT_NAME']) ? trim((string) $_SERVER['SCRIPT_NAME']) : '';
+            if ($host !== '' && $script !== '') {
+                $entry = $scheme . '://' . $host . $script;
+            }
             $needLan = (strpos($entry, '://localhost') !== false) || (strpos($entry, '://127.0.0.1') !== false);
             if ($needLan) {
                 $lan = '';
@@ -905,7 +888,7 @@ class StudentController extends BaseController {
         ];
     }
 
-    private function updateStudentRatingAfterQuiz(StudentRankRepository $rankRepo, array $rankBefore, array $quiz, int $percentage): array
+    private function updateStudentRatingAfterQuiz(array $rankBefore, array $quiz, int $percentage): array
     {
         $oldRating = (int) ($rankBefore['rating'] ?? 1000);
 
@@ -931,7 +914,7 @@ class StudentController extends BaseController {
         $newRating = max(0, $oldRating + $delta);
 
         [$league, $division] = $this->leagueForRating($newRating);
-        $rankRepo->updateRating((int) ($rankBefore['user_id'] ?? 0), $newRating, $league, $division);
+        $this->updateStudentRankRating((int) ($rankBefore['user_id'] ?? 0), $newRating, $league, $division);
 
         return [
             'old_rating' => $oldRating,
@@ -970,7 +953,7 @@ class StudentController extends BaseController {
         return 'III';
     }
 
-    private function buildAfterQuizRecommendations(QuizRepository $quizRepo, QuizAttemptRepository $attemptRepo, array $quiz, int $percentage, int $userId): array
+    private function buildAfterQuizRecommendations(array $quiz, int $percentage, int $userId): array
     {
         $courseId = (int) ($quiz['course_id'] ?? 0);
         $chapterId = (int) ($quiz['chapter_id'] ?? 0);
@@ -981,14 +964,14 @@ class StudentController extends BaseController {
             return [];
         }
 
-        $attemptedQuizIds = $attemptRepo->getAttemptedQuizIdsByUser($userId);
+        $attemptedQuizIds = $this->getAttemptedQuizIdsByUser($userId);
         $attemptedSet = [];
         foreach ($attemptedQuizIds as $aqid) {
             $attemptedSet[(int) $aqid] = true;
         }
 
-        $chapterAverages = $attemptRepo->getChapterAveragesByUser($userId);
-        $lastAttemptByChapter = $attemptRepo->getLastAttemptByChapterInCourse($userId, $courseId);
+        $chapterAverages = $this->getChapterAveragesByUser($userId);
+        $lastAttemptByChapter = $this->getLastAttemptByChapterInCourse($userId, $courseId);
 
         $chapterSkill = [];
         foreach ($chapterAverages as $cid => $info) {
@@ -1031,7 +1014,7 @@ class StudentController extends BaseController {
             }
         }
 
-        $candidates = $quizRepo->getApprovedCandidatesForCourse($courseId, $currentQuizId, 80);
+        $candidates = $this->getApprovedCandidatesForCourse($courseId, $currentQuizId, 80);
         if (empty($candidates)) {
             return [];
         }
@@ -1251,20 +1234,19 @@ class StudentController extends BaseController {
         if (!$this->requireStudentRole()) {
             return;
         }
-        $quizService = $this->service('QuizService');
         $this->view('FrontOffice/student/questions_bank', [
             'title' => 'Banque de questions - ' . APP_NAME,
-            'questions' => $quizService->getQuestionBankReadable(),
+            'questions' => $this->getAllReadableQuestions(),
             'flash' => $this->getFlash(),
         ]);
     }
 
-    public function training() {
+    public function questionsBankDifficulty()
+    {
         if (!$this->requireStudentRole()) {
             return;
         }
-        $quizService = $this->service('QuizService');
-        $all = $quizService->getQuestionBankReadable();
+        $all = $this->getAllReadableQuestions();
 
         $difficulty = isset($_GET['difficulty']) ? strtolower(trim((string) $_GET['difficulty'])) : '';
         if (!in_array($difficulty, ['', 'beginner', 'intermediate', 'advanced'], true)) {
@@ -1311,12 +1293,367 @@ class StudentController extends BaseController {
         if (!$this->requireStudentRole()) {
             return;
         }
-        $quizService = $this->service('QuizService');
         $this->view('FrontOffice/student/quiz_history', [
             'title' => 'Historique des quiz - ' . APP_NAME,
-            'attempts' => $quizService->getAttemptsByUser((int) $_SESSION['user_id']),
+            'attempts' => $this->getAttemptsByUserWithQuizTitles((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
+    }
+
+    private function decodeQuestionsJson(string $json): array
+    {
+        $d = json_decode($json !== '' ? $json : '[]', true);
+        return is_array($d) ? $d : [];
+    }
+
+    private function getQuizzesForEnrolledStudent(int $studentId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.*, ch.title AS chapter_title, ch.id AS chapter_id, c.title AS course_title, c.id AS course_id
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                JOIN enrollments e ON e.course_id = c.id AND e.user_id = ?
+                WHERE q.status = 'approved'
+                ORDER BY c.title ASC, ch.sort_order ASC, q.created_at DESC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $studentId]);
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$r) {
+            $r['questions'] = $this->decodeQuestionsJson((string) ($r['questions_json'] ?? '[]'));
+        }
+        unset($r);
+        return $rows;
+    }
+
+    private function getChaptersForEnrolledStudent(int $studentId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT ch.*, c.title AS course_title, c.id AS course_id
+                FROM chapters ch
+                JOIN courses c ON c.id = ch.course_id
+                JOIN enrollments e ON e.course_id = c.id AND e.user_id = ?
+                ORDER BY c.title ASC, ch.sort_order ASC, ch.id ASC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $studentId]);
+        return $stmt->fetchAll();
+    }
+
+    private function findQuizWithChapterCourse(int $id): ?array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.*, ch.course_id, ch.title AS chapter_title, c.title AS course_title, c.created_by AS course_owner_id
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                WHERE q.id = ?
+                LIMIT 1";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $id]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return null;
+        }
+        $row['questions'] = $this->decodeQuestionsJson((string) ($row['questions_json'] ?? '[]'));
+        return $row;
+    }
+
+    private function recordAttemptAndGetId(int $userId, int $quizId, int $score, int $total, int $percentage): ?int
+    {
+        $db = $this->db();
+        $sql = "INSERT INTO quiz_attempts (user_id, quiz_id, score, total, percentage) VALUES (?, ?, ?, ?, ?)";
+        $stmt = $db->prepare($sql);
+        $ok = $stmt->execute([(int) $userId, (int) $quizId, (int) $score, (int) $total, (int) $percentage]);
+        if (!$ok) {
+            return null;
+        }
+        return (int) $db->lastInsertId();
+    }
+
+    private function getAttemptsByUserWithQuizTitles(int $userId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT a.*, q.title AS quiz_title
+                FROM quiz_attempts a
+                JOIN quizzes q ON q.id = a.quiz_id
+                WHERE a.user_id = ?
+                ORDER BY a.submitted_at DESC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $userId]);
+        return $stmt->fetchAll();
+    }
+
+    private function getAttemptedQuizIdsByUser(int $userId): array
+    {
+        $db = $this->db();
+        $stmt = $db->prepare("SELECT DISTINCT quiz_id FROM quiz_attempts WHERE user_id = ?");
+        $stmt->execute([(int) $userId]);
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return array_map('intval', is_array($ids) ? $ids : []);
+    }
+
+    private function ensureStudentRanksTable(): void
+    {
+        $db = $this->db();
+        $sql = "CREATE TABLE IF NOT EXISTS student_ranks (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    rating INT NOT NULL DEFAULT 1000,
+                    league VARCHAR(30) NOT NULL DEFAULT 'Bronze',
+                    division VARCHAR(10) NOT NULL DEFAULT 'III',
+                    last_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_user_rank (user_id),
+                    INDEX idx_rating (rating)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        try {
+            $db->exec($sql);
+        } catch (Throwable $e) {
+        }
+    }
+
+    private function getOrCreateStudentRank(int $userId): array
+    {
+        $this->ensureStudentRanksTable();
+        $db = $this->db();
+        $stmt = $db->prepare("SELECT * FROM student_ranks WHERE user_id = ? LIMIT 1");
+        $stmt->execute([(int) $userId]);
+        $row = $stmt->fetch();
+        if ($row) {
+            return $row;
+        }
+
+        $ins = $db->prepare("INSERT INTO student_ranks (user_id, rating, league, division) VALUES (?, 1000, 'Bronze', 'III')");
+        $ins->execute([(int) $userId]);
+
+        $stmt = $db->prepare("SELECT * FROM student_ranks WHERE user_id = ? LIMIT 1");
+        $stmt->execute([(int) $userId]);
+        $row = $stmt->fetch();
+        return $row ?: ['user_id' => (int) $userId, 'rating' => 1000, 'league' => 'Bronze', 'division' => 'III'];
+    }
+
+    private function updateStudentRankRating(int $userId, int $rating, string $league, string $division): bool
+    {
+        $this->ensureStudentRanksTable();
+        $db = $this->db();
+        $stmt = $db->prepare("UPDATE student_ranks SET rating = ?, league = ?, division = ? WHERE user_id = ?");
+        return $stmt->execute([(int) $rating, (string) $league, (string) $division, (int) $userId]);
+    }
+
+    private function getLastPercentagesByUser(int $userId, int $limit = 7): array
+    {
+        $limit = max(1, min(30, $limit));
+        $db = $this->db();
+        $sql = "SELECT percentage FROM quiz_attempts WHERE user_id = ? ORDER BY submitted_at DESC LIMIT {$limit}";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $userId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $vals = array_map('intval', is_array($rows) ? $rows : []);
+        $vals = array_reverse($vals);
+        return $vals;
+    }
+
+    private function getChapterAveragesByUser(int $userId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.chapter_id, AVG(a.percentage) AS avg_percentage, COUNT(*) AS attempts
+                FROM quiz_attempts a
+                JOIN quizzes q ON q.id = a.quiz_id
+                WHERE a.user_id = ?
+                GROUP BY q.chapter_id";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $userId]);
+        $rows = $stmt->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $cid = (int) ($r['chapter_id'] ?? 0);
+            if ($cid <= 0) {
+                continue;
+            }
+            $out[$cid] = [
+                'avg' => (float) ($r['avg_percentage'] ?? 0),
+                'attempts' => (int) ($r['attempts'] ?? 0),
+            ];
+        }
+        return $out;
+    }
+
+    private function getLastAttemptByChapterInCourse(int $userId, int $courseId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.chapter_id, MAX(a.submitted_at) AS last_attempt_at
+                FROM quiz_attempts a
+                JOIN quizzes q ON q.id = a.quiz_id
+                JOIN chapters ch ON ch.id = q.chapter_id
+                WHERE a.user_id = ? AND ch.course_id = ?
+                GROUP BY q.chapter_id";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $userId, (int) $courseId]);
+        $rows = $stmt->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $cid = (int) ($r['chapter_id'] ?? 0);
+            if ($cid <= 0) {
+                continue;
+            }
+            $out[$cid] = [
+                'last_attempt_at' => isset($r['last_attempt_at']) ? (string) $r['last_attempt_at'] : null,
+            ];
+        }
+        return $out;
+    }
+
+    private function getApprovedCandidatesForCourse(int $courseId, int $excludeQuizId, int $limit = 80): array
+    {
+        $limit = max(5, min(200, $limit));
+        $db = $this->db();
+        $sql = "SELECT q.*, ch.title AS chapter_title, ch.id AS chapter_id, c.title AS course_title, c.id AS course_id
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                WHERE c.id = ? AND q.status = 'approved' AND q.id <> ?
+                ORDER BY q.created_at DESC
+                LIMIT {$limit}";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $courseId, (int) $excludeQuizId]);
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$r) {
+            $r['questions'] = $this->decodeQuestionsJson((string) ($r['questions_json'] ?? '[]'));
+        }
+        unset($r);
+        return $rows;
+    }
+
+    private function getRecentPercentagesByChapterForUser(int $userId, int $days = 60): array
+    {
+        $days = max(1, min(365, $days));
+        $db = $this->db();
+        $sql = "SELECT q.chapter_id, a.percentage, a.submitted_at
+                FROM quiz_attempts a
+                JOIN quizzes q ON q.id = a.quiz_id
+                WHERE a.user_id = ? AND a.submitted_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+                ORDER BY a.submitted_at DESC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $userId]);
+        $rows = $stmt->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $cid = (int) ($r['chapter_id'] ?? 0);
+            if ($cid <= 0) {
+                continue;
+            }
+            if (!isset($out[$cid])) {
+                $out[$cid] = [];
+            }
+            $out[$cid][] = [
+                'percentage' => (int) ($r['percentage'] ?? 0),
+                'at' => isset($r['submitted_at']) ? (string) $r['submitted_at'] : null,
+            ];
+            if (count($out[$cid]) > 30) {
+                array_pop($out[$cid]);
+            }
+        }
+        return $out;
+    }
+
+    private function ensureStudentQuizFlagsTable(): void
+    {
+        $db = $this->db();
+        $sql = "CREATE TABLE IF NOT EXISTS student_quiz_flags (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    quiz_id INT NOT NULL,
+                    is_favorite TINYINT(1) NOT NULL DEFAULT 0,
+                    is_redo TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_user_quiz (user_id, quiz_id),
+                    INDEX idx_user_fav (user_id, is_favorite),
+                    INDEX idx_user_redo (user_id, is_redo)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        try {
+            $db->exec($sql);
+        } catch (Throwable $e) {
+        }
+    }
+
+    private function getFlagsMapByUser(int $userId): array
+    {
+        $this->ensureStudentQuizFlagsTable();
+        $db = $this->db();
+        $stmt = $db->prepare("SELECT quiz_id, is_favorite, is_redo FROM student_quiz_flags WHERE user_id = ?");
+        $stmt->execute([(int) $userId]);
+        $rows = $stmt->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $qid = (int) ($r['quiz_id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            $out[$qid] = [
+                'favorite' => !empty($r['is_favorite']),
+                'redo' => !empty($r['is_redo']),
+            ];
+        }
+        return $out;
+    }
+
+    private function getFavoriteQuizIds(int $userId): array
+    {
+        $this->ensureStudentQuizFlagsTable();
+        $db = $this->db();
+        $stmt = $db->prepare("SELECT quiz_id FROM student_quiz_flags WHERE user_id = ? AND is_favorite = 1");
+        $stmt->execute([(int) $userId]);
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return array_map('intval', is_array($ids) ? $ids : []);
+    }
+
+    private function getRedoQuizIds(int $userId): array
+    {
+        $this->ensureStudentQuizFlagsTable();
+        $db = $this->db();
+        $stmt = $db->prepare("SELECT quiz_id FROM student_quiz_flags WHERE user_id = ? AND is_redo = 1");
+        $stmt->execute([(int) $userId]);
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return array_map('intval', is_array($ids) ? $ids : []);
+    }
+
+    private function toggleFavorite(int $userId, int $quizId): bool
+    {
+        $this->ensureStudentQuizFlagsTable();
+        $db = $this->db();
+        $sql = "INSERT INTO student_quiz_flags (user_id, quiz_id, is_favorite)
+                VALUES (?, ?, 1)
+                ON DUPLICATE KEY UPDATE is_favorite = 1 - is_favorite";
+        $stmt = $db->prepare($sql);
+        return $stmt->execute([(int) $userId, (int) $quizId]);
+    }
+
+    private function toggleRedo(int $userId, int $quizId): bool
+    {
+        $this->ensureStudentQuizFlagsTable();
+        $db = $this->db();
+        $sql = "INSERT INTO student_quiz_flags (user_id, quiz_id, is_redo)
+                VALUES (?, ?, 1)
+                ON DUPLICATE KEY UPDATE is_redo = 1 - is_redo";
+        $stmt = $db->prepare($sql);
+        return $stmt->execute([(int) $userId, (int) $quizId]);
+    }
+
+    private function getAllReadableQuestions(): array
+    {
+        $db = $this->db();
+        $sql = "SELECT qb.*, u.name AS author_name
+                FROM question_bank qb
+                JOIN users u ON u.id = qb.created_by
+                ORDER BY qb.created_at DESC";
+        $stmt = $db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll() : [];
+        foreach ($rows as &$r) {
+            $d = json_decode($r['options_json'] ?? '[]', true);
+            $r['options'] = is_array($d) ? $d : [];
+        }
+        unset($r);
+        return $rows;
     }
 
     private function requireStudentRole(): bool {
