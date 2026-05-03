@@ -34,7 +34,7 @@ define('SESSION_NAME', 'APPOLIOS_SESSION');
 // Security
 define('HASH_COST', 12);
 define('APP_QR_SECRET', 'appolios-qr-secret-change-me');
-define('APP_LAN_HOST', '');
+define('APP_LAN_HOST', '192.168.56.1');
 
 // Debug Mode (Set to false in production)
 define('DEBUG_MODE', true);
