@@ -1189,10 +1189,14 @@ class AdminController extends BaseController {
                 $this->redirect('admin/sl-discussions');
                 return;
             }
+            $groupId = (int) ($discussion['id_groupe'] ?? $discussion['group_id'] ?? 0);
+            $group = $groupId > 0 ? $groupeRepository->findById($groupId) : null;
+            $discussionTitle = trim((string) ($discussion['titre'] ?? $discussion['title'] ?? ''));
             $this->view('BackOffice/admin/sl_discussions/chat', [
-                'title' => 'Admin Live Chat - APPOLIOS',
+                'title' => $discussionTitle !== '' ? $discussionTitle . ' · Admin Live Chat · APPOLIOS' : 'Admin Live Chat - APPOLIOS',
                 'description' => 'Live discussion room',
                 'discussion' => $discussion,
+                'group' => $group,
                 'socketUrl' => SOCKET_IO_URL,
                 'chatRoom' => 'discussion_' . $id,
                 'currentUserId' => (int) ($_SESSION['user_id'] ?? 0),

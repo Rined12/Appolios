@@ -1207,11 +1207,14 @@ class StudentController extends BaseController {
 
         $prefix = $this->frontOfficeRoutePrefix();
         $chatUrls = DiscussionPresenter::chatUrls($discussion, $prefix, APP_ENTRY);
+        $discussionTitle = trim((string) ($discussion['titre'] ?? $discussion['title'] ?? ''));
         $data = $this->withFoContext([
-            'title' => 'Live Chat - APPOLIOS',
+            'title' => $discussionTitle !== '' ? $discussionTitle . ' · Live Chat · APPOLIOS' : 'Live Chat - APPOLIOS',
             'studentSidebarActive' => 'discussions',
+            'discussion' => $discussion,
+            'group' => $group,
             'discussion_chat' => [
-                'discussion_title' => (string) ($discussion['titre'] ?? $discussion['title'] ?? 'Discussion'),
+                'discussion_title' => $discussionTitle !== '' ? $discussionTitle : 'Discussion',
                 'group_name' => (string) ($group['nom_groupe'] ?? 'N/A'),
                 'back_url' => $chatUrls['back_url'],
                 'upload_url' => $chatUrls['upload_url'],

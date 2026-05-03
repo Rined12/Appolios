@@ -2,6 +2,16 @@
 // Canonical nested view path (replaces flat file; identical markup to former flat sibling).
 $studentSidebarActive = 'discussions';
 $dc = $discussion_chat ?? ['discussion_title' => '', 'group_name' => '', 'back_url' => '#', 'upload_url' => ''];
+$d = is_array($discussion ?? null) ? $discussion : [];
+$g = is_array($group ?? null) ? $group : [];
+$chatDiscussionTitle = trim((string) ($d['titre'] ?? $d['title'] ?? $dc['discussion_title'] ?? ''));
+if ($chatDiscussionTitle === '') {
+    $chatDiscussionTitle = 'Discussion';
+}
+$chatGroupName = trim((string) ($g['nom_groupe'] ?? $dc['group_name'] ?? ''));
+if ($chatGroupName === '') {
+    $chatGroupName = 'Group';
+}
 ?>
 <div class="dashboard student-events-page collab-hub collab-chat-root">
     <div class="container admin-dashboard-container">
@@ -14,11 +24,9 @@ $dc = $discussion_chat ?? ['discussion_title' => '', 'group_name' => '', 'back_u
                     <div class="header collab-chat-head">
                         <div>
                             <div class="collab-chat-live"><span class="collab-chat-dot" aria-hidden="true"></span> Realtime room</div>
-                            <h2>Live discussion</h2>
+                            <h2><?= htmlspecialchars($chatDiscussionTitle, ENT_QUOTES, 'UTF-8') ?></h2>
                             <p class="collab-chat-sub">
-                                <strong><?= htmlspecialchars((string) ($group['nom_groupe'] ?? 'Group')) ?></strong>
-                                <span style="opacity:.65;"> · </span>
-                                <?= htmlspecialchars((string) ($discussion['titre'] ?? 'Discussion')) ?>
+                                <strong><?= htmlspecialchars($chatGroupName, ENT_QUOTES, 'UTF-8') ?></strong>
                             </p>
                         </div>
                         <a class="collab-btn-ghost" href="<?= htmlspecialchars((string) ($dc['back_url'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>">
@@ -205,7 +213,23 @@ $dc = $discussion_chat ?? ['discussion_title' => '', 'group_name' => '', 'back_u
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaChunks = [];
-            mediaRecorder = new MediaRecorder(stream);
+            let recMime = '';
+            if (window.MediaRecorder && typeof MediaRecorder.isTypeSupported === 'function') {
+                const candidates = [
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/ogg;codecs=opus',
+                    'audio/ogg',
+                    'audio/mp4',
+                ];
+                for (let i = 0; i < candidates.length; i++) {
+                    if (MediaRecorder.isTypeSupported(candidates[i])) {
+                        recMime = candidates[i];
+                        break;
+                    }
+                }
+            }
+            mediaRecorder = recMime ? new MediaRecorder(stream, { mimeType: recMime }) : new MediaRecorder(stream);
             mediaRecorder.ondataavailable = (ev) => {
                 if (ev.data && ev.data.size > 0) mediaChunks.push(ev.data);
             };
@@ -214,9 +238,10 @@ $dc = $discussion_chat ?? ['discussion_title' => '', 'group_name' => '', 'back_u
                 recordBtn.classList.remove('recording');
                 recordBtn.innerHTML = '<i class="bi bi-mic-fill"></i>';
                 if (mediaChunks.length === 0) return;
-                const blob = new Blob(mediaChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-                const ext = blob.type.includes('ogg') ? 'ogg' : (blob.type.includes('mpeg') ? 'mp3' : 'webm');
-                const file = new File([blob], `voice-note.${ext}`, { type: blob.type || 'audio/webm' });
+                const blobType = mediaRecorder.mimeType || (mediaChunks[0] && mediaChunks[0].type) || 'audio/webm';
+                const blob = new Blob(mediaChunks, { type: blobType });
+                const ext = blob.type.includes('ogg') ? 'ogg' : (blob.type.includes('mpeg') || blob.type.includes('mp4') ? 'm4a' : 'webm');
+                const file = new File([blob], `voice-note.${ext}`, { type: blob.type || blobType });
                 await sendAttachment(file);
             };
             mediaRecorder.start();

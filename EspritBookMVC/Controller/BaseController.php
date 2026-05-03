@@ -510,6 +510,8 @@ abstract class BaseController
             'image/gif' => ['ext' => 'gif', 'type' => 'image'],
             'image/webp' => ['ext' => 'webp', 'type' => 'image'],
             'audio/webm' => ['ext' => 'webm', 'type' => 'audio'],
+            // MediaRecorder / libmagic often label opus-in-webm as video (same container as audio-only WebM).
+            'video/webm' => ['ext' => 'webm', 'type' => 'audio'],
             'audio/ogg' => ['ext' => 'ogg', 'type' => 'audio'],
             'audio/mpeg' => ['ext' => 'mp3', 'type' => 'audio'],
             'audio/mp4' => ['ext' => 'm4a', 'type' => 'audio'],
@@ -520,6 +522,12 @@ abstract class BaseController
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => ['ext' => 'docx', 'type' => 'file'],
             'text/plain' => ['ext' => 'txt', 'type' => 'file'],
         ];
+        if (!isset($allowed[$mime])) {
+            $head = @file_get_contents($tmp, false, null, 0, 4);
+            if ($head === "\x1a\x45\xdf\xa3") {
+                $mime = 'audio/webm';
+            }
+        }
         if (!isset($allowed[$mime])) {
             return ['ok' => false, 'error' => 'Unsupported attachment format.', 'url' => null, 'fileName' => null, 'mime' => null, 'size' => 0, 'messageType' => null];
         }
