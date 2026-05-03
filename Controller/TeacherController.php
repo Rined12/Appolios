@@ -10,9 +10,6 @@ require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
 require_once __DIR__ . '/BaseController.php';
-require_once __DIR__ . '/../Model/Repositories/QuizRepository.php';
-require_once __DIR__ . '/../Model/Repositories/QuestionBankRepository.php';
-require_once __DIR__ . '/../Model/Repositories/QuestionCollectionRepository.php';
 require_once __DIR__ . '/../Model/QuizServer.php';
 
 class TeacherController extends BaseController {
@@ -429,9 +426,10 @@ class TeacherController extends BaseController {
         $this->requireTeacher();
 
         $teacherId = (int) $_SESSION['user_id'];
-        $quizRepo = new QuizRepository();
 
-        $quizUsage = $quizRepo->getUsageStatsMapForTeacher($teacherId);
+        $quizUsage = $this->getUsageStatsMapForTeacher($teacherId);
+
+        $quizzes = $this->getAllQuizzesForTeacher($teacherId);
 
         $quizTopStats = [
             'quizzes_count' => 0,
@@ -446,46 +444,21 @@ class TeacherController extends BaseController {
             $avg = (float) ($u['avg'] ?? 0);
             $quizTopStats['attempts_total'] += $att;
             $wSum += ($avg * $att);
-            $la = isset($u['last_attempt_at']) ? (string) $u['last_attempt_at'] : '';
-            if ($la !== '' && ($lastAttempt === null || $la > $lastAttempt)) {
-                $lastAttempt = $la;
+
+            $la = $u['last_attempt_at'] ?? null;
+            if ($la) {
+                $ts = strtotime((string) $la);
+                if ($ts !== false && ($lastAttempt === null || $ts > $lastAttempt)) {
+                    $lastAttempt = $ts;
+                    $quizTopStats['last_attempt_at'] = (string) $la;
+                }
             }
         }
-        if ($quizTopStats['attempts_total'] > 0) {
-            $quizTopStats['avg_percentage'] = round($wSum / (float) $quizTopStats['attempts_total'], 1);
-        }
-        $quizTopStats['last_attempt_at'] = $lastAttempt;
 
-        $sql = "SELECT q.*, ch.id AS chapter_id, ch.title AS chapter_title,
-                       c.id AS course_id, c.title AS course_title
-                FROM quizzes q
-                JOIN chapters ch ON ch.id = q.chapter_id
-                JOIN courses c ON c.id = ch.course_id
-                WHERE c.created_by = ?
-                ORDER BY q.created_at DESC";
-        $stmt = $quizRepo->getDb()->prepare($sql);
-        $stmt->execute([$teacherId]);
-        $quizRows = $stmt->fetchAll();
-
-        $quizTopStats['quizzes_count'] = is_array($quizRows) ? count($quizRows) : 0;
-
-        $quizzes = [];
-        foreach ($quizRows as $q) {
-            $courseId = (int) ($q['course_id'] ?? 0);
-            $chapterId = (int) ($q['chapter_id'] ?? 0);
-            $quizzes[] = new QuizServer(
-                isset($q['id']) ? (int) $q['id'] : null,
-                $courseId,
-                (string) ($q['course_title'] ?? ''),
-                $chapterId,
-                (string) ($q['chapter_title'] ?? ''),
-                (string) ($q['title'] ?? ''),
-                (string) ($q['difficulty'] ?? 'beginner'),
-                isset($q['tags']) ? (string) $q['tags'] : null,
-                isset($q['status']) ? (string) $q['status'] : null,
-                isset($q['created_at']) ? (string) $q['created_at'] : null
-            );
-        }
+        $quizTopStats['quizzes_count'] = is_array($quizzes) ? count($quizzes) : 0;
+        $quizTopStats['avg_percentage'] = $quizTopStats['attempts_total'] > 0
+            ? round($wSum / (float) $quizTopStats['attempts_total'], 1)
+            : 0;
 
         $this->view('FrontOffice/teacher/quizzes', [
             'title' => 'Quiz - ' . APP_NAME,
@@ -500,10 +473,9 @@ class TeacherController extends BaseController {
         $this->requireTeacher();
 
         $teacherId = (int) $_SESSION['user_id'];
-        $quizService = $this->service('QuizService');
 
-        $rows = $quizService->getQuizStatsForTeacher($teacherId);
-        $series = $quizService->getQuizAttemptSeriesMapForTeacher($teacherId, 120);
+        $rows = $this->getQuizStatsForTeacher($teacherId);
+        $series = $this->getQuizAttemptSeriesMapForTeacher($teacherId, 120);
 
         $totalQuizzes = is_array($rows) ? count($rows) : 0;
         $totalAttempts = 0;
@@ -548,13 +520,12 @@ class TeacherController extends BaseController {
 
         $chapterModel = $this->model('Chapter');
         $chapters = $chapterModel->getAllForTeacher((int) $_SESSION['user_id']);
-        $qbRepo = new QuestionBankRepository();
 
         $this->view('FrontOffice/teacher/quiz_form', [
             'title' => 'Nouveau quiz - ' . APP_NAME,
             'quiz' => null,
             'chapters' => $chapters,
-            'questionBank' => $qbRepo->getForTeacher((int) $_SESSION['user_id']),
+            'questionBank' => $this->getQuestionBankForTeacher((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -575,9 +546,6 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $quizRepo = new QuizRepository();
-        $qbRepo = new QuestionBankRepository();
-
         $meta = $this->validateQuizMetaFromPost($_POST);
         if (!empty($meta['errors'])) {
             $this->setFlash('error', $meta['errors'][0]);
@@ -586,8 +554,8 @@ class TeacherController extends BaseController {
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
-        $questions = $qbRepo->appendIdsToQuizQuestions(
-            QuizRepository::normalizeQuestionsFromPost($_POST),
+        $questions = $this->appendBankQuestionsToQuiz(
+            $this->normalizeQuizQuestionsFromPost($_POST),
             $bankIds,
             (int) $_SESSION['user_id']
         );
@@ -605,16 +573,16 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $createdId = $quizRepo->create([
-            'chapter_id' => $chapterId,
-            'title' => $this->sanitize($meta['title']),
-            'difficulty' => $meta['difficulty'],
-            'tags' => $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
-            'time_limit_sec' => $meta['time_limit_sec'],
-            'questions' => $questions,
-            'created_by' => (int) $_SESSION['user_id'],
-            'status' => 'pending',
-        ]);
+        $createdId = $this->createTeacherQuiz(
+            $chapterId,
+            (int) $_SESSION['user_id'],
+            $this->sanitize($meta['title']),
+            (string) $meta['difficulty'],
+            $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
+            $meta['time_limit_sec'],
+            $questions,
+            'pending'
+        );
 
         if ($createdId === false) {
             $this->setFlash('error', 'Impossible d’enregistrer le quiz (vérifiez la base de données).');
@@ -629,9 +597,7 @@ class TeacherController extends BaseController {
     public function editQuiz($id) {
         $this->requireTeacher();
 
-        $quizRepo = new QuizRepository();
-        $qbRepo = new QuestionBankRepository();
-        $quiz = $quizRepo->findWithChapterCourse((int) $id);
+        $quiz = $this->findQuizWithChapterCourse((int) $id);
         if (!$quiz || (int) ($quiz['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
@@ -645,7 +611,7 @@ class TeacherController extends BaseController {
             'title' => 'Modifier le quiz - ' . APP_NAME,
             'quiz' => $quiz,
             'chapters' => $chapters,
-            'questionBank' => $qbRepo->getForTeacher((int) $_SESSION['user_id']),
+            'questionBank' => $this->getQuestionBankForTeacher((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -657,9 +623,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $quizRepo = new QuizRepository();
-        $qbRepo = new QuestionBankRepository();
-        $existing = $quizRepo->findWithChapterCourse((int) $id);
+        $existing = $this->findQuizWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
@@ -683,8 +647,8 @@ class TeacherController extends BaseController {
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
-        $questions = $qbRepo->appendIdsToQuizQuestions(
-            QuizRepository::normalizeQuestionsFromPost($_POST),
+        $questions = $this->appendBankQuestionsToQuiz(
+            $this->normalizeQuizQuestionsFromPost($_POST),
             $bankIds,
             (int) $_SESSION['user_id']
         );
@@ -702,14 +666,16 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $updated = $quizRepo->update((int) $id, [
-            'chapter_id' => $chapterId,
-            'title' => $this->sanitize($meta['title']),
-            'difficulty' => $meta['difficulty'],
-            'tags' => $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
-            'time_limit_sec' => $meta['time_limit_sec'],
-            'questions' => $questions,
-        ]);
+        $updated = $this->updateTeacherQuiz(
+            (int) $id,
+            (int) $_SESSION['user_id'],
+            $chapterId,
+            $this->sanitize($meta['title']),
+            (string) $meta['difficulty'],
+            $meta['tags'] !== null ? $this->sanitize($meta['tags']) : null,
+            $meta['time_limit_sec'],
+            $questions
+        );
 
         if ($updated === false) {
             $this->setFlash('error', 'Impossible de mettre à jour le quiz (vérifiez la base de données).');
@@ -723,55 +689,49 @@ class TeacherController extends BaseController {
 
     public function deleteQuiz($id) {
         $this->requireTeacher();
-        $quizRepo = new QuizRepository();
-        $existing = $quizRepo->findWithChapterCourse((int) $id);
+        $existing = $this->findQuizWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
             return;
         }
-        $quizRepo->delete((int) $id);
+        $this->deleteTeacherQuiz((int) $id, (int) $_SESSION['user_id']);
         $this->setFlash('success', 'Quiz supprimé.');
         $this->redirect('teacher/quiz');
     }
 
     public function duplicateQuiz($id) {
         $this->requireTeacher();
-        $quizRepo = new QuizRepository();
-        $existing = $quizRepo->findWithChapterCourse((int) $id);
+        $existing = $this->findQuizWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
             $this->redirect('teacher/quiz');
             return;
         }
-
-        $newId = $quizRepo->duplicateForTeacher((int) $id, (int) $_SESSION['user_id']);
+        $newId = $this->duplicateQuizForTeacher((int) $id, (int) $_SESSION['user_id']);
         if ($newId === false) {
-            $this->setFlash('error', 'Impossible de dupliquer ce quiz.');
+            $this->setFlash('error', 'Impossible de dupliquer le quiz.');
             $this->redirect('teacher/quiz');
             return;
         }
-
         $this->setFlash('success', 'Quiz dupliqué.');
         $this->redirect('teacher/edit-quiz/' . (int) $newId);
     }
 
     public function questions() {
         $this->requireTeacher();
-        $qbRepo = new QuestionBankRepository();
-        $colRepo = new QuestionCollectionRepository();
         $teacherId = (int) $_SESSION['user_id'];
 
-        $collections = $colRepo->getForTeacher($teacherId);
+        $collections = $this->getQuestionCollectionsForTeacher($teacherId);
         $selectedCollectionId = isset($_GET['collection_id']) ? (int) $_GET['collection_id'] : 0;
-        $selectedIds = $selectedCollectionId > 0 ? $colRepo->getQuestionIdsForCollection($selectedCollectionId, $teacherId) : [];
+        $selectedIds = $selectedCollectionId > 0 ? $this->getQuestionIdsForCollection($selectedCollectionId, $teacherId) : [];
         $selectedMap = [];
         foreach ($selectedIds as $id) {
             $selectedMap[(int) $id] = true;
         }
 
-        $questions = $qbRepo->getForTeacher($teacherId);
-        $questionUsage = $qbRepo->getUsageStatsMapForTeacher($teacherId);
+        $questions = $this->getQuestionBankForTeacher($teacherId);
+        $questionUsage = $this->getQuestionBankUsageStatsMapForTeacher($teacherId);
 
         $qbTopStats = [
             'questions_total' => count($questions),
@@ -818,8 +778,7 @@ class TeacherController extends BaseController {
             $this->redirect('teacher/questions');
             return;
         }
-        $colRepo = new QuestionCollectionRepository();
-        $id = $colRepo->create((int) $_SESSION['user_id'], $title);
+        $id = $this->createQuestionCollectionRow((int) $_SESSION['user_id'], $title);
         if ($id === false) {
             $this->setFlash('error', 'Impossible de créer le pack.');
         } else {
@@ -830,8 +789,7 @@ class TeacherController extends BaseController {
 
     public function deleteQuestionCollection($id) {
         $this->requireTeacher();
-        $colRepo = new QuestionCollectionRepository();
-        $ok = $colRepo->deleteOwned((int) $id, (int) $_SESSION['user_id']);
+        $ok = $this->deleteQuestionCollectionOwned((int) $id, (int) $_SESSION['user_id']);
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Pack supprimé.' : 'Impossible de supprimer.');
         $this->redirect('teacher/questions');
     }
@@ -840,12 +798,11 @@ class TeacherController extends BaseController {
         $this->requireTeacher();
         $cid = (int) $collectionId;
         $qid = (int) $questionId;
-        $colRepo = new QuestionCollectionRepository();
-        $ok = $colRepo->addQuestion($cid, $qid, (int) $_SESSION['user_id']);
+        $ok = $this->addQuestionToCollectionOwned($cid, $qid, (int) $_SESSION['user_id']);
         if ($ok) {
             $this->setFlash('success', 'Question ajoutée au pack.');
         } else {
-            $this->setFlash('error', 'Impossible d\'ajouter au pack.');
+            $this->setFlash('error', 'Impossible d\'ajouter la question.');
         }
         $this->redirect('teacher/questions?collection_id=' . $cid);
     }
@@ -854,12 +811,11 @@ class TeacherController extends BaseController {
         $this->requireTeacher();
         $cid = (int) $collectionId;
         $qid = (int) $questionId;
-        $colRepo = new QuestionCollectionRepository();
-        $ok = $colRepo->removeQuestion($cid, $qid, (int) $_SESSION['user_id']);
+        $ok = $this->removeQuestionFromCollectionOwned($cid, $qid, (int) $_SESSION['user_id']);
         if ($ok) {
             $this->setFlash('success', 'Question retirée du pack.');
         } else {
-            $this->setFlash('error', 'Impossible de retirer du pack.');
+            $this->setFlash('error', 'Impossible de retirer la question.');
         }
         $this->redirect('teacher/questions?collection_id=' . $cid);
     }
@@ -895,16 +851,15 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $qbRepo = new QuestionBankRepository();
-        $qbRepo->create([
-            'title' => $title !== '' ? $title : null,
-            'question_text' => $questionText,
-            'options' => $opts,
-            'correct_answer' => $correct,
-            'tags' => $tags !== '' ? $tags : null,
-            'difficulty' => $difficulty,
-            'created_by' => (int) $_SESSION['user_id'],
-        ]);
+        $this->createQuestionBankQuestion(
+            (int) $_SESSION['user_id'],
+            $title !== '' ? $title : null,
+            $questionText,
+            $opts,
+            $correct,
+            $tags !== '' ? $tags : null,
+            $difficulty
+        );
 
         $this->setFlash('success', 'Question enregistrée.');
         $this->redirect('teacher/questions');
@@ -912,8 +867,7 @@ class TeacherController extends BaseController {
 
     public function editQuestion($id) {
         $this->requireTeacher();
-        $qbRepo = new QuestionBankRepository();
-        $row = $qbRepo->findOwned((int) $id, (int) $_SESSION['user_id']);
+        $row = $this->findQuestionBankOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$row) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
@@ -933,8 +887,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $qbRepo = new QuestionBankRepository();
-        $existing = $qbRepo->findOwned((int) $id, (int) $_SESSION['user_id']);
+        $existing = $this->findQuestionBankOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
@@ -956,15 +909,16 @@ class TeacherController extends BaseController {
             return;
         }
 
-
-        $qbRepo->update((int) $id, [
-            'title' => $title !== '' ? $title : null,
-            'question_text' => $questionText,
-            'options' => $opts,
-            'correct_answer' => $correct,
-            'tags' => $tags !== '' ? $tags : null,
-            'difficulty' => $difficulty,
-        ]);
+        $this->updateQuestionBankOwned(
+            (int) $id,
+            (int) $_SESSION['user_id'],
+            $title !== '' ? $title : null,
+            $questionText,
+            $opts,
+            $correct,
+            $tags !== '' ? $tags : null,
+            $difficulty
+        );
 
         $this->setFlash('success', 'Question mise à jour.');
         $this->redirect('teacher/questions');
@@ -972,14 +926,13 @@ class TeacherController extends BaseController {
 
     public function deleteQuestion($id) {
         $this->requireTeacher();
-        $qbRepo = new QuestionBankRepository();
-        $existing = $qbRepo->findOwned((int) $id, (int) $_SESSION['user_id']);
+        $existing = $this->findQuestionBankOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
             return;
         }
-        $qbRepo->delete((int) $id);
+        $this->deleteQuestionBankOwned((int) $id, (int) $_SESSION['user_id']);
         $this->setFlash('success', 'Question supprimée.');
         $this->redirect('teacher/questions');
     }
@@ -1056,7 +1009,12 @@ class TeacherController extends BaseController {
                 return $errors;
             }
 
-            $text = isset($q['question_text']) ? trim((string) $q['question_text']) : '';
+            $text = '';
+            if (isset($q['question_text'])) {
+                $text = trim((string) $q['question_text']);
+            } elseif (isset($q['question'])) {
+                $text = trim((string) $q['question']);
+            }
             if ($text === '') {
                 $errors[] = 'Question vide.';
                 return $errors;
@@ -1068,7 +1026,12 @@ class TeacherController extends BaseController {
                 return $errors;
             }
 
-            $correct = isset($q['correct_answer']) ? (int) $q['correct_answer'] : -1;
+            $correct = -1;
+            if (isset($q['correct_answer'])) {
+                $correct = (int) $q['correct_answer'];
+            } elseif (isset($q['correctAnswer'])) {
+                $correct = (int) $q['correctAnswer'];
+            }
             if ($correct < 0 || $correct >= count($opts)) {
                 $errors[] = 'Réponse correcte invalide.';
                 return $errors;
@@ -1085,6 +1048,620 @@ class TeacherController extends BaseController {
         }
 
         return $errors;
+    }
+
+    private function decodeQuestionsJson(string $json): array
+    {
+        $d = json_decode($json !== '' ? $json : '[]', true);
+        return is_array($d) ? $d : [];
+    }
+
+    private function normalizeQuizQuestionsFromPost(array $post): array
+    {
+        $raw = $post['questions'] ?? [];
+        if (!is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $q) {
+            if (!is_array($q)) {
+                continue;
+            }
+            $bankId = isset($q['question_bank_id']) ? (int) $q['question_bank_id'] : 0;
+            $text = isset($q['question']) ? trim((string) $q['question']) : '';
+            if ($text === '' && isset($q['question_text'])) {
+                $text = trim((string) $q['question_text']);
+            }
+            $opts = $q['options'] ?? [];
+            if (!is_array($opts)) {
+                $opts = [];
+            }
+            $opts = array_values(array_filter(array_map(static function ($o) {
+                return trim((string) $o);
+            }, $opts)));
+            $ca = isset($q['correctAnswer']) ? (int) $q['correctAnswer'] : (isset($q['correct_answer']) ? (int) $q['correct_answer'] : 0);
+            if ($text === '' || count($opts) < 2) {
+                continue;
+            }
+            if ($ca < 0 || $ca >= count($opts)) {
+                $ca = 0;
+            }
+
+            $item = [
+                'question' => $text,
+                'question_text' => $text,
+                'options' => $opts,
+                'correctAnswer' => $ca,
+                'correct_answer' => $ca,
+            ];
+            if ($bankId > 0) {
+                $item['question_bank_id'] = $bankId;
+            }
+            $out[] = $item;
+        }
+        return $out;
+    }
+
+    private function getAllQuizzesForTeacher(int $teacherId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.*, ch.title AS chapter_title, ch.id AS chapter_id, c.title AS course_title, c.id AS course_id
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                WHERE c.created_by = ?
+                ORDER BY q.created_at DESC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$r) {
+            $r['questions'] = $this->decodeQuestionsJson((string) ($r['questions_json'] ?? '[]'));
+        }
+        unset($r);
+        return $rows;
+    }
+
+    private function getUsageStatsMapForTeacher(int $teacherId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.id AS quiz_id,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                LEFT JOIN quiz_attempts a ON a.quiz_id = q.id
+                WHERE c.created_by = ?
+                GROUP BY q.id";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        $rows = $stmt->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['quiz_id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $out[$id] = [
+                'attempts' => (int) ($r['attempts_count'] ?? 0),
+                'avg' => (float) ($r['avg_percentage'] ?? 0),
+                'last_attempt_at' => isset($r['last_attempt_at']) ? (string) $r['last_attempt_at'] : null,
+            ];
+        }
+        return $out;
+    }
+
+    private function getQuizStatsForTeacher(int $teacherId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.id, q.title, q.difficulty, q.status, q.created_at,
+                       ch.title AS chapter_title, c.title AS course_title,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       COALESCE(MAX(a.percentage), 0) AS best_percentage,
+                       COALESCE(MAX(a.score), 0) AS best_score,
+                       COALESCE(MAX(a.total), 0) AS best_total,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                LEFT JOIN quiz_attempts a ON a.quiz_id = q.id
+                WHERE c.created_by = ?
+                GROUP BY q.id
+                ORDER BY attempts_count DESC, q.created_at DESC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        return $stmt->fetchAll();
+    }
+
+    private function getQuizAttemptSeriesMapForTeacher(int $teacherId, int $limitPerQuiz = 120): array
+    {
+        $limitPerQuiz = max(10, min(300, $limitPerQuiz));
+        $db = $this->db();
+
+        $sql = "SELECT a.quiz_id, a.submitted_at, a.percentage, a.score, a.total
+                FROM quiz_attempts a
+                JOIN quizzes q ON q.id = a.quiz_id
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                JOIN (
+                    SELECT x.id
+                    FROM (
+                        SELECT a2.id,
+                               ROW_NUMBER() OVER (PARTITION BY a2.quiz_id ORDER BY a2.submitted_at ASC) AS rn
+                        FROM quiz_attempts a2
+                    ) x
+                ) keep ON keep.id = a.id
+                WHERE c.created_by = ?
+                ORDER BY a.quiz_id ASC, a.submitted_at ASC";
+
+        $rows = [];
+        try {
+            $stmt = $db->prepare($sql);
+            $stmt->execute([(int) $teacherId]);
+            $rows = $stmt->fetchAll();
+        } catch (Throwable $e) {
+            $rows = [];
+        }
+
+        $out = [];
+        if (!empty($rows)) {
+            foreach ($rows as $r) {
+                $qid = (int) ($r['quiz_id'] ?? 0);
+                if ($qid <= 0) {
+                    continue;
+                }
+                if (!isset($out[$qid])) {
+                    $out[$qid] = [];
+                }
+                $out[$qid][] = [
+                    'at' => isset($r['submitted_at']) ? (string) $r['submitted_at'] : null,
+                    'percentage' => (int) ($r['percentage'] ?? 0),
+                    'score' => (int) ($r['score'] ?? 0),
+                    'total' => (int) ($r['total'] ?? 0),
+                ];
+                if (count($out[$qid]) > $limitPerQuiz) {
+                    array_shift($out[$qid]);
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    private function findQuizWithChapterCourse(int $id): ?array
+    {
+        $db = $this->db();
+        $sql = "SELECT q.*, ch.course_id, ch.title AS chapter_title, c.title AS course_title,
+                       c.created_by AS course_owner_id
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                WHERE q.id = ?
+                LIMIT 1";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $id]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return null;
+        }
+        $row['questions'] = $this->decodeQuestionsJson((string) ($row['questions_json'] ?? '[]'));
+        return $row;
+    }
+
+    private function ensureQuizLinkTable(): void
+    {
+        $db = $this->db();
+        $sql = "CREATE TABLE IF NOT EXISTS quiz_question_bank (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    quiz_id INT NOT NULL,
+                    question_bank_id INT NOT NULL,
+                    sort_order INT NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_quiz_question (quiz_id, question_bank_id),
+                    INDEX idx_quiz_sort (quiz_id, sort_order)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        try {
+            $db->exec($sql);
+        } catch (Throwable $e) {
+        }
+    }
+
+    private function ensureQuizStatusColumn(): void
+    {
+        $db = $this->db();
+        try {
+            $db->exec("ALTER TABLE quizzes ADD COLUMN status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'approved'");
+        } catch (Throwable $e) {
+        }
+    }
+
+    private function createTeacherQuiz(int $chapterId, int $teacherId, string $title, string $difficulty, ?string $tags, $timeLimitSec, array $questions, string $status)
+    {
+        $this->ensureQuizLinkTable();
+        $this->ensureQuizStatusColumn();
+        $db = $this->db();
+        $sql = "INSERT INTO quizzes (chapter_id, title, difficulty, tags, time_limit_sec, questions_json, created_by, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $db->prepare($sql);
+        $json = json_encode($questions);
+        $ok = $stmt->execute([
+            (int) $chapterId,
+            (string) $title,
+            (string) $difficulty,
+            $tags,
+            $timeLimitSec !== null && $timeLimitSec !== '' ? (int) $timeLimitSec : null,
+            $json !== false ? $json : '[]',
+            (int) $teacherId,
+            (string) $status,
+        ]);
+        if (!$ok) {
+            return false;
+        }
+        $quizId = (int) $db->lastInsertId();
+
+        $bankIds = [];
+        foreach ($questions as $q) {
+            if (is_array($q) && isset($q['question_bank_id'])) {
+                $bid = (int) $q['question_bank_id'];
+                if ($bid > 0) {
+                    $bankIds[] = $bid;
+                }
+            }
+        }
+        $bankIds = array_values(array_unique($bankIds));
+        if (!empty($bankIds)) {
+            $ins = $db->prepare("INSERT IGNORE INTO quiz_question_bank (quiz_id, question_bank_id, sort_order) VALUES (?, ?, ?)");
+            foreach ($bankIds as $so => $bid) {
+                $ins->execute([$quizId, $bid, (int) $so]);
+            }
+        }
+
+        return $quizId;
+    }
+
+    private function updateTeacherQuiz(int $quizId, int $teacherId, int $chapterId, string $title, string $difficulty, ?string $tags, $timeLimitSec, array $questions): bool
+    {
+        $this->ensureQuizLinkTable();
+        $this->ensureQuizStatusColumn();
+        $db = $this->db();
+
+        $quiz = $this->findQuizWithChapterCourse($quizId);
+        if (!$quiz || (int) ($quiz['course_owner_id'] ?? 0) !== (int) $teacherId) {
+            return false;
+        }
+
+        $sql = "UPDATE quizzes
+                SET chapter_id = ?, title = ?, difficulty = ?, tags = ?, time_limit_sec = ?, questions_json = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?";
+        $json = json_encode($questions);
+        $stmt = $db->prepare($sql);
+        $ok = $stmt->execute([
+            (int) $chapterId,
+            (string) $title,
+            (string) $difficulty,
+            $tags,
+            $timeLimitSec !== null && $timeLimitSec !== '' ? (int) $timeLimitSec : null,
+            $json !== false ? $json : '[]',
+            (int) $quizId,
+        ]);
+        if (!$ok) {
+            return false;
+        }
+
+        $db->prepare("DELETE FROM quiz_question_bank WHERE quiz_id = ?")->execute([(int) $quizId]);
+        $bankIds = [];
+        foreach ($questions as $q) {
+            if (is_array($q) && isset($q['question_bank_id'])) {
+                $bid = (int) $q['question_bank_id'];
+                if ($bid > 0) {
+                    $bankIds[] = $bid;
+                }
+            }
+        }
+        $bankIds = array_values(array_unique($bankIds));
+        if (!empty($bankIds)) {
+            $ins = $db->prepare("INSERT IGNORE INTO quiz_question_bank (quiz_id, question_bank_id, sort_order) VALUES (?, ?, ?)");
+            foreach ($bankIds as $so => $bid) {
+                $ins->execute([(int) $quizId, (int) $bid, (int) $so]);
+            }
+        }
+        return true;
+    }
+
+    private function deleteTeacherQuiz(int $quizId, int $teacherId): bool
+    {
+        $db = $this->db();
+        $quiz = $this->findQuizWithChapterCourse($quizId);
+        if (!$quiz || (int) ($quiz['course_owner_id'] ?? 0) !== (int) $teacherId) {
+            return false;
+        }
+        try {
+            $db->prepare("DELETE FROM quiz_question_bank WHERE quiz_id = ?")->execute([(int) $quizId]);
+        } catch (Throwable $e) {
+        }
+        $stmt = $db->prepare("DELETE FROM quizzes WHERE id = ?");
+        return $stmt->execute([(int) $quizId]);
+    }
+
+    private function duplicateQuizForTeacher(int $quizId, int $teacherId)
+    {
+        $this->ensureQuizLinkTable();
+        $this->ensureQuizStatusColumn();
+        $db = $this->db();
+
+        $quiz = $this->findQuizWithChapterCourse($quizId);
+        if (!$quiz || (int) ($quiz['course_owner_id'] ?? 0) !== (int) $teacherId) {
+            return false;
+        }
+
+        $questions = $quiz['questions'] ?? [];
+        if (!is_array($questions)) {
+            $questions = [];
+        }
+
+        $title = (string) ($quiz['title'] ?? 'Quiz');
+        $newTitle = mb_strlen($title) > 220 ? (mb_substr($title, 0, 220) . ' (copie)') : ($title . ' (copie)');
+        $tags = isset($quiz['tags']) ? (string) $quiz['tags'] : null;
+        $timeLimitSec = $quiz['time_limit_sec'] ?? null;
+        $difficulty = (string) ($quiz['difficulty'] ?? 'beginner');
+        $chapterId = (int) ($quiz['chapter_id'] ?? 0);
+
+        return $this->createTeacherQuiz($chapterId, $teacherId, $newTitle, $difficulty, $tags, $timeLimitSec, $questions, 'pending');
+    }
+
+    private function getQuestionBankForTeacher(int $teacherId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT * FROM question_bank WHERE created_by = ? ORDER BY created_at DESC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$r) {
+            $d = json_decode($r['options_json'] ?? '[]', true);
+            $r['options'] = is_array($d) ? $d : [];
+        }
+        unset($r);
+        return $rows;
+    }
+
+    private function getQuestionBankUsageStatsMapForTeacher(int $teacherId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT qb.id AS question_bank_id,
+                       COUNT(DISTINCT qqb.quiz_id) AS quizzes_count,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       MAX(a.submitted_at) AS last_attempt_at
+                FROM question_bank qb
+                LEFT JOIN quiz_question_bank qqb ON qqb.question_bank_id = qb.id
+                LEFT JOIN quiz_attempts a ON a.quiz_id = qqb.quiz_id
+                WHERE qb.created_by = ?
+                GROUP BY qb.id";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        $rows = $stmt->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['question_bank_id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $out[$id] = [
+                'quizzes' => (int) ($r['quizzes_count'] ?? 0),
+                'attempts' => (int) ($r['attempts_count'] ?? 0),
+                'avg' => (float) ($r['avg_percentage'] ?? 0),
+                'last_attempt_at' => isset($r['last_attempt_at']) ? (string) $r['last_attempt_at'] : null,
+            ];
+        }
+        return $out;
+    }
+
+    private function appendBankQuestionsToQuiz(array $baseQuestions, array $bankIds, int $restrictToUserId): array
+    {
+        $bankIds = array_map('intval', $bankIds);
+        $bankIds = array_values(array_filter($bankIds, static fn($v) => $v > 0));
+        if (empty($bankIds)) {
+            return $baseQuestions;
+        }
+
+        $db = $this->db();
+        $placeholders = implode(',', array_fill(0, count($bankIds), '?'));
+        $params = $bankIds;
+        $sql = "SELECT * FROM question_bank WHERE id IN ({$placeholders}) AND created_by = ?";
+        $params[] = (int) $restrictToUserId;
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        foreach ($rows as &$r) {
+            $d = json_decode($r['options_json'] ?? '[]', true);
+            $r['options'] = is_array($d) ? $d : [];
+        }
+        unset($r);
+
+        $out = $baseQuestions;
+        foreach ($rows as $r) {
+            $opts = $r['options'] ?? [];
+            if (!is_array($opts)) {
+                $opts = [];
+            }
+            $out[] = [
+                'question_bank_id' => (int) ($r['id'] ?? 0),
+                'question' => (string) ($r['question_text'] ?? ''),
+                'question_text' => (string) ($r['question_text'] ?? ''),
+                'options' => array_values($opts),
+                'correctAnswer' => (int) ($r['correct_answer'] ?? 0),
+                'correct_answer' => (int) ($r['correct_answer'] ?? 0),
+            ];
+        }
+        return $out;
+    }
+
+    private function ensureQuestionCollectionTables(): void
+    {
+        $db = $this->db();
+        try {
+            $db->exec(
+                "CREATE TABLE IF NOT EXISTS question_collections (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL,
+                    created_by INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_created_by (created_by)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            );
+        } catch (Throwable $e) {
+        }
+        try {
+            $db->exec(
+                "CREATE TABLE IF NOT EXISTS question_collection_items (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    collection_id INT NOT NULL,
+                    question_bank_id INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_collection_question (collection_id, question_bank_id),
+                    INDEX idx_collection_id (collection_id),
+                    INDEX idx_question_id (question_bank_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            );
+        } catch (Throwable $e) {
+        }
+    }
+
+    private function getQuestionCollectionsForTeacher(int $teacherId): array
+    {
+        $this->ensureQuestionCollectionTables();
+        $db = $this->db();
+        $stmt = $db->prepare("SELECT * FROM question_collections WHERE created_by = ? ORDER BY created_at DESC");
+        $stmt->execute([(int) $teacherId]);
+        return $stmt->fetchAll();
+    }
+
+    private function createQuestionCollectionRow(int $teacherId, string $title)
+    {
+        $this->ensureQuestionCollectionTables();
+        $title = trim($title);
+        if ($teacherId <= 0 || $title === '' || mb_strlen($title) > 255) {
+            return false;
+        }
+        $db = $this->db();
+        $stmt = $db->prepare("INSERT INTO question_collections (title, created_by) VALUES (?, ?)");
+        $ok = $stmt->execute([$title, (int) $teacherId]);
+        return $ok ? (int) $db->lastInsertId() : false;
+    }
+
+    private function deleteQuestionCollectionOwned(int $collectionId, int $teacherId): bool
+    {
+        $this->ensureQuestionCollectionTables();
+        $db = $this->db();
+        $stmt = $db->prepare("DELETE FROM question_collections WHERE id = ? AND created_by = ?");
+        return $stmt->execute([(int) $collectionId, (int) $teacherId]);
+    }
+
+    private function isCollectionOwnedByTeacher(int $collectionId, int $teacherId): bool
+    {
+        $this->ensureQuestionCollectionTables();
+        $db = $this->db();
+        $stmt = $db->prepare("SELECT id FROM question_collections WHERE id = ? AND created_by = ? LIMIT 1");
+        $stmt->execute([(int) $collectionId, (int) $teacherId]);
+        return (bool) $stmt->fetch();
+    }
+
+    private function getQuestionIdsForCollection(int $collectionId, int $teacherId): array
+    {
+        if (!$this->isCollectionOwnedByTeacher($collectionId, $teacherId)) {
+            return [];
+        }
+        $db = $this->db();
+        $stmt = $db->prepare("SELECT question_bank_id FROM question_collection_items WHERE collection_id = ?");
+        $stmt->execute([(int) $collectionId]);
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return array_map('intval', is_array($ids) ? $ids : []);
+    }
+
+    private function addQuestionToCollectionOwned(int $collectionId, int $questionBankId, int $teacherId): bool
+    {
+        if (!$this->isCollectionOwnedByTeacher($collectionId, $teacherId)) {
+            return false;
+        }
+        $db = $this->db();
+        $stmt = $db->prepare("INSERT IGNORE INTO question_collection_items (collection_id, question_bank_id) VALUES (?, ?)");
+        return $stmt->execute([(int) $collectionId, (int) $questionBankId]);
+    }
+
+    private function removeQuestionFromCollectionOwned(int $collectionId, int $questionBankId, int $teacherId): bool
+    {
+        if (!$this->isCollectionOwnedByTeacher($collectionId, $teacherId)) {
+            return false;
+        }
+        $db = $this->db();
+        $stmt = $db->prepare("DELETE FROM question_collection_items WHERE collection_id = ? AND question_bank_id = ?");
+        return $stmt->execute([(int) $collectionId, (int) $questionBankId]);
+    }
+
+    private function createQuestionBankQuestion(int $teacherId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty)
+    {
+        $db = $this->db();
+        $sql = "INSERT INTO question_bank (title, question_text, options_json, correct_answer, tags, difficulty, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $db->prepare($sql);
+        $json = json_encode(is_array($options) ? array_values($options) : []);
+        $ok = $stmt->execute([
+            $title,
+            (string) $questionText,
+            $json !== false ? $json : '[]',
+            (int) $correctAnswer,
+            $tags,
+            (string) $difficulty,
+            (int) $teacherId,
+        ]);
+        if (!$ok) {
+            return false;
+        }
+        return (int) $db->lastInsertId();
+    }
+
+    private function findQuestionBankOwned(int $questionId, int $teacherId): ?array
+    {
+        $db = $this->db();
+        $sql = "SELECT * FROM question_bank WHERE id = ? AND created_by = ? LIMIT 1";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $questionId, (int) $teacherId]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return null;
+        }
+        $d = json_decode($row['options_json'] ?? '[]', true);
+        $row['options'] = is_array($d) ? $d : [];
+        return $row;
+    }
+
+    private function updateQuestionBankOwned(int $questionId, int $teacherId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty): bool
+    {
+        $db = $this->db();
+        $sql = "UPDATE question_bank
+                SET title = ?, question_text = ?, options_json = ?, correct_answer = ?, tags = ?, difficulty = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND created_by = ?";
+        $stmt = $db->prepare($sql);
+        $json = json_encode(is_array($options) ? array_values($options) : []);
+        return $stmt->execute([
+            $title,
+            (string) $questionText,
+            $json !== false ? $json : '[]',
+            (int) $correctAnswer,
+            $tags,
+            (string) $difficulty,
+            (int) $questionId,
+            (int) $teacherId,
+        ]);
+    }
+
+    private function deleteQuestionBankOwned(int $questionId, int $teacherId): bool
+    {
+        $db = $this->db();
+        $stmt = $db->prepare("DELETE FROM question_bank WHERE id = ? AND created_by = ?");
+        return $stmt->execute([(int) $questionId, (int) $teacherId]);
     }
 
     private function validateQuestionBankFields(string $title, string $questionText, array $opts, int $correct, string $tags): array
