@@ -867,6 +867,37 @@ class AdminController extends BaseController {
                 $this->redirect('admin/sl-groupes');
                 return;
             }
+            $discussionRepository = $this->model('DiscussionRepository');
+            $discussions = $discussionRepository->fetchByGroup($id);
+            $members = $groupeRepository->fetchMembres($id);
+            $groupActivitySeries = $this->buildGroupActivitySeries($id, $discussions, $members);
+            $discussionIds = [];
+            foreach ($discussions as $d) {
+                $did = (int) ($d['id_discussion'] ?? $d['id'] ?? 0);
+                if ($did > 0) {
+                    $discussionIds[] = $did;
+                }
+            }
+            $chatMessagesTotal = 0;
+            if ($discussionIds !== []) {
+                try {
+                    require_once __DIR__ . '/../config/database.php';
+                    $pdo = getConnection();
+                    $placeholders = implode(',', array_fill(0, count($discussionIds), '?'));
+                    $stmt = $pdo->prepare(
+                        "SELECT COUNT(*) FROM discussion_messages WHERE discussion_id IN ({$placeholders})"
+                    );
+                    $stmt->execute($discussionIds);
+                    $chatMessagesTotal = (int) $stmt->fetchColumn();
+                } catch (Throwable $e) {
+                    $chatMessagesTotal = 0;
+                }
+            }
+            $groupEditorStats = [
+                'members' => count($members),
+                'discussions' => count($discussions),
+                'chat_messages' => $chatMessagesTotal,
+            ];
             $this->view('BackOffice/admin/sl_groupes/edit', [
                 'title' => 'Edit Group - APPOLIOS',
                 'description' => 'Update group',
@@ -875,6 +906,8 @@ class AdminController extends BaseController {
                 'old' => $_SESSION['sl_group_old'] ?? [],
                 'errors' => $_SESSION['sl_group_errors'] ?? [],
                 'flash' => $this->sessionService()->flashConsumeForView(),
+                'group_activity_series' => $groupActivitySeries,
+                'group_editor_stats' => $groupEditorStats,
             ]);
             unset($_SESSION['sl_group_old'], $_SESSION['sl_group_errors']);
             return;
