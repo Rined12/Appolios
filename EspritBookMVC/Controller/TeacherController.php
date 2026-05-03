@@ -5,12 +5,10 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Repository/UserRepository.php';
-require_once __DIR__ . '/../Repository/CourseRepository.php';
-require_once __DIR__ . '/../Model/Entity/EvenementEntity.php';
-require_once __DIR__ . '/../Model/Entity/EvenementRessourceEntity.php';
-require_once __DIR__ . '/../Presentation/bootstrap.php';
-require_once __DIR__ . '/../Model/Entity/UserEntity.php';
+require_once __DIR__ . '/../Model/Repositories.php';
+require_once __DIR__ . '/../Model/EventEntities.php';
+require_once __DIR__ . '/../Model/PresentationHelpers.php';
+require_once __DIR__ . '/../Model/UserAndMessagingEntities.php';
 
 class TeacherController extends BaseController {
 
@@ -40,7 +38,7 @@ class TeacherController extends BaseController {
      */
     protected function requireTeacher() {
         if (!$this->isTeacher()) {
-            $this->setFlash('error', 'Access denied. Teachers only.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Teachers only.');
             $this->redirect('login');
         }
     }
@@ -55,7 +53,7 @@ class TeacherController extends BaseController {
         $courseRepository = $this->model('CourseRepository');
 
         // Get stats
-        $myCourses = $courseRepository->getCoursesByTeacher($_SESSION['user_id']);
+        $myCourses = $courseRepository->fetchCoursesByTeacher($_SESSION['user_id']);
         $stats = [
             'total_courses' => count($myCourses),
             'total_students' => $courseRepository->countStudentsByTeacher($_SESSION['user_id']),
@@ -80,7 +78,7 @@ class TeacherController extends BaseController {
         $this->requireTeacher();
 
         $courseRepository = $this->model('CourseRepository');
-        $courses = $courseRepository->getCoursesByTeacher($_SESSION['user_id']);
+        $courses = $courseRepository->fetchCoursesByTeacher($_SESSION['user_id']);
 
         $data = [
             'title' => 'My Courses - APPOLIOS',
@@ -98,8 +96,8 @@ class TeacherController extends BaseController {
 
         $data = [
             'title' => 'Add Course - APPOLIOS',
-            'course_old' => $this->consumeSessionOld(),
-            'flash' => $this->getFlash()
+            'course_old' => $this->sessionService()->consumeOld(),
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/teacher/add_course', $data);
@@ -126,9 +124,9 @@ class TeacherController extends BaseController {
         if (empty($description)) $errors['description'] = 'Description is required';
 
         if (!empty($errors)) {
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
-            $this->setFlash('error', 'Please fix the errors below');
+            $this->sessionService()->flashPersist('error', 'Please fix the errors below');
             $this->redirect('teacher/add-course');
             return;
         }
@@ -143,10 +141,10 @@ class TeacherController extends BaseController {
         ]);
 
         if ($result) {
-            $this->setFlash('success', 'Course created successfully!');
+            $this->sessionService()->flashPersist('success', 'Course created successfully!');
             $this->redirect('teacher/courses');
         } else {
-            $this->setFlash('error', 'Failed to create course');
+            $this->sessionService()->flashPersist('error', 'Failed to create course');
             $this->redirect('teacher/add-course');
         }
     }
@@ -162,7 +160,7 @@ class TeacherController extends BaseController {
 
         // Check if course belongs to this teacher
         if (!$course || $course['created_by'] != $_SESSION['user_id']) {
-            $this->setFlash('error', 'Course not found or access denied');
+            $this->sessionService()->flashPersist('error', 'Course not found or access denied');
             $this->redirect('teacher/courses');
             return;
         }
@@ -170,7 +168,7 @@ class TeacherController extends BaseController {
         $data = [
             'title' => 'Edit Course - APPOLIOS',
             'course' => $course,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/teacher/edit_course', $data);
@@ -192,7 +190,7 @@ class TeacherController extends BaseController {
 
         // Check if course belongs to this teacher
         if (!$course || $course['created_by'] != $_SESSION['user_id']) {
-            $this->setFlash('error', 'Course not found or access denied');
+            $this->sessionService()->flashPersist('error', 'Course not found or access denied');
             $this->redirect('teacher/courses');
             return;
         }
@@ -206,9 +204,9 @@ class TeacherController extends BaseController {
         if (empty($description)) $errors['description'] = 'Description is required';
 
         if (!empty($errors)) {
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
-            $this->setFlash('error', 'Please fix the errors below');
+            $this->sessionService()->flashPersist('error', 'Please fix the errors below');
             $this->redirect('teacher/edit-course/' . $id);
             return;
         }
@@ -220,10 +218,10 @@ class TeacherController extends BaseController {
         ]);
 
         if ($result) {
-            $this->setFlash('success', 'Course updated successfully!');
+            $this->sessionService()->flashPersist('success', 'Course updated successfully!');
             $this->redirect('teacher/courses');
         } else {
-            $this->setFlash('error', 'Failed to update course');
+            $this->sessionService()->flashPersist('error', 'Failed to update course');
             $this->redirect('teacher/edit-course/' . $id);
         }
     }
@@ -239,7 +237,7 @@ class TeacherController extends BaseController {
 
         // Check if course belongs to this teacher
         if (!$course || $course['created_by'] != $_SESSION['user_id']) {
-            $this->setFlash('error', 'Course not found or access denied');
+            $this->sessionService()->flashPersist('error', 'Course not found or access denied');
             $this->redirect('teacher/courses');
             return;
         }
@@ -247,9 +245,9 @@ class TeacherController extends BaseController {
         $result = $courseRepository->delete($id);
 
         if ($result) {
-            $this->setFlash('success', 'Course deleted successfully!');
+            $this->sessionService()->flashPersist('success', 'Course deleted successfully!');
         } else {
-            $this->setFlash('error', 'Failed to delete course');
+            $this->sessionService()->flashPersist('error', 'Failed to delete course');
         }
 
         $this->redirect('teacher/courses');
@@ -266,18 +264,19 @@ class TeacherController extends BaseController {
 
         // Check if course belongs to this teacher
         if (!$course || $course['created_by'] != $_SESSION['user_id']) {
-            $this->setFlash('error', 'Course not found or access denied');
+            $this->sessionService()->flashPersist('error', 'Course not found or access denied');
             $this->redirect('teacher/courses');
             return;
         }
 
         // Get enrolled students
-        $students = $courseRepository->getEnrolledStudents($id);
+        $students = $courseRepository->fetchEnrolledStudents($id);
 
         $data = [
             'title' => htmlspecialchars($course['title']) . ' - APPOLIOS',
             'course' => $course,
-            'students' => $students
+            'students' => $students,
+            'course_video_payload' => CourseVideoPresenter::normalizeVideo((string) ($course['video_url'] ?? '')),
         ];
 
         $this->view('FrontOffice/teacher/course_detail', $data);
@@ -292,16 +291,23 @@ class TeacherController extends BaseController {
         $userRepository = $this->model('UserRepository');
         $userRow = $userRepository->findById($_SESSION['user_id']);
         if (!is_array($userRow)) {
-            $this->setFlash('error', 'User not found.');
+            $this->sessionService()->flashPersist('error', 'User not found.');
             $this->redirect('login');
             return;
         }
-        $profileUser = UserEntity::fromPersistedRow($userRow);
+        $profileUser = new UserEntity(
+            isset($userRow['id']) ? (int) $userRow['id'] : null,
+            (string) ($userRow['name'] ?? ''),
+            (string) ($userRow['email'] ?? ''),
+            isset($userRow['password']) ? (string) $userRow['password'] : null,
+            (string) ($userRow['role'] ?? 'student'),
+            isset($userRow['created_at']) ? (string) $userRow['created_at'] : null
+        );
 
         $data = [
             'title' => 'My Profile - APPOLIOS',
             'profile_user' => $profileUser,
-            'flash_banner' => FlashBannerPresenter::fromSessionFlash($this->getFlash()),
+            'flash_banner' => FlashBannerPresenter::fromFlash($this->sessionService()->takeFlash()),
         ];
 
         $this->view('FrontOffice/teacher/edit_profile', $data);
@@ -365,7 +371,7 @@ class TeacherController extends BaseController {
         }
 
         if (!empty($errors)) {
-            $this->setFlash('error', implode("\n", $errors));
+            $this->sessionService()->flashPersist('error', implode("\n", $errors));
             $this->redirect('teacher/edit-profile');
             return;
         }
@@ -385,9 +391,9 @@ class TeacherController extends BaseController {
             $_SESSION['user_name'] = $name;
             $_SESSION['user_email'] = $email;
 
-            $this->setFlash('success', 'Profile updated successfully!');
+            $this->sessionService()->flashPersist('success', 'Profile updated successfully!');
         } else {
-            $this->setFlash('error', 'Failed to update profile. Please try again.');
+            $this->sessionService()->flashPersist('error', 'Failed to update profile. Please try again.');
         }
 
         $this->redirect('teacher/profile');
@@ -406,7 +412,7 @@ class TeacherController extends BaseController {
         $data = [
             'title' => 'My Evenements - APPOLIOS',
             'evenements' => $evenements,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/teacher/evenements', $data);
@@ -427,8 +433,8 @@ class TeacherController extends BaseController {
 
         $data = [
             'title' => 'Propose Evenement - APPOLIOS',
-            'flash' => $this->getFlash(),
-            'evenement_old' => $this->consumeSessionOld(),
+            'flash' => $this->sessionService()->flashConsumeForView(),
+            'evenement_old' => $this->sessionService()->consumeOld(),
             'evenement_min_date' => DisplayFormatter::formMinDateTomorrow(),
         ];
 
@@ -450,7 +456,7 @@ class TeacherController extends BaseController {
         $errors = $this->validateEvenementPayload($payload);
 
         if (!empty($errors)) {
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
             $this->redirect('teacher/add-evenement');
             return;
@@ -477,7 +483,7 @@ class TeacherController extends BaseController {
         ]);
 
         if ($result) {
-            $this->setFlash('success', 'Evenement submitted to admin for approval.');
+            $this->sessionService()->flashPersist('success', 'Evenement submitted to admin for approval.');
             if (isset($_POST['action']) && $_POST['action'] === 'save_and_resources') {
                 $this->redirect('teacher/evenement-ressources&evenement_id=' . $result);
             } else {
@@ -486,7 +492,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $this->setFlash('error', 'Failed to create evenement request.');
+        $this->sessionService()->flashPersist('error', 'Failed to create evenement request.');
         $this->redirect('teacher/add-evenement');
     }
 
@@ -499,12 +505,12 @@ class TeacherController extends BaseController {
         $evenement = $this->model('EvenementRepository')->findByIdAndCreator((int) $id, (int) $_SESSION['user_id']);
 
         if (!$evenement) {
-            $this->setFlash('error', 'Evenement not found or access denied.');
+            $this->sessionService()->flashPersist('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
             return;
         }
 
-        $old = $this->consumeSessionOld();
+        $old = $this->sessionService()->consumeOld();
         $form = [
             'title' => $old['title'] ?? ($evenement['titre'] ?? $evenement['title'] ?? ''),
             'description' => $old['description'] ?? ($evenement['description'] ?? ''),
@@ -527,7 +533,7 @@ class TeacherController extends BaseController {
             'evenement_min_date' => DisplayFormatter::formMinDateTomorrow(),
             'evenement_approval_label' => $approval,
             'evenement_approval_heading_color' => $approvalHeadingColor,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/teacher/edit_evenement', $data);
@@ -547,7 +553,7 @@ class TeacherController extends BaseController {
 
         $existing = $this->model('EvenementRepository')->findByIdAndCreator((int) $id, (int) $_SESSION['user_id']);
         if (!$existing) {
-            $this->setFlash('error', 'Evenement not found or access denied.');
+            $this->sessionService()->flashPersist('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
             return;
         }
@@ -556,7 +562,7 @@ class TeacherController extends BaseController {
         $errors = $this->validateEvenementPayload($payload);
 
         if (!empty($errors)) {
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
             $this->redirect('teacher/edit-evenement/' . (int) $id);
             return;
@@ -580,7 +586,7 @@ class TeacherController extends BaseController {
         ]);
 
         if (!$result) {
-            $this->setFlash('error', 'Failed to update evenement.');
+            $this->sessionService()->flashPersist('error', 'Failed to update evenement.');
             $this->redirect('teacher/edit-evenement/' . (int) $id);
             return;
         }
@@ -589,9 +595,9 @@ class TeacherController extends BaseController {
         $needsReview = in_array($status, ['approved', 'rejected']);
         if ($needsReview) {
             $this->model('EvenementRepository')->markNonPendingAsPending((int) $id);
-            $this->setFlash('success', 'Evenement updated and sent back to pending approval.');
+            $this->sessionService()->flashPersist('success', 'Evenement updated and sent back to pending approval.');
         } else {
-            $this->setFlash('success', 'Evenement updated successfully.');
+            $this->sessionService()->flashPersist('success', 'Evenement updated successfully.');
         }
 
         $this->redirect('teacher/evenements');
@@ -606,23 +612,23 @@ class TeacherController extends BaseController {
         $evenement = $this->model('EvenementRepository')->findByIdAndCreator((int) $id, (int) $_SESSION['user_id']);
 
         if (!$evenement) {
-            $this->setFlash('error', 'Evenement not found or access denied.');
+            $this->sessionService()->flashPersist('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
             return;
         }
 
         $status = $evenement['approval_status'] ?? 'approved';
         if ($status !== 'pending' && $status !== 'rejected') {
-            $this->setFlash('error', 'You can only delete pending or rejected evenements. Approved events cannot be deleted.');
+            $this->sessionService()->flashPersist('error', 'You can only delete pending or rejected evenements. Approved events cannot be deleted.');
             $this->redirect('teacher/evenements');
             return;
         }
 
         $result = $this->model('EvenementRepository')->delete((int) $id);
         if ($result) {
-            $this->setFlash('success', 'Pending evenement deleted successfully.');
+            $this->sessionService()->flashPersist('success', 'Pending evenement deleted successfully.');
         } else {
-            $this->setFlash('error', 'Failed to delete evenement.');
+            $this->sessionService()->flashPersist('error', 'Failed to delete evenement.');
         }
 
         $this->redirect('teacher/evenements');
@@ -636,14 +642,14 @@ class TeacherController extends BaseController {
 
         $eventId = (int) ($_GET['evenement_id'] ?? 0);
         if ($eventId <= 0) {
-            $this->setFlash('error', 'Please choose an evenement first.');
+            $this->sessionService()->flashPersist('error', 'Please choose an evenement first.');
             $this->redirect('teacher/evenements');
             return;
         }
 
         $event = $this->model('EvenementRepository')->findByIdAndCreator($eventId, (int) $_SESSION['user_id']);
         if (!$event) {
-            $this->setFlash('error', 'Evenement not found or access denied.');
+            $this->sessionService()->flashPersist('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
             return;
         }
@@ -659,7 +665,7 @@ class TeacherController extends BaseController {
 
         $resRepo = $this->model('EvenementRessourceRepository');
         $participationsList = $resRepo->findParticipationsByEvent($eventId);
-        $flash = $this->getFlash();
+        $flash = $this->sessionService()->flashConsumeForView();
 
         $data = [
             'title' => 'Evenement Resources - APPOLIOS',
@@ -671,7 +677,7 @@ class TeacherController extends BaseController {
             'plans' => $resRepo->findByTypeAndEvent('plan', $eventId),
             'participations' => ParticipationRequestRowPresenter::decorateList($participationsList),
             'participation_rollup' => ParticipationRollupPresenter::rollup($participationsList),
-            'ressource_old' => $this->consumeSessionOld(),
+            'ressource_old' => $this->sessionService()->consumeOld(),
             'flash' => $flash,
             'participation_modal_open' => $flash !== null,
         ];
@@ -717,7 +723,7 @@ class TeacherController extends BaseController {
                 exit();
             }
 
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
             $this->redirect('teacher/evenement-ressources&evenement_id=' . $eventId);
             return;
@@ -748,7 +754,7 @@ class TeacherController extends BaseController {
                 exit();
             }
 
-            $this->setFlash('success', 'Resource saved successfully. Event approval set to pending if it was previously approved or rejected.');
+            $this->sessionService()->flashPersist('success', 'Resource saved successfully. Event approval set to pending if it was previously approved or rejected.');
         } else {
             if ($isAjax) {
                 header('Content-Type: application/json');
@@ -759,7 +765,7 @@ class TeacherController extends BaseController {
                 ]);
                 exit();
             }
-            $this->setFlash('error', 'Save verification failed. Check the right list and try again.');
+            $this->sessionService()->flashPersist('error', 'Save verification failed. Check the right list and try again.');
         }
 
         $this->redirect('teacher/evenement-ressources&evenement_id=' . $eventId);
@@ -781,21 +787,21 @@ class TeacherController extends BaseController {
         $details = $this->sanitize($_POST['details'] ?? '');
 
         if ($eventId <= 0 || empty($title)) {
-            $this->setFlash('error', 'Please provide valid data before saving.');
+            $this->sessionService()->flashPersist('error', 'Please provide valid data before saving.');
             $this->redirect('teacher/evenement-ressources&evenement_id=' . $eventId . '&edit_id=' . (int) $id);
             return;
         }
 
         $event = $this->model('EvenementRepository')->findByIdAndCreator($eventId, (int) $_SESSION['user_id']);
         if (!$event) {
-            $this->setFlash('error', 'Evenement not found or access denied.');
+            $this->sessionService()->flashPersist('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
             return;
         }
 
         $resource = $this->model('EvenementRessourceRepository')->findById((int) $id);
         if (!$resource || (int) $resource['evenement_id'] !== $eventId) {
-            $this->setFlash('error', 'Resource not found for this evenement.');
+            $this->sessionService()->flashPersist('error', 'Resource not found for this evenement.');
             $this->redirect('teacher/evenement-ressources&evenement_id=' . $eventId);
             return;
         }
@@ -808,9 +814,9 @@ class TeacherController extends BaseController {
 
         if ($result) {
             $this->model('EvenementRepository')->markNonPendingAsPending($eventId);
-            $this->setFlash('success', 'Resource updated successfully.');
+            $this->sessionService()->flashPersist('success', 'Resource updated successfully.');
         } else {
-            $this->setFlash('error', 'Failed to update resource.');
+            $this->sessionService()->flashPersist('error', 'Failed to update resource.');
         }
 
         $this->redirect('teacher/evenement-ressources&evenement_id=' . $eventId);
@@ -829,14 +835,14 @@ class TeacherController extends BaseController {
 
         $eventId = (int) ($_POST['evenement_id'] ?? 0);
         if ($eventId <= 0) {
-            $this->setFlash('error', 'Invalid evenement context.');
+            $this->sessionService()->flashPersist('error', 'Invalid evenement context.');
             $this->redirect('teacher/evenements');
             return;
         }
 
         $event = $this->model('EvenementRepository')->findByIdAndCreator($eventId, (int) $_SESSION['user_id']);
         if (!$event) {
-            $this->setFlash('error', 'Evenement not found or access denied.');
+            $this->sessionService()->flashPersist('error', 'Evenement not found or access denied.');
             $this->redirect('teacher/evenements');
             return;
         }
@@ -845,9 +851,9 @@ class TeacherController extends BaseController {
 
         if ($result) {
             $this->model('EvenementRepository')->markNonPendingAsPending($eventId);
-            $this->setFlash('success', 'Resource deleted successfully.');
+            $this->sessionService()->flashPersist('success', 'Resource deleted successfully.');
         } else {
-            $this->setFlash('error', 'Failed to delete resource.');
+            $this->sessionService()->flashPersist('error', 'Failed to delete resource.');
         }
 
         $this->redirect('teacher/evenement-ressources&evenement_id=' . $eventId);
@@ -918,7 +924,7 @@ class TeacherController extends BaseController {
             'title' => 'Participation Requests - APPOLIOS',
             'participation_request_cards' => ParticipationRequestRowPresenter::decorateList($requests),
             'participation_counts' => ParticipationRollupPresenter::rollup($requests),
-            'flash_strip' => FlashBannerPresenter::fromSessionFlash($this->getFlash()),
+            'flash_strip' => FlashBannerPresenter::fromFlash($this->sessionService()->takeFlash()),
         ];
 
         $this->view('FrontOffice/teacher/participation_requests', $data);
@@ -937,15 +943,15 @@ class TeacherController extends BaseController {
 
         $participation = $this->model('EvenementRessourceRepository')->findParticipationById((int) $id);
         if (!$participation || !$this->model('EvenementRepository')->isCreatedBy((int) $participation['evenement_id'], (int) $_SESSION['user_id'])) {
-            $this->setFlash('error', 'Participation request not found or access denied.');
+            $this->sessionService()->flashPersist('error', 'Participation request not found or access denied.');
             $this->redirect('teacher/participation-requests');
             return;
         }
 
         if ($this->model('EvenementRessourceRepository')->updateParticipationStatusTeacher((int) $id, 'approved')) {
-            $this->setFlash('success', 'Participation approved.');
+            $this->sessionService()->flashPersist('success', 'Participation approved.');
         } else {
-            $this->setFlash('error', 'Failed to approve participation.');
+            $this->sessionService()->flashPersist('error', 'Failed to approve participation.');
         }
 
         $fromEventId = (int)($_POST['from_evenement_id'] ?? 0);
@@ -969,7 +975,7 @@ class TeacherController extends BaseController {
 
         $participation = $this->model('EvenementRessourceRepository')->findParticipationById((int) $id);
         if (!$participation || !$this->model('EvenementRepository')->isCreatedBy((int) $participation['evenement_id'], (int) $_SESSION['user_id'])) {
-            $this->setFlash('error', 'Participation request not found or access denied.');
+            $this->sessionService()->flashPersist('error', 'Participation request not found or access denied.');
             $this->redirect('teacher/participation-requests');
             return;
         }
@@ -977,9 +983,9 @@ class TeacherController extends BaseController {
         $reason = $this->sanitize($_POST['reason'] ?? 'No specific reason provided.');
 
         if ($this->model('EvenementRessourceRepository')->updateParticipationStatusTeacher((int) $id, 'rejected', $reason)) {
-            $this->setFlash('success', 'Participation rejected with reason.');
+            $this->sessionService()->flashPersist('success', 'Participation rejected with reason.');
         } else {
-            $this->setFlash('error', 'Failed to reject participation.');
+            $this->sessionService()->flashPersist('error', 'Failed to reject participation.');
         }
 
         $fromEventId = (int)($_POST['from_evenement_id'] ?? 0);
@@ -1003,7 +1009,7 @@ class TeacherController extends BaseController {
 
         $participation = $this->model('EvenementRessourceRepository')->findParticipationById((int) $id);
         if (!$participation || !$this->model('EvenementRepository')->isCreatedBy((int) $participation['evenement_id'], (int) $_SESSION['user_id'])) {
-            $this->setFlash('error', 'Access denied. You can only delete participations for events you created.');
+            $this->sessionService()->flashPersist('error', 'Access denied. You can only delete participations for events you created.');
             $this->redirect('teacher/participation-requests');
             return;
         }
@@ -1011,9 +1017,9 @@ class TeacherController extends BaseController {
         $deleted = $this->model('EvenementRessourceRepository')->deleteParticipationById((int) $id);
 
         if ($deleted > 0) {
-            $this->setFlash('success', 'Participation removed successfully.');
+            $this->sessionService()->flashPersist('success', 'Participation removed successfully.');
         } else {
-            $this->setFlash('error', 'Participation not found.');
+            $this->sessionService()->flashPersist('error', 'Participation not found.');
         }
 
         $fromEventId = (int)($_POST['from_evenement_id'] ?? 0);

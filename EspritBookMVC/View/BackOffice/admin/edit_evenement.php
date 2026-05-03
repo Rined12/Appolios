@@ -3,33 +3,18 @@
  * APPOLIOS - Edit Evenement Page (neo theme)
  */
 
-$old = $_SESSION['old'] ?? [];
-unset($_SESSION['old']);
-
-$minDate = date('Y-m-d', strtotime('+1 day'));
-
-$form = [
-    'title' => $old['title'] ?? ($evenement['titre'] ?? $evenement['title'] ?? ''),
-    'description' => $old['description'] ?? ($evenement['description'] ?? ''),
-    'date_debut' => $old['date_debut'] ?? ($evenement['date_debut'] ?? ''),
-    'date_fin' => $old['date_fin'] ?? ($evenement['date_fin'] ?? ''),
-    'heure_debut' => $old['heure_debut'] ?? (isset($evenement['heure_debut']) ? substr((string) $evenement['heure_debut'], 0, 5) : ''),
-    'heure_fin' => $old['heure_fin'] ?? (isset($evenement['heure_fin']) ? substr((string) $evenement['heure_fin'], 0, 5) : ''),
-    'lieu' => $old['lieu'] ?? (($evenement['lieu'] ?? '') ?: ($evenement['location'] ?? '')),
-    'capacite_max' => $old['capacite_max'] ?? ($evenement['capacite_max'] ?? ''),
-    'type' => $old['type'] ?? ($evenement['type'] ?? 'general'),
-    'statut' => $old['statut'] ?? ($evenement['statut'] ?? 'planifie')
-];
+$form = $form ?? [];
+$minDate = $minDate ?? date('Y-m-d', strtotime('+1 day'));
 ?>
 
-<div class="dashboard">
+<div class="dashboard student-events-page">
     <div class="container admin-dashboard-container" style="max-width: 1200px; width: 100%;">
         <div class="admin-layout">
             <?php $adminSidebarActive = 'evenements'; require __DIR__ . '/partials/sidebar.php'; ?>
 
-            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
+            <div class="admin-main">
                 
-                <section class="neo-auth-wrap" style="background: transparent; font-family: 'Inter', sans-serif;">
+                <div class="section neo-auth-wrap" style="background: transparent; font-family: 'Inter', sans-serif;">
                     
                     <div class="neo-glass-card" style="width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(43, 72, 101, 0.08); border: 1px solid rgba(233, 241, 250, 0.8); overflow: hidden; display: flex; flex-direction: column;">
                         
@@ -149,7 +134,7 @@ $form = [
                         </div>
 
                     </div>
-                </section>
+                </div>
             </div>
         </div>
     </div>

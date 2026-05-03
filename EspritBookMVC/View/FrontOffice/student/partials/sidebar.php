@@ -6,14 +6,14 @@
 $studentSidebarActive = $studentSidebarActive ?? '';
 ?>
 
-<aside class="admin-sidebar student-space-sidebar">
+<div class="aside admin-sidebar student-space-sidebar">
     <div class="student-sidebar-panel">
         <a class="student-sidebar-brand" href="<?= APP_ENTRY ?>?url=student/dashboard" style="display: flex; align-items: center;">
             <span class="student-sidebar-brand-mark" aria-hidden="true">a</span>
             <span class="student-sidebar-brand-text">APPOLIOS</span>
         </a>
 
-        <nav class="admin-sidebar-nav student-sidebar-nav" aria-label="Front Office Navigation">
+        <div class="nav admin-sidebar-nav student-sidebar-nav" aria-label="Front Office Navigation">
             <a href="<?= APP_ENTRY ?>?url=student/dashboard" class="admin-side-link <?= $studentSidebarActive === 'dashboard' ? 'active' : '' ?>">
                 <span class="admin-side-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -98,6 +98,6 @@ $studentSidebarActive = $studentSidebarActive ?? '';
                 </span>
                 <span>Profile</span>
             </a>
-        </nav>
+        </div>
     </div>
-</aside>
+</div>

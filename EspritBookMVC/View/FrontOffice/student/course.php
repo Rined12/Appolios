@@ -4,9 +4,9 @@
  */
 ?>
 
-<section class="neo-page">
+<div class="section neo-page">
     <div class="neo-container neo-main-stack">
-        <header class="neo-glass-card neo-toolbar">
+        <div class="header neo-glass-card neo-toolbar">
             <div>
                 <p style="margin: 0 0 0.4rem;"><a class="neo-btn neo-btn-outline" href="<?= APP_ENTRY ?>?url=student/dashboard"><i class="bi bi-arrow-left"></i>Back to Dashboard</a></p>
                 <h1><?= htmlspecialchars($course['title']) ?></h1>
@@ -15,64 +15,60 @@
             <?php if ($isEnrolled): ?>
                 <span class="neo-badge success" style="font-size: 0.82rem;">Enrolled</span>
             <?php endif; ?>
-        </header>
+        </div>
 
         <div class="neo-split">
             <div class="neo-main-stack">
-                <section class="neo-glass-card" style="padding: 1rem;">
+                <div class="section neo-glass-card" style="padding: 1rem;">
                     <div class="neo-section-title">
                         <h2 style="font-size: 1.25rem;">Course Overview</h2>
                     </div>
                     <p class="neo-muted" style="margin-top: 0.55rem; line-height: 1.7;"><?= nl2br(htmlspecialchars((string) ($course['description'] ?? 'Course content will be updated soon.'))) ?></p>
-                </section>
+                </div>
 
-                <section class="neo-glass-card" style="padding: 1rem;">
+                <div class="section neo-glass-card" style="padding: 1rem;">
                     <div class="neo-section-title" style="margin-bottom: 0.75rem;">
                         <h2 style="font-size: 1.25rem;">Video Lesson</h2>
                     </div>
                     <div class="neo-video-frame">
-                        <?php
-                        $videoUrl = (string) ($course['video_url'] ?? '');
-                        if ($videoUrl !== '') {
-                            if (strpos($videoUrl, 'youtube.com') !== false || strpos($videoUrl, 'youtu.be') !== false) {
-                                if (strpos($videoUrl, 'youtu.be') !== false) {
-                                    $videoId = basename(parse_url($videoUrl, PHP_URL_PATH));
-                                } else {
-                                    parse_str(parse_url($videoUrl, PHP_URL_QUERY), $params);
-                                    $videoId = $params['v'] ?? '';
-                                }
-                                echo '<iframe src="https://www.youtube.com/embed/' . htmlspecialchars($videoId) . '" allowfullscreen></iframe>';
-                            } else {
-                                echo '<video controls><source src="' . htmlspecialchars($videoUrl) . '" type="video/mp4">Your browser does not support video playback.</video>';
-                            }
-                        } else {
-                            echo '<div style="height: 360px; display: grid; place-items: center; color: #94a3b8;">Video coming soon.</div>';
-                        }
-                        ?>
+                        <?php $cv = $course_video_payload ?? ['type' => 'none']; ?>
+                        <?php if (($cv['type'] ?? '') === 'youtube'): ?>
+                            <iframe src="<?= htmlspecialchars((string) ($cv['embed_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" allowfullscreen></iframe>
+                        <?php elseif (($cv['type'] ?? '') === 'mp4'): ?>
+                            <?php $videoUrl = htmlspecialchars((string) ($cv['src'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                            <object data="<?= $videoUrl ?>" type="video/mp4" width="640" height="360">
+                                <param name="src" value="<?= $videoUrl ?>">
+                                <param name="autoplay" value="false">
+                                <param name="controls" value="true">
+                                <a href="<?= $videoUrl ?>">Download video</a>
+                            </object>
+                        <?php else: ?>
+                            <div style="height: 360px; display: grid; place-items: center; color: #94a3b8;">Video coming soon.</div>
+                        <?php endif; ?>
                     </div>
-                </section>
+                </div>
 
                 <div class="neo-split" style="grid-template-columns: 1fr 1fr;">
-                    <section class="neo-glass-card neo-comments">
+                    <div class="section neo-glass-card neo-comments">
                         <h3 style="margin: 0 0 0.65rem; font-size: 1.1rem; font-family: 'Poppins', 'Inter', sans-serif;">Comments</h3>
-                        <article class="neo-comment-item">
+                        <div class="article neo-comment-item">
                             <strong style="font-size: 0.88rem; color: #e2e8f0;">Nour</strong>
                             <p class="neo-muted" style="margin: 0.25rem 0 0; font-size: 0.88rem;">Excellent explanation of architecture patterns.</p>
-                        </article>
-                        <article class="neo-comment-item">
+                        </div>
+                        <div class="article neo-comment-item">
                             <strong style="font-size: 0.88rem; color: #e2e8f0;">Yassine</strong>
                             <p class="neo-muted" style="margin: 0.25rem 0 0; font-size: 0.88rem;">Loved the practical examples and pacing.</p>
-                        </article>
-                    </section>
-                    <section class="neo-glass-card neo-notes">
+                        </div>
+                    </div>
+                    <div class="section neo-glass-card neo-notes">
                         <h3 style="margin: 0 0 0.65rem; font-size: 1.1rem; font-family: 'Poppins', 'Inter', sans-serif;">Personal Notes</h3>
                         <textarea placeholder="Write your learning notes here..."></textarea>
-                    </section>
+                    </div>
                 </div>
             </div>
 
-            <aside class="neo-main-stack">
-                <section class="neo-glass-card neo-profile-card">
+            <div class="aside neo-main-stack">
+                <div class="section neo-glass-card neo-profile-card">
                     <h3 style="margin: 0; font-size: 1.14rem; font-family: 'Poppins', 'Inter', sans-serif;">Progress Tracking</h3>
                     <div class="neo-progress-wrap" style="margin-top: 0.8rem;">
                         <div class="neo-progress-track"><div class="neo-progress-value" style="width: <?= $isEnrolled ? 65 : 15 ?>%;"></div></div>
@@ -83,9 +79,9 @@
                     <?php else: ?>
                         <a class="neo-btn neo-btn-warning" style="margin-top: 0.9rem; width: 100%;" href="<?= APP_ENTRY ?>?url=student/enroll/<?= (int) $course['id'] ?>">Enroll Now</a>
                     <?php endif; ?>
-                </section>
+                </div>
 
-                <section class="neo-glass-card neo-profile-card">
+                <div class="section neo-glass-card neo-profile-card">
                     <h3 style="margin: 0; font-size: 1.14rem; font-family: 'Poppins', 'Inter', sans-serif;">Achievements & Badges</h3>
                     <p class="neo-muted" style="margin: 0.35rem 0 0;">Earn badges by completing lessons and quizzes.</p>
                     <div class="neo-badges">
@@ -93,8 +89,8 @@
                         <span class="neo-badge success">Quick Starter</span>
                         <span class="neo-badge warning">Top Performer</span>
                     </div>
-                </section>
-            </aside>
+                </div>
+            </div>
         </div>
     </div>
-</section>
+</div>

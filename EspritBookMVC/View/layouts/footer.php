@@ -1,10 +1,10 @@
-</main>
+</div>
 
-<footer class="app-footer">
+<div class="app-footer footer">
     <div class="container app-footer-inner">
         <p>© <?= date('Y') ?> APPOLIOS. Built for professional e-learning workflows.</p>
     </div>
-</footer>
+</div>
 
 <script src="<?= APP_URL ?>/View/assets/vendor/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

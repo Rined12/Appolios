@@ -25,7 +25,7 @@ if (!empty($enrollments)) {
             <div class="admin-main">
                 
                 <!-- Welcome Banner -->
-                <section class="student-events-hero-top" style="margin-bottom: 2rem;">
+                <div class="section student-events-hero-top" style="margin-bottom: 2rem;">
                     <div class="student-events-hero-copy">
                         <span class="student-events-hero-kicker">Student Space</span>
                         <h1>Dashboard</h1>
@@ -40,14 +40,14 @@ if (!empty($enrollments)) {
                     </div>
 
                     <div class="student-events-hero-media" aria-hidden="true">
-                        <article class="student-events-visual-card student-events-visual-card-main">
+                        <div class="article student-events-visual-card student-events-visual-card-main">
                             <img src="<?= APP_URL ?>/View/assets/images/about/06.jpg" alt="Student studying" class="student-events-visual-img">
-                        </article>
-                        <article class="student-events-visual-card student-events-visual-card-sub">
+                        </div>
+                        <div class="article student-events-visual-card student-events-visual-card-sub">
                             <img src="<?= APP_URL ?>/View/assets/images/about/09.jpg" alt="Online learning" class="student-events-visual-img">
-                        </article>
+                        </div>
                     </div>
-                </section>
+                </div>
 
                 <!-- Stats Grid -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">

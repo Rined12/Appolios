@@ -1,97 +1,174 @@
 <?php
+// Canonical nested view path (replaces flat file; identical markup to former flat sibling).
+$studentSidebarActive = 'discussions';
 $foPrefix = $foPrefix ?? 'student';
-$studentSidebarActive = $studentSidebarActive ?? 'discussions';
-$old = $old ?? [];
-$discussion = $discussion ?? [];
-$formData = [
-    'id_groupe' => (int) ($old['id_groupe'] ?? ($discussion['id_groupe'] ?? 0)),
-    'titre' => (string) ($old['titre'] ?? ($discussion['titre'] ?? '')),
-    'contenu' => (string) ($old['contenu'] ?? ($discussion['contenu'] ?? '')),
-];
+$discussion_edit = $discussion_edit ?? ['discussion_id' => 0, 'update_url' => '#', 'selected_group_id' => 0, 'title_value' => '', 'content_value' => ''];
+$edit = $discussion_edit;
+$groups = $groups ?? [];
+$errors = $errors ?? [];
+$discussion_stats = $discussion_stats ?? null;
 ?>
-
-<div class="dashboard student-events-page">
+<div class="dashboard student-events-page collab-hub">
     <div class="container admin-dashboard-container">
         <div class="admin-layout">
             <?php require __DIR__ . '/../partials/sidebar.php'; ?>
             <div class="admin-main">
-                <div class="dashboard-header">
-                    <h1>Edit Discussion</h1>
+                <?php require __DIR__ . '/../partials/collab_hub_styles.php'; ?>
+
+                <div class="header collab-hero">
+                    <div class="collab-hero__inner">
+                        <div>
+                            <div class="collab-eyebrow"><i class="bi bi-sliders" aria-hidden="true"></i> Refine thread</div>
+                            <h1>Edit discussion</h1>
+                            <p>Update the title, body, or hosting group — permissions still follow ownership rules.</p>
+                        </div>
+                        <div class="collab-hero-actions">
+                            <a href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions" class="collab-btn-ghost">
+                                <i class="bi bi-arrow-left" aria-hidden="true"></i> Back
+                            </a>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="form-container" style="max-width: 760px;">
-                    <form method="POST" action="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions/<?= (int) ($discussion['id_discussion'] ?? 0) ?>/update" novalidate id="discussion-edit-form">
-                        <div class="form-group">
-                            <label for="id_groupe">Group</label>
-                            <select id="id_groupe" name="id_groupe">
-                                <option value="">Select a group</option>
-                                <?php foreach (($groups ?? []) as $group): ?>
-                                    <option value="<?= (int) $group['id_groupe'] ?>" <?= ($formData['id_groupe'] === (int) $group['id_groupe']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($group['nom_groupe']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="field-error" data-error-for="id_groupe" style="color:#ef4444;"><?= htmlspecialchars($errors['id_groupe'] ?? '') ?></div>
+                <div class="discussion-edit-grid" style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:1rem;align-items:start;">
+                    <div class="collab-form-shell" style="max-width:none;">
+                        <form method="POST" action="<?= htmlspecialchars((string) $edit['update_url'], ENT_QUOTES, 'UTF-8') ?>">
+                            <div class="form-group">
+                                <label>Group</label>
+                                <select name="id_groupe">
+                                    <?php foreach ($groups as $group): ?>
+                                        <option value="<?= (int) $group['id_groupe'] ?>" <?= ((int) $edit['selected_group_id'] === (int) $group['id_groupe']) ? 'selected' : '' ?>><?= htmlspecialchars((string) $group['nom_groupe'], ENT_QUOTES, 'UTF-8') ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if (!empty($errors['id_groupe'])): ?>
+                                    <div style="color:#dc2626;font-size:0.85rem;font-weight:600;margin-top:0.35rem;"><?= htmlspecialchars((string) $errors['id_groupe'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="form-group">
+                                <label>Title</label>
+                                <input type="text" name="titre" value="<?= htmlspecialchars((string) $edit['title_value'], ENT_QUOTES, 'UTF-8') ?>">
+                                <?php if (!empty($errors['titre'])): ?>
+                                    <div style="color:#dc2626;font-size:0.85rem;font-weight:600;margin-top:0.35rem;"><?= htmlspecialchars((string) $errors['titre'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <div class="form-group">
+                                <label>Content</label>
+                                <textarea name="contenu"><?= htmlspecialchars((string) $edit['content_value'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                                <?php if (!empty($errors['contenu'])): ?>
+                                    <div style="color:#dc2626;font-size:0.85rem;font-weight:600;margin-top:0.35rem;"><?= htmlspecialchars((string) $errors['contenu'], ENT_QUOTES, 'UTF-8') ?></div>
+                                <?php endif; ?>
+                            </div>
+                            <button type="submit" class="collab-btn-primary">
+                                <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Update discussion
+                            </button>
+                        </form>
+                    </div>
+
+                    <?php if (!empty($discussion_stats)): ?>
+                    <div class="aside collab-detail-sidecard" style="padding:1rem 1rem 1.1rem;">
+                        <h3 style="margin-bottom:.6rem;">Owner Message Stats</h3>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.7rem;">
+                            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.6rem .7rem;">
+                                <div style="font-size:.72rem;color:#64748b;font-weight:700;">Group messages</div>
+                                <div style="font-size:1.2rem;color:#0f172a;font-weight:800;"><?= (int) ($discussion_stats['total_messages'] ?? 0) ?></div>
+                            </div>
+                            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.6rem .7rem;">
+                                <div style="font-size:.72rem;color:#64748b;font-weight:700;">Your messages</div>
+                                <div style="font-size:1.2rem;color:#0f172a;font-weight:800;"><?= (int) ($discussion_stats['owner_messages'] ?? 0) ?></div>
+                            </div>
+                            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.6rem .7rem;">
+                                <div style="font-size:.72rem;color:#64748b;font-weight:700;">Current message words</div>
+                                <div style="font-size:1.2rem;color:#0f172a;font-weight:800;"><?= (int) ($discussion_stats['current_message_words'] ?? 0) ?></div>
+                            </div>
+                            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:.6rem .7rem;">
+                                <div style="font-size:.72rem;color:#64748b;font-weight:700;">Avg/day</div>
+                                <div style="font-size:1.2rem;color:#0f172a;font-weight:800;"><?= htmlspecialchars((string) ($discussion_stats['avg_messages_per_day'] ?? '0')) ?></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="titre">Title</label>
-                            <input type="text" id="titre" name="titre" value="<?= htmlspecialchars($formData['titre']) ?>">
-                            <div class="field-error" data-error-for="titre" style="color:#ef4444;"><?= htmlspecialchars($errors['titre'] ?? '') ?></div>
+                        <div style="height:180px;margin-bottom:.7rem;">
+                            <div id="discussionActivityChart"></div>
                         </div>
-                        <div class="form-group">
-                            <label for="contenu">Content</label>
-                            <textarea id="contenu" name="contenu" rows="6"><?= htmlspecialchars($formData['contenu']) ?></textarea>
-                            <div class="field-error" data-error-for="contenu" style="color:#ef4444;"><?= htmlspecialchars($errors['contenu'] ?? '') ?></div>
+                        <div style="font-size:.78rem;color:#64748b;padding:.55rem .6rem;border-radius:9px;background:#f8fafc;border:1px dashed #cbd5e1;">
+                            Last activity: <strong style="color:#334155;"><?= htmlspecialchars((string) ($discussion_stats['last_activity_label'] ?? 'No activity yet')) ?></strong>
                         </div>
-                        <button type="submit" class="btn btn-yellow">Update Discussion</button>
-                    </form>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
+<style>
+@media (max-width: 1080px) {
+    .discussion-edit-grid { grid-template-columns: 1fr !important; }
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('discussion-edit-form');
-    if (!form) return;
-    const setError = (name, message) => {
-        const node = form.querySelector('[data-error-for="' + name + '"]');
-        if (node) node.textContent = message;
-    };
-    form.addEventListener('submit', function (event) {
-        const groupId = (form.querySelector('#id_groupe').value || '').trim();
-        const title = (form.querySelector('#titre').value || '').trim();
-        const content = (form.querySelector('#contenu').value || '').trim();
-        let hasError = false;
-        setError('id_groupe', '');
-        setError('titre', '');
-        setError('contenu', '');
-        if (groupId === '') {
-            setError('id_groupe', 'This field cannot be empty.');
-            hasError = true;
+(function () {
+    var host = document.getElementById('discussionActivityChart');
+    if (!host || !(window.Chart && typeof window.Chart === 'function')) { return; }
+    var c = document.createElement('canvas');
+    c.style.width = '100%';
+    c.style.height = '100%';
+    host.appendChild(c);
+    var labels = <?= json_encode(array_values($discussion_stats['series_labels'] ?? [])) ?>;
+    var groupData = <?= json_encode(array_values($discussion_stats['series_group_messages'] ?? [])) ?>;
+    var ownerData = <?= json_encode(array_values($discussion_stats['series_owner_messages'] ?? [])) ?>;
+    new window.Chart(c, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Group messages',
+                    data: groupData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.12)',
+                    fill: true,
+                    tension: 0.35,
+                    borderWidth: 2.2,
+                    pointRadius: 2
+                },
+                {
+                    label: 'Your messages',
+                    data: ownerData,
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34,197,94,0.06)',
+                    fill: false,
+                    tension: 0.35,
+                    borderWidth: 2.2,
+                    pointRadius: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: {
+                        boxWidth: 10,
+                        boxHeight: 10,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        color: '#334155',
+                        font: { size: 10, weight: '700' }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#64748b', maxRotation: 0, autoSkip: true, font: { size: 10 } }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(148,163,184,.2)' },
+                    ticks: { color: '#64748b', precision: 0, font: { size: 10 } }
+                }
+            }
         }
-        if (title.length === 0) {
-            setError('titre', 'This field cannot be empty.');
-            hasError = true;
-        } else if (title.length < 3) {
-            setError('titre', 'Title must be between 3 and 200 characters.');
-            hasError = true;
-        } else if (title.length > 200) {
-            setError('titre', 'Title must not exceed 200 characters.');
-            hasError = true;
-        }
-        if (content.length === 0) {
-            setError('contenu', 'This field cannot be empty.');
-            hasError = true;
-        } else if (content.length < 5) {
-            setError('contenu', 'Content must be between 5 and 5000 characters.');
-            hasError = true;
-        } else if (content.length > 5000) {
-            setError('contenu', 'Content must not exceed 5000 characters.');
-            hasError = true;
-        }
-        if (hasError) event.preventDefault();
     });
-});
+})();
 </script>

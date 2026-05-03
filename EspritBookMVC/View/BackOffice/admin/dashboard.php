@@ -4,29 +4,34 @@
  */
 ?>
 
-<div class="dashboard">
+<div class="dashboard student-events-page">
     <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
         <div class="admin-layout">
             <?php $adminSidebarActive = 'dashboard'; require __DIR__ . '/partials/sidebar.php'; ?>
 
-            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0; font-family: 'Inter', sans-serif;">
+            <div class="admin-main">
                 
-                <!-- Welcome Banner -->
-                <div style="background: linear-gradient(135deg, #2B4865 0%, #355C7D 100%); border-radius: 20px; padding: 2.5rem; margin-bottom: 2rem; color: white; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(43, 72, 101, 0.15);">
-                    <div style="position: absolute; right: -50px; top: -50px; opacity: 0.1; transform: scale(2);">
-                        <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6M6 20V10M18 20V4"/></svg>
-                    </div>
-                    <div style="position: absolute; left: -20px; bottom: -50px; width: 150px; height: 150px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
-                    
-                    <div style="position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
-                        <div>
-                            <h1 style="font-size: 2.2rem; font-weight: 800; margin: 0 0 0.5rem 0; color: white;">Overview Dashboard</h1>
-                            <p style="font-size: 1.1rem; margin: 0; opacity: 0.9; color: white;">Welcome back, <strong><?= htmlspecialchars($_SESSION['user_name'] ?? 'Admin') ?></strong>. Here is what is happening today.</p>
+                <div class="section student-events-hero-top" style="margin-bottom: 2rem;">
+                    <div class="student-events-hero-copy">
+                        <span class="student-events-hero-kicker">Admin console</span>
+                        <h1>Overview dashboard</h1>
+                        <p>Welcome back, <strong><?= htmlspecialchars((string) ($admin_display_name ?? 'Admin')) ?></strong>. Here is what is happening today.</p>
+
+                        <div style="margin-top: 1.5rem;">
+                            <a href="<?= APP_ENTRY ?>?url=logout" class="student-courses-hero-btn student-courses-hero-btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; text-decoration: none;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                Logout
+                            </a>
                         </div>
-                        <a href="<?= APP_ENTRY ?>?url=logout" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; text-decoration: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; display: flex; align-items: center; gap: 8px; backdrop-filter: blur(5px); transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                            Logout
-                        </a>
+                    </div>
+
+                    <div class="student-events-hero-media" aria-hidden="true">
+                        <div class="article student-events-visual-card student-events-visual-card-main">
+                            <img src="<?= APP_URL ?>/View/assets/images/about/06.jpg" alt="" class="student-events-visual-img">
+                        </div>
+                        <div class="article student-events-visual-card student-events-visual-card-sub">
+                            <img src="<?= APP_URL ?>/View/assets/images/about/09.jpg" alt="" class="student-events-visual-img">
+                        </div>
                     </div>
                 </div>
 

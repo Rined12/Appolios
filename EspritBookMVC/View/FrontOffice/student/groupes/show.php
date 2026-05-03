@@ -1,167 +1,124 @@
 <?php
+// Canonical nested view path (replaces flat file; identical markup to former flat sibling).
 $foPrefix = $foPrefix ?? 'student';
-$studentSidebarActive = $studentSidebarActive ?? 'groupes';
-$groupCover = trim((string) ($groupe['image_url'] ?? $groupe['photo'] ?? $groupe['image'] ?? ''));
-$groupeApproval = (string) ($groupe['approval_statut'] ?? '');
-$groupeApprouve = $groupeApproval === 'approuve';
-$viewerId = (int) ($_SESSION['user_id'] ?? 0);
-$isGroupCreatorViewer = (int) ($groupe['id_createur'] ?? $groupe['created_by'] ?? 0) === $viewerId;
+$discussion_cards = $discussion_cards ?? [];
+$discussion_error_messages = $discussion_error_messages ?? [];
+$discussion_old = $discussion_old ?? [];
+$member_chips = $member_chips ?? [];
+$group_cover_url = (string) ($group_cover_url ?? '');
+$is_owner_viewer = (bool) ($is_owner_viewer ?? false);
 ?>
-
-<div class="dashboard student-events-page">
+<div class="dashboard student-events-page collab-hub collab-hub--detail">
     <div class="container admin-dashboard-container">
         <div class="admin-layout">
-            <?php require __DIR__ . '/../partials/group_discussion_sidebar.php'; ?>
+            <?php require __DIR__ . '/../partials/sidebar.php'; ?>
             <div class="admin-main">
-                <?php if (!$groupeApprouve): ?>
-                <div style="margin-bottom:16px;padding:14px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;color:#7c2d12;">
-                    <strong>En cours d&apos;approbation</strong>
-                    <p style="margin:6px 0 0;font-size:14px;">
-                        <?php if ($groupeApproval === 'rejete'): ?>
-                            Ce groupe a ete rejete par l administrateur. Vous pouvez le modifier pour le soumettre a nouveau.
-                        <?php else: ?>
-                            Ce groupe est en attente de validation par un administrateur (approuve ou rejete). Il n apparait pas dans la liste publique tant qu il n est pas approuve.
+                <?php require __DIR__ . '/../partials/collab_hub_styles.php'; ?>
+
+                <div class="collab-detail-hero">
+                    <div class="collab-detail-banner">
+                        <?php if ($group_cover_url !== ''): ?>
+                            <img src="<?= htmlspecialchars($group_cover_url) ?>" alt="<?= htmlspecialchars($groupe['nom_groupe'] ?? 'Group') ?>" loading="lazy" onerror="this.style.display='none';">
                         <?php endif; ?>
-                    </p>
-                </div>
-                <?php endif; ?>
-                <?php if ($groupCover !== ''): ?>
-                <div style="margin-bottom:18px;">
-                    <img src="<?= htmlspecialchars($groupCover) ?>" alt="" style="width:100%;max-height:240px;object-fit:cover;border-radius:14px;border:1px solid #e2e8f0;">
-                </div>
-                <?php endif; ?>
-                <div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;">
-                    <div>
-                        <h1><?= htmlspecialchars($groupe['nom_groupe'] ?? 'Group') ?></h1>
-                        <p><?= htmlspecialchars($groupe['description'] ?? '') ?></p>
-                    </div>
-                    <div style="display:flex;gap:10px;">
-                        <?php if ($isGroupCreatorViewer): ?>
-                            <a class="btn btn-primary" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $groupe['id_groupe'] ?>/edit">Edit</a>
-                            <a class="btn action-btn danger" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $groupe['id_groupe'] ?>/delete" onclick="return confirm('Supprimer ce groupe et toutes ses discussions ?');">Delete group</a>
-                        <?php endif; ?>
-                        <?php if ($groupeApprouve && !$isMembre): ?>
-                            <a class="btn btn-yellow" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $groupe['id_groupe'] ?>/join">Join</a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="table-container">
-                    <div class="table-header"><h3 style="margin:0;">Members</h3></div>
-                    <div class="table-responsive">
-                        <table>
-                            <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
-                            <tbody>
-                                <?php if (!empty($membres)): foreach ($membres as $m): ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($m['name']) ?></td>
-                                        <td><?= htmlspecialchars($m['email']) ?></td>
-                                        <td><?= htmlspecialchars($m['role']) ?></td>
-                                    </tr>
-                                <?php endforeach; else: ?>
-                                    <tr><td colspan="3" style="text-align:center;padding:30px;">No members yet.</td></tr>
+                        <div class="collab-detail-banner__inner">
+                            <div class="collab-eyebrow" style="opacity:.95;"><i class="bi bi-diagram-3-fill" aria-hidden="true"></i> Group workspace</div>
+                            <h1><?= htmlspecialchars($groupe['nom_groupe'] ?? 'Group') ?></h1>
+                            <p><?= htmlspecialchars((string) ($groupe['description'] ?? '')) ?></p>
+                            <div style="margin-top:1rem;display:flex;flex-wrap:wrap;gap:0.5rem;">
+                                <a class="collab-btn-primary" target="_blank" rel="noopener" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $groupe['id_groupe'] ?>/activity-report">
+                                    <i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i> Activity report (PDF)
+                                </a>
+                                <?php if ($is_owner_viewer): ?>
+                                    <a class="collab-btn-primary" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $groupe['id_groupe'] ?>/edit" style="background:linear-gradient(135deg,#475569,#334155);">
+                                        <i class="bi bi-pencil-square" aria-hidden="true"></i> Edit group
+                                    </a>
                                 <?php endif; ?>
-                            </tbody>
-                        </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="aside collab-detail-sidecard">
+                        <h3>Members</h3>
+                        <?php if (!empty($member_chips)): ?>
+                            <div class="collab-member-row">
+                                <?php foreach ($member_chips as $chip): ?>
+                                    <div class="collab-member-chip">
+                                        <span class="collab-member-avatar"><?= htmlspecialchars((string) ($chip['avatar_initial'] ?? '?')) ?></span>
+                                        <span><?= htmlspecialchars((string) ($chip['display_name'] ?? 'Member')) ?></span>
+                                        <span class="collab-role-tag"><?= htmlspecialchars((string) ($chip['role_label'] ?? '')) ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <p style="margin:0;color:var(--ch-muted);font-size:0.9rem;">No members yet.</p>
+                        <?php endif; ?>
+                        <div style="margin-top:1.25rem;">
+                            <a href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes" class="collab-chip-btn collab-chip-btn--muted">
+                                <i class="bi bi-arrow-left" aria-hidden="true"></i> All groups
+                            </a>
+                        </div>
                     </div>
                 </div>
 
-                <div class="table-container" style="margin-top: 18px; padding: 16px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;">
-                        <h3 style="margin:0;">Discussions</h3>
-                        <?php if ($isGroupCreatorViewer): ?>
-                            <span style="font-size:12px; color:#64748b;">You are the group creator</span>
-                        <?php endif; ?>
-                    </div>
+                <div class="section collab-thread-panel">
+                    <h3><i class="bi bi-chat-text-fill" style="color:var(--ch-teal-soft);margin-right:.35rem;" aria-hidden="true"></i> Discussions</h3>
 
-                    <?php if ($isGroupCreatorViewer): ?>
-                        <form method="POST" action="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $groupe['id_groupe'] ?>/discussions/store" novalidate id="group-discussion-form" style="margin-bottom:16px;">
-                            <div class="form-group">
-                                <label for="discussion_title">Title</label>
-                                <input type="text" id="discussion_title" name="titre" value="<?= htmlspecialchars($discussionOld['titre'] ?? '') ?>">
-                                <div class="field-error" data-error-for="titre" style="color:#ef4444;"><?= htmlspecialchars($discussionErrors['titre'] ?? '') ?></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="discussion_content">Content</label>
-                                <textarea id="discussion_content" name="contenu" rows="4"><?= htmlspecialchars($discussionOld['contenu'] ?? '') ?></textarea>
-                                <div class="field-error" data-error-for="contenu" style="color:#ef4444;"><?= htmlspecialchars($discussionErrors['contenu'] ?? '') ?></div>
-                            </div>
-                            <button class="btn btn-yellow" type="submit">Create Discussion</button>
-                        </form>
+                    <?php if ($is_owner_viewer): ?>
+                        <div class="collab-compose">
+                            <div style="font-size:0.78rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--ch-muted);margin-bottom:0.65rem;">Spin up a new thread</div>
+                            <?php if (!empty($discussion_error_messages)): ?>
+                                <div class="collab-alert-soft" style="border-color:rgba(239,68,68,0.35);background:linear-gradient(135deg,#fef2f2,#fff);color:#991b1b;">
+                                    <?php foreach ($discussion_error_messages as $err): ?>
+                                        <div><?= htmlspecialchars((string) $err) ?></div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                            <form method="POST" action="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $groupe['id_groupe'] ?>/discussions/store">
+                                <div class="form-group">
+                                    <label for="gd_title">Title</label>
+                                    <input id="gd_title" type="text" name="titre" placeholder="What should we talk about?" value="<?= htmlspecialchars((string) ($discussion_old['titre'] ?? '')) ?>">
+                                </div>
+                                <div class="form-group">
+                                    <label for="gd_body">First message</label>
+                                    <textarea id="gd_body" name="contenu" placeholder="Context, goals, links…"><?= htmlspecialchars((string) ($discussion_old['contenu'] ?? '')) ?></textarea>
+                                </div>
+                                <button class="collab-btn-primary" type="submit" style="box-shadow:none;"><i class="bi bi-send-fill" aria-hidden="true"></i> Publish discussion</button>
+                            </form>
+                        </div>
                     <?php endif; ?>
 
-                    <?php if (!empty($discussions)): ?>
-                        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:12px;">
-                            <?php foreach ($discussions as $d): ?>
-                                <article style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:12px;">
-                                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                                        <h4 style="margin:0; color:#1e293b;"><?= htmlspecialchars($d['titre'] ?? 'Discussion') ?></h4>
-                                    </div>
-                                    <p style="margin:0 0 10px 0; color:#64748b;"><?= htmlspecialchars(substr((string) ($d['contenu'] ?? ''), 0, 180)) ?></p>
-                                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;">
-                                        <span style="font-size:12px; color:#94a3b8;">By <?= htmlspecialchars($d['auteur_name'] ?? 'Unknown') ?></span>
-                                        <?php
-                                            $discId = (int) ($d['id_discussion'] ?? $d['id'] ?? 0);
-                                            $discAuthorId = (int) ($d['id_auteur'] ?? $d['created_by'] ?? 0);
-                                            $canDelDisc = $discId > 0 && ($discAuthorId === $viewerId || $isGroupCreatorViewer);
-                                        ?>
-                                        <?php if ($discId > 0): ?>
-                                            <a class="btn btn-primary" style="padding:4px 10px;font-size:12px;" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions/<?= $discId ?>/chat">Live Chat</a>
-                                        <?php endif; ?>
-                                        <?php if ($canDelDisc): ?>
-                                            <a class="btn action-btn danger" style="padding:4px 10px;font-size:12px;" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $groupe['id_groupe'] ?>/discussions/<?= $discId ?>/delete" onclick="return confirm('Supprimer cette discussion ?');">Delete</a>
-                                        <?php endif; ?>
-                                    </div>
-                                </article>
-                            <?php endforeach; ?>
-                        </div>
+                    <?php if (!empty($discussion_cards)): ?>
+                        <?php foreach ($discussion_cards as $c): ?>
+                            <div class="article collab-thread-card">
+                                <h4 class="collab-thread-card__title"><?= htmlspecialchars((string) ($c['title'] ?? 'Discussion'), ENT_QUOTES, 'UTF-8') ?></h4>
+                                <div class="collab-thread-meta">
+                                    <i class="bi bi-person-circle" aria-hidden="true"></i>
+                                    <?= htmlspecialchars((string) ($c['author_name'] ?? 'Unknown'), ENT_QUOTES, 'UTF-8') ?>
+                                </div>
+                                <p><?= htmlspecialchars((string) ($c['excerpt'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
+                                <div class="collab-card-actions">
+                                    <?php if (!empty($c['can_chat'])): ?>
+                                        <a class="collab-chip-btn collab-chip-btn--live" href="<?= htmlspecialchars((string) ($c['url_chat'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>">
+                                            <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> Open live chat
+                                        </a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($c['can_delete'])): ?>
+                                        <a class="collab-chip-btn collab-chip-btn--danger" href="<?= htmlspecialchars((string) ($c['url_delete'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>">
+                                            <i class="bi bi-trash" aria-hidden="true"></i> Delete
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     <?php else: ?>
-                        <p style="margin:0; color:#64748b;">No discussions yet in this group.</p>
+                        <div class="collab-empty" style="padding:2rem 1rem;">
+                            <div class="collab-empty-icon" aria-hidden="true">🧵</div>
+                            <h3>No threads yet</h3>
+                            <p style="max-width:420px;margin-left:auto;margin-right:auto;"><?= $is_owner_viewer ? 'Use the composer above to publish the first discussion for this group.' : 'The group owner has not started a conversation — check back soon.' ?></p>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('group-discussion-form');
-    if (!form) return;
-
-    const setError = (name, message) => {
-        const node = form.querySelector('[data-error-for="' + name + '"]');
-        if (node) node.textContent = message;
-    };
-
-    form.addEventListener('submit', function (event) {
-        const title = (form.querySelector('#discussion_title').value || '').trim();
-        const content = (form.querySelector('#discussion_content').value || '').trim();
-        let hasError = false;
-
-        setError('titre', '');
-        setError('contenu', '');
-
-        if (title.length === 0) {
-            setError('titre', 'This field cannot be empty.');
-            hasError = true;
-        } else if (title.length < 3) {
-            setError('titre', 'Title must be between 3 and 200 characters.');
-            hasError = true;
-        } else if (title.length > 200) {
-            setError('titre', 'Title must not exceed 200 characters.');
-            hasError = true;
-        }
-        if (content.length === 0) {
-            setError('contenu', 'This field cannot be empty.');
-            hasError = true;
-        } else if (content.length < 5) {
-            setError('contenu', 'Content must be between 5 and 5000 characters.');
-            hasError = true;
-        } else if (content.length > 5000) {
-            setError('contenu', 'Content must not exceed 5000 characters.');
-            hasError = true;
-        }
-        if (hasError) event.preventDefault();
-    });
-});
-</script>

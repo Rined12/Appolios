@@ -3,8 +3,7 @@
  * APPOLIOS - Admin Evenement Resources (premium neo theme)
  */
 
-$old = $_SESSION['old'] ?? [];
-unset($_SESSION['old']);
+$old = $old ?? [];
 $selectedEvenementId = (int) ($selectedEvenementId ?? 0);
 $selectedEvenementTitle = $selectedEvenement['title'] ?? $selectedEvenement['titre'] ?? '';
 $editResource = $editResource ?? null;
@@ -14,14 +13,14 @@ $admin_is_creator = (bool) ($admin_is_creator ?? false);
 
 ?>
 
-<div class="dashboard">
+<div class="dashboard student-events-page">
     <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
         <div class="admin-layout">
             <?php $adminSidebarActive = 'evenements'; require __DIR__ . '/partials/sidebar.php'; ?>
 
-            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
+            <div class="admin-main">
                 
-                <section class="neo-auth-wrap" style="background: transparent; font-family: 'Inter', sans-serif;">
+                <div class="section neo-auth-wrap" style="background: transparent; font-family: 'Inter', sans-serif;">
                     
                     <div class="neo-glass-card" style="width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(43, 72, 101, 0.08); border: 1px solid rgba(233, 241, 250, 0.8); overflow: hidden; display: flex; flex-direction: column;">
                         
@@ -325,7 +324,7 @@ $admin_is_creator = (bool) ($admin_is_creator ?? false);
                         </div>
 
                     </div>
-                </section>
+                </div>
                 
             </div>
         </div>

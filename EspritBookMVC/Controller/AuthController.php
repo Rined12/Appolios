@@ -5,9 +5,8 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Repository/UserRepository.php';
-require_once __DIR__ . '/../Repository/TeacherApplicationRepository.php';
-require_once __DIR__ . '/../Presentation/FlashBannerPresenter.php';
+require_once __DIR__ . '/../Model/Repositories.php';
+require_once __DIR__ . '/../Model/PresentationHelpers.php';
 
 class AuthController extends BaseController {
 
@@ -30,7 +29,7 @@ class AuthController extends BaseController {
         $data = [
             'title' => 'Sign In - APPOLIOS',
             'description' => 'Login to your APPOLIOS account',
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/auth/login', $data);
@@ -51,13 +50,13 @@ class AuthController extends BaseController {
 
         // Validation
         if (empty($email) || empty($password)) {
-            $this->setFlash('error', 'Please fill in all fields');
+            $this->sessionService()->flashPersist('error', 'Please fill in all fields');
             $this->redirect('login');
             return;
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->setFlash('error', 'Please enter a valid email address');
+            $this->sessionService()->flashPersist('error', 'Please enter a valid email address');
             $this->redirect('login');
             return;
         }
@@ -69,13 +68,13 @@ class AuthController extends BaseController {
         if ($user) {
             // Check if user is blocked
             if ($user['is_blocked'] ?? 0) {
-                $this->setFlash('error', 'Your account has been blocked. Please contact an administrator.');
+                $this->sessionService()->flashPersist('error', 'Your account has been blocked. Please contact an administrator.');
                 $this->redirect('login');
                 return;
             }
 
             if ($isAdminLogin && $user['role'] !== 'admin') {
-                $this->setFlash('error', 'Invalid admin email or password');
+                $this->sessionService()->flashPersist('error', 'Invalid admin email or password');
                 $this->redirect('admin/login');
                 return;
             }
@@ -91,7 +90,7 @@ class AuthController extends BaseController {
             $_SESSION['logged_in'] = true;
             $_SESSION['login_time'] = time();
 
-            $this->setFlash('success', 'Welcome back, ' . $user['name'] . '!');
+            $this->sessionService()->flashPersist('success', 'Welcome back, ' . $user['name'] . '!');
 
             // Redirect based on role
             if ($user['role'] === 'admin') {
@@ -102,7 +101,7 @@ class AuthController extends BaseController {
                 $this->redirect('student/dashboard');
             }
         } else {
-            $this->setFlash('error', 'Invalid email or password');
+            $this->sessionService()->flashPersist('error', 'Invalid email or password');
             if ($isAdminLogin) {
                 $this->redirect('admin/login');
             } else {
@@ -127,13 +126,13 @@ class AuthController extends BaseController {
             return;
         }
 
-        $flash = $this->getFlash();
+        $flashEntity = $this->sessionService()->takeFlash();
         $data = [
             'title' => 'Sign Up - APPOLIOS',
             'description' => 'Create your APPOLIOS account',
-            'flash_banner' => FlashBannerPresenter::fromSessionFlash($flash),
-            'register_old' => $this->consumeSessionOld(),
-            'register_inline_errors' => $this->consumeSessionInlineErrors(),
+            'flash_banner' => FlashBannerPresenter::fromFlash($flashEntity),
+            'register_old' => $this->sessionService()->consumeOld(),
+            'register_inline_errors' => $this->sessionService()->pullInlineRegistrationErrors(),
         ];
 
         $this->view('FrontOffice/auth/register', $data);
@@ -228,7 +227,7 @@ class AuthController extends BaseController {
             $cvPath = $uploadDir . $cvFileName;
 
             if (!move_uploaded_file($_FILES['cv_file']['tmp_name'], $cvPath)) {
-                $this->setFlash('error', 'Failed to upload CV file. Please try again.');
+                $this->sessionService()->flashPersist('error', 'Failed to upload CV file. Please try again.');
                 $_SESSION['old'] = ['name' => $name, 'email' => $email];
                 $this->redirect('register');
                 return;
@@ -244,12 +243,12 @@ class AuthController extends BaseController {
             ]);
 
             if ($appId) {
-                $this->setFlash('success', 'Your teacher application has been submitted successfully! An administrator will review your CV and notify you via email once approved.');
+                $this->sessionService()->flashPersist('success', 'Your teacher application has been submitted successfully! An administrator will review your CV and notify you via email once approved.');
                 $this->redirect('login');
             } else {
                 // Clean up uploaded file if DB insert failed
                 unlink($cvPath);
-                $this->setFlash('error', 'Failed to submit application. Please try again.');
+                $this->sessionService()->flashPersist('error', 'Failed to submit application. Please try again.');
                 $this->redirect('register');
             }
             return;
@@ -287,15 +286,15 @@ class AuthController extends BaseController {
                 $_SESSION['logged_in'] = true;
                 $_SESSION['login_time'] = time();
 
-                $this->setFlash('success', 'Welcome, ' . $user['name'] . '! Your account has been created.');
+                $this->sessionService()->flashPersist('success', 'Welcome, ' . $user['name'] . '! Your account has been created.');
                 $this->redirect('student/dashboard');
                 return;
             }
 
-            $this->setFlash('error', 'Account created but auto-login failed. Please login manually.');
+            $this->sessionService()->flashPersist('error', 'Account created but auto-login failed. Please login manually.');
             $this->redirect('login');
         } else {
-            $this->setFlash('error', 'Registration failed. Please try again.');
+            $this->sessionService()->flashPersist('error', 'Registration failed. Please try again.');
             $this->redirect('register');
         }
     }
@@ -319,7 +318,7 @@ class AuthController extends BaseController {
         $data = [
             'title' => 'Administrator Login - APPOLIOS',
             'description' => 'Admin login portal',
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/auth/admin_login', $data);
@@ -344,7 +343,7 @@ class AuthController extends BaseController {
 
         // Start new session for flash message
         session_start();
-        $this->setFlash('success', 'You have been logged out successfully');
+        $this->sessionService()->flashPersist('success', 'You have been logged out successfully');
         $this->redirect('login');
     }
 }

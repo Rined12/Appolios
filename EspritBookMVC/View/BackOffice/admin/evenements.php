@@ -4,12 +4,12 @@
  */
 ?>
 
-<div class="dashboard">
+<div class="dashboard student-events-page">
     <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
         <div class="admin-layout">
             <?php $adminSidebarActive = 'evenements'; require __DIR__ . '/partials/sidebar.php'; ?>
 
-            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
+            <div class="admin-main">
                 
                 <!-- Back Button -->
                 <div style="margin-bottom: 20px;">
@@ -21,7 +21,7 @@
                     </a>
                 </div>
                 
-                <section class="neo-auth-wrap" style="background: transparent; font-family: 'Inter', sans-serif;">
+                <div class="section neo-auth-wrap" style="background: transparent; font-family: 'Inter', sans-serif;">
                     
                     <div class="neo-glass-card" style="width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(43, 72, 101, 0.08); border: 1px solid rgba(233, 241, 250, 0.8); overflow: hidden; display: flex; flex-direction: column;">
                         
@@ -250,7 +250,7 @@
                                                             <a href="<?= APP_ENTRY ?>?url=event/edit-evenement/<?= (int) $evenement['id'] ?>" style="background: #f8fafc; border: 1.5px solid #e2e8f0; color: #64748b; text-decoration: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.borderColor='#548CA8'; this.style.color='#548CA8'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'" title="Edit">
                                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                                             </a>
-                                                            <?php if (isset($_SESSION['user_id']) && $evenement['created_by'] == $_SESSION['user_id']): ?>
+                                                            <?php if (!empty($evenement['viewer_can_delete_evenement'])): ?>
                                                             <a href="<?= APP_ENTRY ?>?url=event/delete-evenement/<?= (int) $evenement['id'] ?>" onclick="return confirm('Delete this evenement?')" style="background: #fef2f2; border: 1.5px solid #fecaca; color: #ef4444; text-decoration: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'" title="Delete">
                                                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                                                             </a>
@@ -278,7 +278,7 @@
                         </div>
 
                     </div>
-                </section>
+                </div>
                 
             </div>
         </div>

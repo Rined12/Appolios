@@ -11,7 +11,7 @@ $studentSidebarActive = 'my-events';
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
 
             <div class="admin-main">
-                <section class="student-events-hero-top">
+                <div class="section student-events-hero-top">
                     <div class="student-events-hero-copy">
                         <span class="student-events-hero-kicker">My Space</span>
                         <h1>My Events</h1>
@@ -19,11 +19,11 @@ $studentSidebarActive = 'my-events';
                     </div>
 
                     <div class="student-events-hero-media" aria-hidden="true">
-                        <article class="student-events-visual-card student-events-visual-card-main">
+                        <div class="article student-events-visual-card student-events-visual-card-main">
                             <img src="<?= APP_URL ?>/View/assets/images/about/06.jpg" alt="Students collaborating" class="student-events-visual-img">
-                        </article>
+                        </div>
                     </div>
-                </section>
+                </div>
 
                 <div class="dashboard-header student-events-header">
                     <div>
@@ -35,7 +35,7 @@ $studentSidebarActive = 'my-events';
                 <?php if (!empty($participations)): ?>
                     <div class="student-events-grid">
                         <?php foreach ($participations as $p): ?>
-                            <article class="student-event-card">
+                            <div class="article student-event-card">
                                 <div class="student-event-topline">
                                     <?php 
                                         $statusClass = '';
@@ -75,7 +75,7 @@ $studentSidebarActive = 'my-events';
                                         </form>
                                     <?php endif; ?>
                                 </div>
-                            </article>
+                            </div>
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>

@@ -6,7 +6,7 @@
 
 <div class="dashboard student-courses-page">
     <div class="container">
-        <section class="student-courses-hero">
+        <div class="section student-courses-hero">
             <div class="student-courses-hero-copy">
                 <span class="student-courses-kicker">eLearning Platform</span>
                 <h1>Smart Learning<br>Deeper & More <span>Amazing</span></h1>
@@ -22,26 +22,26 @@
                 <div class="student-courses-hero-shape student-courses-hero-shape-orange"></div>
                 <img src="<?= APP_URL ?>/View/assets/images/instructor/06.jpg" alt="Student hero" class="student-courses-hero-photo">
             </div>
-        </section>
+        </div>
 
-        <section class="student-courses-impact">
+        <div class="section student-courses-impact">
             <span class="student-courses-impact-kicker">About Us</span>
             <h2>We are passionate about empowering learners worldwide with high-quality and accessible learning experiences.</h2>
             <div class="student-courses-impact-stats">
-                <article>
+                <div class="article">
                     <strong>25+</strong>
                     <p>Years of learning experience</p>
-                </article>
-                <article>
+                </div>
+                <div class="article">
                     <strong><?= count($courses) ?></strong>
                     <p>Courses available now</p>
-                </article>
-                <article>
+                </div>
+                <div class="article">
                     <strong><?= count($enrolledIds) ?></strong>
                     <p>Courses enrolled by you</p>
-                </article>
+                </div>
             </div>
-        </section>
+        </div>
 
         <div class="dashboard-header student-courses-header">
             <div>
@@ -59,7 +59,7 @@
         <?php if (!empty($courses)): ?>
             <div class="cards-grid student-courses-grid">
                 <?php foreach ($courses as $course): ?>
-                    <article class="card student-course-card">
+                    <div class="article card student-course-card">
                         <div class="card-icon student-course-icon">
                             <svg viewBox="0 0 24 24" fill="white">
                                 <path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
@@ -93,7 +93,7 @@
                                 </a>
                             <?php endif; ?>
                         </div>
-                    </article>
+                    </div>
                 <?php endforeach; ?>
             </div>
         <?php else: ?>

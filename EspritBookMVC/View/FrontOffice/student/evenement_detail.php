@@ -25,14 +25,14 @@ $plansCount = count($plans ?? []);
         </div>
 
         <div class="student-event-detail-layout">
-            <section class="table-container student-event-info-card">
+            <div class="section table-container student-event-info-card">
                 <div class="student-event-info-head">
                     <h3>Evenement Details</h3>
                     <span class="student-event-status-pill"><?= htmlspecialchars($statusValue) ?></span>
                 </div>
 
                 <div class="student-event-meta-grid">
-                    <article class="student-event-meta-item">
+                    <div class="article student-event-meta-item">
                         <span class="student-event-meta-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M8 2v4"></path>
@@ -45,9 +45,9 @@ $plansCount = count($plans ?? []);
                             <small>Date debut</small>
                             <strong><?= htmlspecialchars((string) ($evenement['date_debut'] ?? 'N/A')) ?></strong>
                         </div>
-                    </article>
+                    </div>
 
-                    <article class="student-event-meta-item">
+                    <div class="article student-event-meta-item">
                         <span class="student-event-meta-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M8 2v4"></path>
@@ -60,9 +60,9 @@ $plansCount = count($plans ?? []);
                             <small>Date fin</small>
                             <strong><?= htmlspecialchars((string) (($evenement['date_fin'] ?? '') ?: 'N/A')) ?></strong>
                         </div>
-                    </article>
+                    </div>
 
-                    <article class="student-event-meta-item">
+                    <div class="article student-event-meta-item">
                         <span class="student-event-meta-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="9"></circle>
@@ -73,9 +73,9 @@ $plansCount = count($plans ?? []);
                             <small>Heure debut</small>
                             <strong><?= htmlspecialchars((string) (($evenement['heure_debut'] ?? '') ?: 'N/A')) ?></strong>
                         </div>
-                    </article>
+                    </div>
 
-                    <article class="student-event-meta-item">
+                    <div class="article student-event-meta-item">
                         <span class="student-event-meta-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <circle cx="12" cy="12" r="9"></circle>
@@ -86,9 +86,9 @@ $plansCount = count($plans ?? []);
                             <small>Heure fin</small>
                             <strong><?= htmlspecialchars((string) (($evenement['heure_fin'] ?? '') ?: 'N/A')) ?></strong>
                         </div>
-                    </article>
+                    </div>
 
-                    <article class="student-event-meta-item">
+                    <div class="article student-event-meta-item">
                         <span class="student-event-meta-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M12 21s-7-4.35-7-10a7 7 0 0 1 14 0c0 5.65-7 10-7 10z"></path>
@@ -99,9 +99,9 @@ $plansCount = count($plans ?? []);
                             <small>Lieu</small>
                             <strong><?= htmlspecialchars((string) (($evenement['lieu'] ?? '') ?: ($evenement['location'] ?? 'TBA'))) ?></strong>
                         </div>
-                    </article>
+                    </div>
 
-                    <article class="student-event-meta-item">
+                    <div class="article student-event-meta-item">
                         <span class="student-event-meta-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M4 7h16"></path>
@@ -113,9 +113,9 @@ $plansCount = count($plans ?? []);
                             <small>Capacite max</small>
                             <strong><?= htmlspecialchars((string) (($evenement['capacite_max'] ?? '') ?: 'N/A')) ?></strong>
                         </div>
-                    </article>
+                    </div>
 
-                    <article class="student-event-meta-item">
+                    <div class="article student-event-meta-item">
                         <span class="student-event-meta-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M4 19h16"></path>
@@ -128,9 +128,9 @@ $plansCount = count($plans ?? []);
                             <small>Type</small>
                             <strong><?= htmlspecialchars($typeValue) ?></strong>
                         </div>
-                    </article>
+                    </div>
 
-                    <article class="student-event-meta-item">
+                    <div class="article student-event-meta-item">
                         <span class="student-event-meta-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M9 12l2 2 4-4"></path>
@@ -141,9 +141,9 @@ $plansCount = count($plans ?? []);
                             <small>Statut</small>
                             <strong><?= htmlspecialchars($statusValue) ?></strong>
                         </div>
-                    </article>
+                    </div>
 
-                    <article class="student-event-meta-item">
+                    <div class="article student-event-meta-item">
                         <span class="student-event-meta-icon" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -154,7 +154,7 @@ $plansCount = count($plans ?? []);
                             <small>Propose par</small>
                             <strong><?= htmlspecialchars($creatorName . ' (' . $creatorRoleLabel . ')') ?></strong>
                         </div>
-                    </article>
+                    </div>
                 </div>
 
                 <!-- Participation Action -->
@@ -193,9 +193,9 @@ $plansCount = count($plans ?? []);
                         </div>
                     <?php endif; ?>
                 </div>
-            </section>
+            </div>
 
-            <section class="student-resource-columns">
+            <div class="section student-resource-columns">
                 <div class="ressource-list-card">
                     <h3 class="student-resource-heading">
                         <span class="student-resource-icon" aria-hidden="true">
@@ -271,7 +271,7 @@ $plansCount = count($plans ?? []);
                         <?php endif; ?>
                     </ul>
                 </div>
-            </section>
+            </div>
         </div>
     </div>
 </div>

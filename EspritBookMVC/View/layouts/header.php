@@ -237,14 +237,14 @@ body.dark-mode .dark-mode-toggle {
 })();
 </script>
 
-<header class="neo-header">
+<div class="neo-header header">
     <div class="neo-header-inner">
         <a class="neo-brand-logo" href="<?= APP_ENTRY ?>?url=home/index">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #E19864;"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
             APPOLIOS
         </a>
 
-        <nav class="neo-nav" aria-label="Main navigation">
+        <div class="nav neo-nav" aria-label="Main navigation">
             <a href="<?= APP_ENTRY ?>?url=home/index" class="<?= $currentUrl === 'home/index' ? 'active' : '' ?>">Home</a>
             <a href="<?= APP_ENTRY ?>?url=courses" class="<?= $currentUrl === 'courses' ? 'active' : '' ?>">Courses</a>
             <a href="<?= APP_ENTRY ?>?url=home/about" class="<?= $currentUrl === 'home/about' ? 'active' : '' ?>">About</a>
@@ -256,7 +256,7 @@ body.dark-mode .dark-mode-toggle {
             <?php elseif ($role === 'student'): ?>
                 <a href="<?= APP_ENTRY ?>?url=student/dashboard" class="<?= str_starts_with($currentUrl, 'student') ? 'active' : '' ?>">Dashboard</a>
             <?php endif; ?>
-        </nav>
+        </div>
 
         <div class="neo-actions">
             <!-- Dark Mode Toggle -->
@@ -291,6 +291,6 @@ body.dark-mode .dark-mode-toggle {
             <?php endif; ?>
         </div>
     </div>
-</header>
+</div>
 <?php endif; ?>
-<main class="app-main <?= $isAuthPage ? 'app-main-auth' : '' ?>">
+<div class="app-main main <?= $isAuthPage ? 'app-main-auth' : '' ?>">

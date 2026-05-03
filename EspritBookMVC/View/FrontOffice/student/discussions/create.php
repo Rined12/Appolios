@@ -1,92 +1,73 @@
 <?php
+// Canonical nested view path (replaces flat file; identical markup to former flat sibling).
+$studentSidebarActive = 'discussions';
 $foPrefix = $foPrefix ?? 'student';
-$studentSidebarActive = $studentSidebarActive ?? 'discussions';
 $old = $old ?? [];
+$errors = $errors ?? [];
+$groups = $groups ?? [];
 ?>
-
-<div class="dashboard student-events-page">
+<div class="dashboard student-events-page collab-hub">
     <div class="container admin-dashboard-container">
         <div class="admin-layout">
-            <?php require __DIR__ . '/../partials/group_discussion_sidebar.php'; ?>
+            <?php require __DIR__ . '/../partials/sidebar.php'; ?>
             <div class="admin-main">
-                <div class="dashboard-header">
-                    <h1>Create Discussion</h1>
-                    <p>Only groups you created are available here.</p>
+                <?php require __DIR__ . '/../partials/collab_hub_styles.php'; ?>
+
+                <div class="header collab-hero">
+                    <div class="collab-hero__inner">
+                        <div>
+                            <div class="collab-eyebrow"><i class="bi bi-pencil-square" aria-hidden="true"></i> New thread</div>
+                            <h1>Create discussion</h1>
+                            <p>Anchor a conversation inside an approved group you own — members will see it instantly in their hub.</p>
+                        </div>
+                        <div class="collab-hero-actions">
+                            <a href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions" class="collab-btn-ghost">
+                                <i class="bi bi-arrow-left" aria-hidden="true"></i> Back to list
+                            </a>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="form-container" style="max-width: 760px;">
-                    <form method="POST" action="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions/store" novalidate id="discussion-create-form">
+                <div class="collab-form-shell">
+                    <?php if (empty($groups)): ?>
+                        <div class="collab-alert-soft">
+                            <strong style="display:block;margin-bottom:.35rem;">No eligible group yet</strong>
+                            You can create discussions only inside groups you created that are already approved by an admin.
+                        </div>
+                    <?php endif; ?>
+                    <form method="POST" action="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/discussions/store">
                         <div class="form-group">
-                            <label for="id_groupe">Group</label>
-                            <select id="id_groupe" name="id_groupe">
-                                <option value="">Select a group</option>
-                                <?php foreach (($groups ?? []) as $group): ?>
-                                    <option value="<?= (int) $group['id_groupe'] ?>" <?= ((int) ($old['id_groupe'] ?? 0) === (int) $group['id_groupe']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($group['nom_groupe']) ?>
-                                    </option>
+                            <label>Group</label>
+                            <select name="id_groupe">
+                                <option value="">Select group</option>
+                                <?php foreach ($groups as $group): ?>
+                                    <option value="<?= (int) $group['id_groupe'] ?>" <?= ((int) ($old['id_groupe'] ?? 0) === (int) $group['id_groupe']) ? 'selected' : '' ?>><?= htmlspecialchars($group['nom_groupe']) ?></option>
                                 <?php endforeach; ?>
                             </select>
-                            <div class="field-error" data-error-for="id_groupe" style="color:#ef4444;"><?= htmlspecialchars($errors['id_groupe'] ?? '') ?></div>
+                            <?php if (!empty($errors['id_groupe'])): ?>
+                                <div style="color:#dc2626;font-size:0.85rem;font-weight:600;margin-top:0.35rem;"><?= htmlspecialchars((string) $errors['id_groupe']) ?></div>
+                            <?php endif; ?>
                         </div>
                         <div class="form-group">
-                            <label for="titre">Title</label>
-                            <input type="text" id="titre" name="titre" value="<?= htmlspecialchars($old['titre'] ?? '') ?>">
-                            <div class="field-error" data-error-for="titre" style="color:#ef4444;"><?= htmlspecialchars($errors['titre'] ?? '') ?></div>
+                            <label>Title</label>
+                            <input type="text" name="titre" value="<?= htmlspecialchars((string) ($old['titre'] ?? '')) ?>">
+                            <?php if (!empty($errors['titre'])): ?>
+                                <div style="color:#dc2626;font-size:0.85rem;font-weight:600;margin-top:0.35rem;"><?= htmlspecialchars((string) $errors['titre']) ?></div>
+                            <?php endif; ?>
                         </div>
                         <div class="form-group">
-                            <label for="contenu">Content</label>
-                            <textarea id="contenu" name="contenu" rows="6"><?= htmlspecialchars($old['contenu'] ?? '') ?></textarea>
-                            <div class="field-error" data-error-for="contenu" style="color:#ef4444;"><?= htmlspecialchars($errors['contenu'] ?? '') ?></div>
+                            <label>Content</label>
+                            <textarea name="contenu"><?= htmlspecialchars((string) ($old['contenu'] ?? '')) ?></textarea>
+                            <?php if (!empty($errors['contenu'])): ?>
+                                <div style="color:#dc2626;font-size:0.85rem;font-weight:600;margin-top:0.35rem;"><?= htmlspecialchars((string) $errors['contenu']) ?></div>
+                            <?php endif; ?>
                         </div>
-                        <button type="submit" class="btn btn-yellow">Save Discussion</button>
+                        <button type="submit" class="collab-btn-primary" <?= empty($groups) ? 'disabled style="opacity:.5;cursor:not-allowed;"' : '' ?>>
+                            <i class="bi bi-check-lg" aria-hidden="true"></i> Save discussion
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.getElementById('discussion-create-form');
-    if (!form) return;
-    const setError = (name, message) => {
-        const node = form.querySelector('[data-error-for="' + name + '"]');
-        if (node) node.textContent = message;
-    };
-    form.addEventListener('submit', function (event) {
-        const groupId = (form.querySelector('#id_groupe').value || '').trim();
-        const title = (form.querySelector('#titre').value || '').trim();
-        const content = (form.querySelector('#contenu').value || '').trim();
-        let hasError = false;
-        setError('id_groupe', '');
-        setError('titre', '');
-        setError('contenu', '');
-        if (groupId === '') {
-            setError('id_groupe', 'This field cannot be empty.');
-            hasError = true;
-        }
-        if (title.length === 0) {
-            setError('titre', 'This field cannot be empty.');
-            hasError = true;
-        } else if (title.length < 3) {
-            setError('titre', 'Title must be between 3 and 200 characters.');
-            hasError = true;
-        } else if (title.length > 200) {
-            setError('titre', 'Title must not exceed 200 characters.');
-            hasError = true;
-        }
-        if (content.length === 0) {
-            setError('contenu', 'This field cannot be empty.');
-            hasError = true;
-        } else if (content.length < 5) {
-            setError('contenu', 'Content must be between 5 and 5000 characters.');
-            hasError = true;
-        } else if (content.length > 5000) {
-            setError('contenu', 'Content must not exceed 5000 characters.');
-            hasError = true;
-        }
-        if (hasError) event.preventDefault();
-    });
-});
-</script>

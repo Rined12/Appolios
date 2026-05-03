@@ -5,11 +5,8 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Repository/CourseRepository.php';
-require_once __DIR__ . '/../Repository/EnrollmentRepository.php';
-require_once __DIR__ . '/../Repository/GroupeRepository.php';
-require_once __DIR__ . '/../Repository/DiscussionRepository.php';
-require_once __DIR__ . '/../Presentation/DiscussionPresentation.php';
+require_once __DIR__ . '/../Model/Repositories.php';
+require_once __DIR__ . '/../Model/PresentationHelpers.php';
 
 class StudentController extends BaseController {
 
@@ -27,21 +24,27 @@ class StudentController extends BaseController {
         $this->redirect($this->frontOfficeRoutePrefix() . '/' . ltrim($path, '/'));
     }
 
-    private function getApprovedOwnedGroups($groupeRepository): array
+    /**
+     * Reads and clears discussion composer republish keys from the session (HTTP only).
+     *
+     * @return array{old: array<string, mixed>, errors: array<string, mixed>}
+     */
+    private function consumeDiscussionComposerSession(): array
     {
-        $groups = $groupeRepository->getByCreator((int) $_SESSION['user_id']);
-        return array_values(array_filter(
-            $groups,
-            static function (array $g): bool {
-                $a = (string) ($g['approval_statut'] ?? $g['approval_status'] ?? '');
-                return $a === 'approuve';
-            }
-        ));
+        $old = $_SESSION['discussion_old'] ?? [];
+        unset($_SESSION['discussion_old']);
+        $errors = $_SESSION['discussion_errors'] ?? [];
+        unset($_SESSION['discussion_errors']);
+
+        return [
+            'old' => is_array($old) ? $old : [],
+            'errors' => is_array($errors) ? $errors : [],
+        ];
     }
 
     public function discussions(...$params) {
         if (!$this->isLoggedIn() || !in_array($_SESSION['role'] ?? '', ['student', 'teacher'], true)) {
-            $this->setFlash('error', 'Access denied.');
+            $this->sessionService()->flashPersist('error', 'Access denied.');
             $this->redirect('login');
             return;
         }
@@ -54,17 +57,17 @@ class StudentController extends BaseController {
         if ($first === 'create') {
             $old = $_SESSION['discussion_old'] ?? [];
             unset($_SESSION['discussion_old']);
-            $approvedOwnedGroups = $this->getApprovedOwnedGroups($groupeRepository);
+            $approvedOwnedGroups = $this->model('StudentQueryService')->approvedOwnedGroupsForUser($groupeRepository, (int) $_SESSION['user_id']);
             $data = $this->withFoContext([
                 'title' => 'Create Discussion - APPOLIOS',
                 'studentSidebarActive' => 'discussions',
                 'groups' => $approvedOwnedGroups,
                 'old' => $old,
                 'errors' => $_SESSION['discussion_errors'] ?? [],
-                'flash' => $this->getFlash()
+                'flash' => $this->sessionService()->flashConsumeForView()
             ], 'discussions');
             unset($_SESSION['discussion_errors']);
-            $this->view('FrontOffice/student/discussions_create', $data);
+            $this->view('FrontOffice/student/discussions/create', $data);
             return;
         }
 
@@ -92,7 +95,7 @@ class StudentController extends BaseController {
         }
         if ($id > 0 && $second === 'delete') {
             $ok = $this->studentDiscussionDeleteAuthorized($discussionRepository, $groupeRepository, $id);
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion supprimee.' : 'Suppression impossible (non autorisee).');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion supprimee.' : 'Suppression impossible (non autorisee).');
             $this->foRedirect('discussions');
             return;
         }
@@ -100,7 +103,7 @@ class StudentController extends BaseController {
         $listFilter = $this->parseStudentListQuery(200);
         $q = $listFilter['q'];
         $sort = $this->normalizeDiscussionListSort($listFilter['sort'] !== '' ? $listFilter['sort'] : 'newest');
-        $discussions = $discussionRepository->getVisibleForUser((int) $_SESSION['user_id']);
+        $discussions = $discussionRepository->fetchVisibleForUser((int) $_SESSION['user_id']);
         $discussions = array_values(array_filter(
             $discussions,
             function (array $d) use ($q): bool {
@@ -111,22 +114,24 @@ class StudentController extends BaseController {
 
         $prefix = $this->frontOfficeRoutePrefix();
         $uid = (int) $_SESSION['user_id'];
+        $discussionCards = DiscussionPresenter::studentIndexCards($discussions, $uid, $prefix, APP_ENTRY);
         $data = $this->withFoContext([
             'title' => 'Discussions - APPOLIOS',
             'studentSidebarActive' => 'discussions',
-            'discussion_cards' => DiscussionPresentation::studentIndexCards($discussions, $uid, $prefix, APP_ENTRY),
+            'discussion_cards' => $discussionCards,
+            'search_suggestions' => DiscussionPresenter::discussionSearchSuggestionsFromCards($discussionCards),
             'listQ' => $q,
             'listSort' => $sort,
             'listQueryActive' => $q !== '',
             'currentUserId' => $uid,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ], 'discussions');
-        $this->view('FrontOffice/student/discussions_index', $data);
+        $this->view('FrontOffice/student/discussions/index', $data);
     }
 
     public function groupes(...$params) {
         if (!$this->isLoggedIn() || !in_array($_SESSION['role'] ?? '', ['student', 'teacher'], true)) {
-            $this->setFlash('error', 'Access denied.');
+            $this->sessionService()->flashPersist('error', 'Access denied.');
             $this->redirect('login');
             return;
         }
@@ -152,12 +157,16 @@ class StudentController extends BaseController {
 
         $id = (int) $first;
         if ($id <= 0) {
-            $this->setFlash('error', 'Invalid group identifier.');
+            $this->sessionService()->flashPersist('error', 'Invalid group identifier.');
             $this->foRedirect('groupes');
             return;
         }
         if ($second === null) {
             $this->studentGroupesShow($groupeRepository, $id);
+            return;
+        }
+        if ($second === 'activity-report') {
+            $this->studentGroupesActivityReport($groupeRepository, $id);
             return;
         }
         if ($second === 'edit') {
@@ -191,7 +200,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $this->setFlash('error', 'Route not found.');
+        $this->sessionService()->flashPersist('error', 'Route not found.');
         $this->foRedirect('groupes');
     }
 
@@ -215,7 +224,7 @@ class StudentController extends BaseController {
     public function dashboard() {
         // Check if logged in
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to access your dashboard.');
+            $this->sessionService()->flashPersist('error', 'Please login to access your dashboard.');
             $this->redirect('login');
             return;
         }
@@ -227,9 +236,9 @@ class StudentController extends BaseController {
             'description'      => 'Student evenement dashboard',
             'userName'         => $_SESSION['user_name'],
             'evenements'       => $evenements,
-            'participationMap' => $this->model('EvenementRessourceRepository')->getParticipationMapForStudent((int)$_SESSION['user_id']),
+            'participationMap' => $this->model('EvenementRessourceRepository')->fetchParticipationMapForStudent((int)$_SESSION['user_id']),
             'participations'   => $this->model('EvenementRessourceRepository')->findMyParticipations((int)$_SESSION['user_id']),
-            'flash'            => $this->getFlash()
+            'flash'            => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/student/evenements', $data);
@@ -240,7 +249,7 @@ class StudentController extends BaseController {
      */
     public function evenements() {
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to access events.');
+            $this->sessionService()->flashPersist('error', 'Please login to access events.');
             $this->redirect('login');
             return;
         }
@@ -250,9 +259,9 @@ class StudentController extends BaseController {
             'description'      => 'Browse upcoming evenements',
             'userName'         => $_SESSION['user_name'],
             'evenements'       => $this->model('EvenementRepository')->findApprovedWithCreators(),
-            'participationMap' => $this->model('EvenementRessourceRepository')->getParticipationMapForStudent((int)$_SESSION['user_id']),
+            'participationMap' => $this->model('EvenementRessourceRepository')->fetchParticipationMapForStudent((int)$_SESSION['user_id']),
             'participations'   => $this->model('EvenementRessourceRepository')->findMyParticipations((int)$_SESSION['user_id']),
-            'flash'            => $this->getFlash()
+            'flash'            => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/student/evenements', $data);
@@ -263,20 +272,20 @@ class StudentController extends BaseController {
      */
     public function evenementDetail($id) {
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to view evenement details.');
+            $this->sessionService()->flashPersist('error', 'Please login to view evenement details.');
             $this->redirect('login');
             return;
         }
 
         $evenement = $this->model('EvenementRepository')->findWithCreatorById((int)$id);
         if (!$evenement) {
-            $this->setFlash('error', 'Evenement not found.');
+            $this->sessionService()->flashPersist('error', 'Evenement not found.');
             $this->redirect('student/evenements');
             return;
         }
 
         if (($evenement['approval_status'] ?? 'approved') !== 'approved') {
-            $this->setFlash('error', 'This evenement is not available yet.');
+            $this->sessionService()->flashPersist('error', 'This evenement is not available yet.');
             $this->redirect('student/evenements');
             return;
         }
@@ -295,7 +304,7 @@ class StudentController extends BaseController {
             'materiels' => $grouped['materiels'],
             'plans' => $grouped['plans'],
             'participation' => $this->model('EvenementRessourceRepository')->findStudentParticipation((int)$id, (int)$_SESSION['user_id']),
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/student/evenement_detail', $data);
@@ -307,14 +316,14 @@ class StudentController extends BaseController {
     public function courses() {
         // Check if logged in
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to browse courses.');
+            $this->sessionService()->flashPersist('error', 'Please login to browse courses.');
             $this->redirect('login');
             return;
         }
 
         // Only students can access this page
         if ($_SESSION['role'] !== 'student') {
-            $this->setFlash('error', 'Access denied.');
+            $this->sessionService()->flashPersist('error', 'Access denied.');
             $this->redirect('login');
             return;
         }
@@ -323,10 +332,10 @@ class StudentController extends BaseController {
         $enrollmentRepository = $this->model('EnrollmentRepository');
 
         // Get all courses
-        $allCourses = $courseRepository->getAllWithCreator();
+        $allCourses = $courseRepository->fetchAllWithCreator();
 
         // Get enrolled course IDs to mark them
-        $enrollments = $enrollmentRepository->getUserEnrollments($_SESSION['user_id']);
+        $enrollments = $enrollmentRepository->fetchEnrollmentsForUser($_SESSION['user_id']);
         $enrolledIds = array_column($enrollments, 'course_id');
 
         $data = [
@@ -334,7 +343,7 @@ class StudentController extends BaseController {
             'description' => 'Explore all available courses',
             'courses' => $allCourses,
             'enrolledIds' => $enrolledIds,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/student/courses', $data);
@@ -345,7 +354,7 @@ class StudentController extends BaseController {
      */
     public function viewCourse($id) {
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to view courses.');
+            $this->sessionService()->flashPersist('error', 'Please login to view courses.');
             $this->redirect('login');
             return;
         }
@@ -353,10 +362,10 @@ class StudentController extends BaseController {
         $courseRepository = $this->model('CourseRepository');
         $enrollmentRepository = $this->model('EnrollmentRepository');
 
-        $course = $courseRepository->getWithCreator($id);
+        $course = $courseRepository->fetchWithCreator($id);
 
         if (!$course) {
-            $this->setFlash('error', 'Course not found.');
+            $this->sessionService()->flashPersist('error', 'Course not found.');
             $this->redirect('student/dashboard');
             return;
         }
@@ -368,7 +377,8 @@ class StudentController extends BaseController {
             'description' => $course['description'],
             'course' => $course,
             'isEnrolled' => $isEnrolled,
-            'flash' => $this->getFlash()
+            'course_video_payload' => CourseVideoPresenter::normalizeVideo((string) ($course['video_url'] ?? '')),
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/student/course', $data);
@@ -379,7 +389,7 @@ class StudentController extends BaseController {
      */
     public function enroll($id) {
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to enroll in courses.');
+            $this->sessionService()->flashPersist('error', 'Please login to enroll in courses.');
             $this->redirect('login');
             return;
         }
@@ -388,16 +398,16 @@ class StudentController extends BaseController {
 
         // Check if already enrolled
         if ($enrollmentRepository->isEnrolled($_SESSION['user_id'], $id)) {
-            $this->setFlash('info', 'You are already enrolled in this course.');
+            $this->sessionService()->flashPersist('info', 'You are already enrolled in this course.');
             $this->redirect('student/course/' . $id);
             return;
         }
 
         // Enroll user
         if ($enrollmentRepository->enroll($_SESSION['user_id'], $id)) {
-            $this->setFlash('success', 'Successfully enrolled in the course!');
+            $this->sessionService()->flashPersist('success', 'Successfully enrolled in the course!');
         } else {
-            $this->setFlash('error', 'Failed to enroll. Please try again.');
+            $this->sessionService()->flashPersist('error', 'Failed to enroll. Please try again.');
         }
 
         $this->redirect('student/course/' . $id);
@@ -408,19 +418,19 @@ class StudentController extends BaseController {
      */
     public function myCourses() {
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to view your courses.');
+            $this->sessionService()->flashPersist('error', 'Please login to view your courses.');
             $this->redirect('login');
             return;
         }
 
         $enrollmentRepository = $this->model('EnrollmentRepository');
-        $enrollments = $enrollmentRepository->getUserEnrollments($_SESSION['user_id']);
+        $enrollments = $enrollmentRepository->fetchEnrollmentsForUser($_SESSION['user_id']);
 
         $data = [
             'title' => 'My Courses - APPOLIOS',
             'description' => 'Your enrolled courses',
             'enrollments' => $enrollments,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/student/my_courses', $data);
@@ -431,7 +441,7 @@ class StudentController extends BaseController {
      */
     public function myEvents() {
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to view your events.');
+            $this->sessionService()->flashPersist('error', 'Please login to view your events.');
             $this->redirect('login');
             return;
         }
@@ -444,7 +454,7 @@ class StudentController extends BaseController {
             'description'    => 'Events you are participating in',
             'userName'       => $_SESSION['user_name'],
             'participations' => $participations,
-            'flash'          => $this->getFlash()
+            'flash'          => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/student/my_events', $data);
@@ -455,12 +465,11 @@ class StudentController extends BaseController {
      */
     public function profile() {
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to view your profile.');
+            $this->sessionService()->flashPersist('error', 'Please login to view your profile.');
             $this->redirect('login');
             return;
         }
 
-        require_once __DIR__ . '/../Repository/UserRepository.php';
         $userRepository = $this->model('UserRepository');
         $user = $userRepository->findById($_SESSION['user_id']);
 
@@ -468,7 +477,7 @@ class StudentController extends BaseController {
             'title' => 'My Profile - APPOLIOS',
             'description' => 'Student profile',
             'user' => $user,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('FrontOffice/student/profile', $data);
@@ -479,20 +488,21 @@ class StudentController extends BaseController {
      */
     public function editProfile() {
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to edit your profile.');
+            $this->sessionService()->flashPersist('error', 'Please login to edit your profile.');
             $this->redirect('login');
             return;
         }
 
-        require_once __DIR__ . '/../Repository/UserRepository.php';
         $userRepository = $this->model('UserRepository');
         $user = $userRepository->findById($_SESSION['user_id']);
 
+        $flashEntity = $this->sessionService()->takeFlash();
         $data = [
             'title' => 'Edit Profile - APPOLIOS',
             'description' => 'Edit your profile information',
             'user' => $user,
-            'flash' => $this->getFlash()
+            'flash' => $this->flashMessageToViewArray($flashEntity),
+            'flash_banner' => FlashBannerPresenter::fromFlash($flashEntity),
         ];
 
         $this->view('FrontOffice/student/edit_profile', $data);
@@ -503,7 +513,7 @@ class StudentController extends BaseController {
      */
     public function updateProfile() {
         if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to update your profile.');
+            $this->sessionService()->flashPersist('error', 'Please login to update your profile.');
             $this->redirect('login');
             return;
         }
@@ -533,7 +543,6 @@ class StudentController extends BaseController {
             $errors[] = 'Please enter a valid email address.';
         }
 
-        require_once __DIR__ . '/../Repository/UserRepository.php';
         $userRepository = $this->model('UserRepository');
         $currentUser = $userRepository->findById($_SESSION['user_id']);
 
@@ -561,7 +570,7 @@ class StudentController extends BaseController {
         }
 
         if (!empty($errors)) {
-            $this->setFlash('error', implode('<br>', $errors));
+            $this->sessionService()->flashPersist('error', implode('<br>', $errors));
             $this->redirect('student/edit-profile');
             return;
         }
@@ -581,9 +590,9 @@ class StudentController extends BaseController {
             $_SESSION['user_name'] = $name;
             $_SESSION['user_email'] = $email;
 
-            $this->setFlash('success', 'Profile updated successfully!');
+            $this->sessionService()->flashPersist('success', 'Profile updated successfully!');
         } else {
-            $this->setFlash('error', 'Failed to update profile. Please try again.');
+            $this->sessionService()->flashPersist('error', 'Failed to update profile. Please try again.');
         }
 
         $this->redirect('student/profile');
@@ -596,7 +605,7 @@ class StudentController extends BaseController {
         $q = $listFilter['q'];
         $sort = $this->normalizeGroupListSort($listFilter['sort'] !== '' ? $listFilter['sort'] : 'name_asc');
 
-        $mesGroupes = $groupeRepository->getByCreator($uid);
+        $mesGroupes = $groupeRepository->fetchByCreator($uid);
         $mesGroupesEnApprobation = array_values(array_filter(
             $mesGroupes,
             static function (array $g): bool {
@@ -605,7 +614,7 @@ class StudentController extends BaseController {
             }
         ));
 
-        $rawPublic = $groupeRepository->getAllWithCreatorPublic(100, 0);
+        $rawPublic = $groupeRepository->fetchAllWithCreatorPublic(100, 0);
         $groupes = array_values(array_filter(
             $rawPublic,
             static function (array $g): bool {
@@ -626,11 +635,8 @@ class StudentController extends BaseController {
                 return $this->groupRowMatchesQuery($g, $q);
             }
         ));
-        $groupes = array_map(function (array $g) use ($groupeRepository, $uid): array {
-            $groupId = (int) ($g['id_groupe'] ?? 0);
-            $g['is_member_viewer'] = $groupId > 0 ? $groupeRepository->estMembre($groupId, $uid) : false;
-            return $g;
-        }, $groupes);
+        $mesGroupesEnApprobation = GroupPresenter::decorateListingRows($mesGroupesEnApprobation, $groupeRepository, $uid, false);
+        $groupes = GroupPresenter::decorateListingRows($groupes, $groupeRepository, $uid, true);
         $this->sortGroupRows($mesGroupesEnApprobation, $sort);
         $this->sortGroupRows($groupes, $sort);
 
@@ -641,24 +647,22 @@ class StudentController extends BaseController {
             'listQ' => $q,
             'listSort' => $sort,
             'listQueryActive' => $q !== '',
-            'flash' => $this->getFlash(),
+            'flash' => $this->sessionService()->flashConsumeForView(),
             'studentSidebarActive' => 'groupes',
         ], 'groupes');
-        $this->view('FrontOffice/student/groupes_index', $data);
+        $this->view('FrontOffice/student/groupes/index', $data);
     }
 
     private function studentGroupesCreate(): void
     {
-        $old = $_SESSION['old'] ?? [];
-        unset($_SESSION['old']);
         $data = $this->withFoContext([
             'title' => 'Creer un groupe - APPOLIOS',
-            'old' => $old,
-            'errors' => $this->getErrors(),
-            'flash' => $this->getFlash(),
+            'old' => $this->sessionService()->consumeOld(),
+            'errors' => $this->sessionService()->takeValidationMessages()->getMessages(),
+            'flash' => $this->sessionService()->flashConsumeForView(),
             'studentSidebarActive' => 'groupes',
         ], 'groupes');
-        $this->view('FrontOffice/student/groupes_create', $data);
+        $this->view('FrontOffice/student/groupes/create', $data);
     }
 
     private function studentGroupesStore($groupeRepository): void
@@ -666,7 +670,7 @@ class StudentController extends BaseController {
         $payload = $this->extractGroupePayload();
         $errors = $this->validateGroupePayload($payload);
         if (!empty($errors)) {
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
             $this->foRedirect('groupes/create');
             return;
@@ -680,7 +684,7 @@ class StudentController extends BaseController {
             $photo['error'] = 'Image storage is not available. Contact the administrator.';
         }
         if ($photo['error']) {
-            $this->setErrors(['group_photo' => $photo['error']]);
+            $this->sessionService()->validationPersist(['group_photo' => $photo['error']]);
             $_SESSION['old'] = $_POST;
             $this->foRedirect('groupes/create');
             return;
@@ -700,7 +704,7 @@ class StudentController extends BaseController {
         $createdId = $groupeRepository->create($createData);
         if ($createdId) {
             $groupeRepository->ajouterMembre((int) $createdId, (int) $_SESSION['user_id'], 'admin');
-            $this->setFlash('success', 'Groupe cree. Etat: en cours d approbation jusqu a la decision de l administrateur.');
+            $this->sessionService()->flashPersist('success', 'Groupe cree. Etat: en cours d approbation jusqu a la decision de l administrateur.');
             $this->foRedirect('groupes');
             return;
         }
@@ -708,7 +712,7 @@ class StudentController extends BaseController {
         if ($photo['url'] !== null) {
             $this->deleteGroupPhotoFileIfManaged($photo['url']);
         }
-        $this->setFlash('error', 'Erreur lors de la creation du groupe.');
+        $this->sessionService()->flashPersist('error', 'Erreur lors de la creation du groupe.');
         $this->foRedirect('groupes/create');
     }
 
@@ -716,7 +720,7 @@ class StudentController extends BaseController {
     {
         $groupe = $groupeRepository->findById($id);
         if (!$groupe) {
-            $this->setFlash('error', 'Groupe introuvable.');
+            $this->sessionService()->flashPersist('error', 'Groupe introuvable.');
             $this->foRedirect('groupes');
             return;
         }
@@ -726,16 +730,16 @@ class StudentController extends BaseController {
         $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
         $isGroupCreatorViewer = $isCreator;
         if ($approval !== 'approuve' && !$isCreator) {
-            $this->setFlash('error', 'Ce groupe est encore en cours d approbation. Seul le createur peut le consulter.');
+            $this->sessionService()->flashPersist('error', 'Ce groupe est encore en cours d approbation. Seul le createur peut le consulter.');
             $this->foRedirect('groupes');
             return;
         }
 
         $discussionRepository = $this->model('DiscussionRepository');
-        $discussionOld = $_SESSION['discussion_old'] ?? [];
-        unset($_SESSION['discussion_old']);
+        $composerSession = $this->consumeDiscussionComposerSession();
+        $discussionRepublish = DiscussionPresenter::groupDetailComposerPayload($composerSession['old'], $composerSession['errors']);
 
-        $discussionRows = $discussionRepository->getByGroupForViewer(
+        $discussionRows = $discussionRepository->fetchByGroupForViewer(
             $id,
             $uid,
             (int) ($groupe['id_createur'] ?? 0)
@@ -745,33 +749,70 @@ class StudentController extends BaseController {
         $data = $this->withFoContext([
             'title' => 'Detail groupe - APPOLIOS',
             'groupe' => $groupe,
-            'membres' => $groupeRepository->getMembres($id),
-            'discussion_cards' => DiscussionPresentation::groupShowCards($discussionRows, $uid, $prefix, $id, $isGroupCreatorViewer, APP_ENTRY),
-            'discussionOld' => $discussionOld,
-            'discussionErrors' => $_SESSION['discussion_errors'] ?? [],
-            'isMembre' => $groupeRepository->estMembre($id, (int) $_SESSION['user_id']),
-            'flash' => $this->getFlash(),
+            'is_owner_viewer' => $isCreator,
+            'group_cover_url' => GroupPresenter::detailCoverUrl($groupe),
+            'member_chips' => GroupPresenter::formatMembers($groupeRepository->fetchMembres($id)),
+            'discussion_cards' => DiscussionPresenter::groupShowCards($discussionRows, $uid, $prefix, $id, $isGroupCreatorViewer, APP_ENTRY),
+            'discussion_old' => $discussionRepublish['old'],
+            'discussion_error_messages' => $discussionRepublish['error_messages'],
+            'flash' => $this->sessionService()->flashConsumeForView(),
             'studentSidebarActive' => 'groupes',
         ], 'groupes');
-        unset($_SESSION['discussion_errors']);
-        $this->view('FrontOffice/student/groupes_show', $data);
+        $this->view('FrontOffice/student/groupes/show', $data);
+    }
+
+    private function studentGroupesActivityReport($groupeRepository, int $id): void
+    {
+        $groupe = $groupeRepository->findById($id);
+        if (!$groupe) {
+            $this->sessionService()->flashPersist('error', 'Groupe introuvable.');
+            $this->foRedirect('groupes');
+            return;
+        }
+
+        $uid = (int) $_SESSION['user_id'];
+        $approval = (string) ($groupe['approval_statut'] ?? '');
+        $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
+        if ($approval !== 'approuve' && !$isCreator) {
+            $this->sessionService()->flashPersist('error', 'Ce groupe est encore en cours d approbation. Seul le createur peut le consulter.');
+            $this->foRedirect('groupes');
+            return;
+        }
+        if ($approval === 'approuve' && !$isCreator && !$groupeRepository->estMembre($id, $uid)) {
+            $this->sessionService()->flashPersist('error', 'Access denied.');
+            $this->foRedirect('groupes');
+            return;
+        }
+
+        try {
+            $report = $this->model('GroupActivityReportService')->build($id);
+        } catch (Throwable $e) {
+            $this->sessionService()->flashPersist('error', 'Unable to build report.');
+            $this->foRedirect('groupes/' . $id);
+            return;
+        }
+
+        $prefix = $this->frontOfficeRoutePrefix();
+        $report['backUrl'] = APP_ENTRY . '?url=' . rawurlencode($prefix . '/groupes/' . $id);
+        $report['report_title'] = 'Group Activity Report';
+        $this->renderStandaloneView('Reports/group_activity_report_pdf', $report);
     }
 
     private function studentGroupesDiscussionStore($groupeRepository, int $groupId): void
     {
         $groupe = $groupeRepository->findById($groupId);
         if (!$groupe) {
-            $this->setFlash('error', 'Group not found.');
+            $this->sessionService()->flashPersist('error', 'Group not found.');
             $this->foRedirect('groupes');
             return;
         }
         if ((int) ($groupe['id_createur'] ?? 0) !== (int) $_SESSION['user_id']) {
-            $this->setFlash('error', 'Only the group creator can create discussions.');
+            $this->sessionService()->flashPersist('error', 'Only the group creator can create discussions.');
             $this->foRedirect('groupes/' . $groupId);
             return;
         }
         if ((string) ($groupe['approval_statut'] ?? $groupe['approval_status'] ?? '') !== 'approuve') {
-            $this->setFlash('error', 'You can create discussions only after the group is approved.');
+            $this->sessionService()->flashPersist('error', 'You can create discussions only after the group is approved.');
             $this->foRedirect('groupes/' . $groupId);
             return;
         }
@@ -802,7 +843,7 @@ class StudentController extends BaseController {
             htmlspecialchars($payload['contenu'], ENT_QUOTES, 'UTF-8'),
             'approuve'
         );
-        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion creee. Vous pouvez l utiliser tout de suite (chat, fichiers).' : 'Failed to create discussion.');
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion creee. Vous pouvez l utiliser tout de suite (chat, fichiers).' : 'Failed to create discussion.');
         $this->foRedirect('groupes/' . $groupId);
     }
 
@@ -810,7 +851,7 @@ class StudentController extends BaseController {
     {
         $groupe = $groupeRepository->findById($id);
         if (!$groupe || (int) $groupe['id_createur'] !== (int) $_SESSION['user_id']) {
-            $this->setFlash('error', 'Vous ne pouvez modifier que vos groupes.');
+            $this->sessionService()->flashPersist('error', 'Vous ne pouvez modifier que vos groupes.');
             $this->foRedirect('groupes');
             return;
         }
@@ -819,26 +860,26 @@ class StudentController extends BaseController {
         $discussionRepository = $this->model('DiscussionRepository');
         $groupActivitySeries = $this->buildGroupActivitySeries(
             $id,
-            $discussionRepository->getByGroup($id),
-            $groupeRepository->getMembres($id)
+            $discussionRepository->fetchByGroup($id),
+            $groupeRepository->fetchMembres($id)
         );
         $data = $this->withFoContext([
             'title' => 'Modifier groupe - APPOLIOS',
             'groupe' => $groupe,
             'old' => $old,
             'group_activity_series' => $groupActivitySeries,
-            'errors' => $this->getErrors(),
-            'flash' => $this->getFlash(),
+            'errors' => $this->sessionService()->takeValidationMessages()->getMessages(),
+            'flash' => $this->sessionService()->flashConsumeForView(),
             'studentSidebarActive' => 'groupes',
         ], 'groupes');
-        $this->view('FrontOffice/student/groupes_edit', $data);
+        $this->view('FrontOffice/student/groupes/edit', $data);
     }
 
     private function studentGroupesUpdate($groupeRepository, int $id): void
     {
         $groupe = $groupeRepository->findById($id);
         if (!$groupe || (int) $groupe['id_createur'] !== (int) $_SESSION['user_id']) {
-            $this->setFlash('error', 'Vous ne pouvez modifier que vos groupes.');
+            $this->sessionService()->flashPersist('error', 'Vous ne pouvez modifier que vos groupes.');
             $this->foRedirect('groupes');
             return;
         }
@@ -850,7 +891,7 @@ class StudentController extends BaseController {
         }
         $errors = $this->validateGroupePayload($payload);
         if (!empty($errors)) {
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
             $this->foRedirect('groupes/' . $id . '/edit');
             return;
@@ -862,7 +903,7 @@ class StudentController extends BaseController {
             $photo = $this->handleGroupPhotoUpload('group_photo');
         }
         if ($photo['error']) {
-            $this->setErrors(['group_photo' => $photo['error']]);
+            $this->sessionService()->validationPersist(['group_photo' => $photo['error']]);
             $_SESSION['old'] = $_POST;
             $this->foRedirect('groupes/' . $id . '/edit');
             return;
@@ -880,7 +921,7 @@ class StudentController extends BaseController {
             $updateData['image_url'] = $photo['url'];
         }
         $ok = $groupeRepository->updateGroupe($id, $updateData);
-        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Groupe mis a jour.' : 'Echec de mise a jour.');
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Groupe mis a jour.' : 'Echec de mise a jour.');
         $this->foRedirect('groupes/' . $id);
     }
 
@@ -888,16 +929,16 @@ class StudentController extends BaseController {
     {
         $groupe = $groupeRepository->findById($id);
         if (!$groupe || ($groupe['approval_statut'] ?? '') !== 'approuve') {
-            $this->setFlash('error', 'Groupe non disponible.');
+            $this->sessionService()->flashPersist('error', 'Groupe non disponible.');
             $this->foRedirect('groupes');
             return;
         }
         $uid = (int) $_SESSION['user_id'];
         if (!$groupeRepository->estMembre($id, $uid)) {
             $groupeRepository->ajouterMembre($id, $uid, 'membre');
-            $this->setFlash('success', 'Vous avez rejoint le groupe.');
+            $this->sessionService()->flashPersist('success', 'Vous avez rejoint le groupe.');
         } else {
-            $this->setFlash('error', 'Vous etes deja membre.');
+            $this->sessionService()->flashPersist('error', 'Vous etes deja membre.');
         }
         $this->foRedirect('groupes/' . $id);
     }
@@ -906,24 +947,24 @@ class StudentController extends BaseController {
     {
         $groupe = $groupeRepository->findById($id);
         if (!$groupe || ($groupe['approval_statut'] ?? '') !== 'approuve') {
-            $this->setFlash('error', 'Groupe non disponible.');
+            $this->sessionService()->flashPersist('error', 'Groupe non disponible.');
             $this->foRedirect('groupes');
             return;
         }
         $uid = (int) $_SESSION['user_id'];
         $isCreator = (int) ($groupe['id_createur'] ?? 0) === $uid;
         if ($isCreator) {
-            $this->setFlash('error', 'Le createur du groupe ne peut pas quitter son propre groupe.');
+            $this->sessionService()->flashPersist('error', 'Le createur du groupe ne peut pas quitter son propre groupe.');
             $this->foRedirect('groupes/' . $id);
             return;
         }
         if (!$groupeRepository->estMembre($id, $uid)) {
-            $this->setFlash('error', 'Vous n etes pas membre de ce groupe.');
+            $this->sessionService()->flashPersist('error', 'Vous n etes pas membre de ce groupe.');
             $this->foRedirect('groupes/' . $id);
             return;
         }
         $ok = $groupeRepository->retirerMembre($id, $uid);
-        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Vous avez quitte le groupe.' : 'Impossible de quitter le groupe pour le moment.');
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Vous avez quitte le groupe.' : 'Impossible de quitter le groupe pour le moment.');
         $this->foRedirect('groupes');
     }
 
@@ -1018,7 +1059,7 @@ class StudentController extends BaseController {
             'contenu' => trim((string) ($_POST['contenu'] ?? '')),
             'id_groupe' => (int) ($_POST['id_groupe'] ?? 0),
         ];
-        $groups = $this->getApprovedOwnedGroups($groupeRepository);
+        $groups = $this->model('StudentQueryService')->approvedOwnedGroupsForUser($groupeRepository, (int) $_SESSION['user_id']);
         $ownedGroupIds = array_map(static fn($g) => (int) ($g['id_groupe'] ?? 0), $groups);
         $errors = [];
         if ($payload['id_groupe'] === 0 || !in_array($payload['id_groupe'], $ownedGroupIds, true)) {
@@ -1047,7 +1088,7 @@ class StudentController extends BaseController {
             htmlspecialchars($payload['contenu'], ENT_QUOTES, 'UTF-8'),
             'approuve'
         );
-        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion creee. Vous pouvez la modifier et ouvrir le chat tout de suite.' : 'Failed to create discussion.');
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion creee. Vous pouvez la modifier et ouvrir le chat tout de suite.' : 'Failed to create discussion.');
         $this->foRedirect('discussions');
     }
 
@@ -1056,14 +1097,14 @@ class StudentController extends BaseController {
         $authorId = (int) $_SESSION['user_id'];
         $discussion = $discussionRepository->findOwnedBy($discussionId, $authorId);
         if (!$discussion) {
-            $this->setFlash('error', 'Discussion not found.');
+            $this->sessionService()->flashPersist('error', 'Discussion not found.');
             $this->foRedirect('discussions');
             return;
         }
         $old = $_SESSION['discussion_old'] ?? [];
         unset($_SESSION['discussion_old']);
         $prefix = $this->frontOfficeRoutePrefix();
-        $form = DiscussionPresentation::editForm($discussion, $prefix, APP_ENTRY);
+        $form = DiscussionPresenter::editForm($discussion, $prefix, APP_ENTRY);
         if ($old !== []) {
             if (isset($old['id_groupe'])) {
                 $form['selected_group_id'] = (int) $old['id_groupe'];
@@ -1077,7 +1118,7 @@ class StudentController extends BaseController {
         }
 
         $groupId = (int) ($discussion['id_groupe'] ?? 0);
-        $groupRows = $groupId > 0 ? $discussionRepository->getByGroup($groupId) : [];
+        $groupRows = $groupId > 0 ? $discussionRepository->fetchByGroup($groupId) : [];
         $ownerMessages = 0;
         $latestTs = 0;
         $earliestTs = 0;
@@ -1137,19 +1178,19 @@ class StudentController extends BaseController {
             'studentSidebarActive' => 'discussions',
             'discussion_edit' => $form,
             'discussion_stats' => $discussionStats,
-            'groups' => $this->getApprovedOwnedGroups($groupeRepository),
+            'groups' => $this->model('StudentQueryService')->approvedOwnedGroupsForUser($groupeRepository, (int) $_SESSION['user_id']),
             'errors' => $_SESSION['discussion_errors'] ?? [],
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ], 'discussions');
         unset($_SESSION['discussion_errors']);
-        $this->view('FrontOffice/student/discussions_edit', $data);
+        $this->view('FrontOffice/student/discussions/edit', $data);
     }
 
     private function studentDiscussionsUpdate($discussionRepository, $groupeRepository, int $discussionId): void
     {
         $existing = $discussionRepository->findOwnedBy($discussionId, (int) $_SESSION['user_id']);
         if (!$existing) {
-            $this->setFlash('error', 'Discussion not found.');
+            $this->sessionService()->flashPersist('error', 'Discussion not found.');
             $this->foRedirect('discussions');
             return;
         }
@@ -1158,7 +1199,7 @@ class StudentController extends BaseController {
             'contenu' => trim((string) ($_POST['contenu'] ?? '')),
             'id_groupe' => (int) ($_POST['id_groupe'] ?? 0),
         ];
-        $groups = $this->getApprovedOwnedGroups($groupeRepository);
+        $groups = $this->model('StudentQueryService')->approvedOwnedGroupsForUser($groupeRepository, (int) $_SESSION['user_id']);
         $ownedGroupIds = array_map(static fn($g) => (int) ($g['id_groupe'] ?? 0), $groups);
         $errors = [];
         if ($payload['id_groupe'] === 0 || !in_array($payload['id_groupe'], $ownedGroupIds, true)) {
@@ -1187,15 +1228,15 @@ class StudentController extends BaseController {
             htmlspecialchars($payload['contenu'], ENT_QUOTES, 'UTF-8'),
             $payload['id_groupe']
         );
-        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion mise a jour.' : 'Failed to update discussion.');
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion mise a jour.' : 'Failed to update discussion.');
         $this->foRedirect('discussions');
     }
 
     private function studentDiscussionsChat($discussionRepository, $groupeRepository, int $discussionId): void
     {
-        $discussion = $discussionRepository->getRowByPk($discussionId);
+        $discussion = $discussionRepository->fetchRowByPk($discussionId);
         if (!$discussion) {
-            $this->setFlash('error', 'Discussion not found.');
+            $this->sessionService()->flashPersist('error', 'Discussion not found.');
             $this->foRedirect('discussions');
             return;
         }
@@ -1205,7 +1246,7 @@ class StudentController extends BaseController {
         $groupId = (int) ($discussion['id_groupe'] ?? $discussion['group_id'] ?? 0);
         $group = $groupeRepository->findById($groupId);
         if (!$group) {
-            $this->setFlash('error', 'Parent group not found.');
+            $this->sessionService()->flashPersist('error', 'Parent group not found.');
             $this->foRedirect('discussions');
             return;
         }
@@ -1215,13 +1256,13 @@ class StudentController extends BaseController {
         $discAuthorId = (int) ($discussion['id_auteur'] ?? $discussion['created_by'] ?? 0);
         $isDiscussionAuthor = $discAuthorId === $uid && $discAuthorId > 0;
         if (!$isOwner && !$isMember && !$isDiscussionAuthor) {
-            $this->setFlash('error', 'You must join the group to access live chat.');
+            $this->sessionService()->flashPersist('error', 'You must join the group to access live chat.');
             $this->foRedirect('groupes/' . $groupId);
             return;
         }
 
         $prefix = $this->frontOfficeRoutePrefix();
-        $chatUrls = DiscussionPresentation::chatUrls($discussion, $prefix, APP_ENTRY);
+        $chatUrls = DiscussionPresenter::chatUrls($discussion, $prefix, APP_ENTRY);
         $data = $this->withFoContext([
             'title' => 'Live Chat - APPOLIOS',
             'studentSidebarActive' => 'discussions',
@@ -1235,14 +1276,14 @@ class StudentController extends BaseController {
             'chatRoom' => 'discussion_' . $discussionId,
             'currentUserId' => $uid,
             'currentUserName' => (string) ($_SESSION['user_name'] ?? 'User'),
-            'flash' => $this->getFlash(),
+            'flash' => $this->sessionService()->flashConsumeForView(),
         ], 'discussions');
-        $this->view('FrontOffice/student/discussions_chat', $data);
+        $this->view('FrontOffice/student/discussions/chat', $data);
     }
 
     private function studentDiscussionsUploadAttachment($discussionRepository, $groupeRepository, int $discussionId): void
     {
-        $discussion = $discussionRepository->getRowByPk($discussionId);
+        $discussion = $discussionRepository->fetchRowByPk($discussionId);
         if (!$discussion) {
             $this->jsonResponse(['ok' => false, 'error' => 'Discussion not found.'], 404);
         }
@@ -1283,7 +1324,7 @@ class StudentController extends BaseController {
     private function studentDiscussionDeleteAuthorized($discussionRepository, $groupeRepository, int $discussionId, ?int $mustBelongToGroupId = null): bool
     {
         $uid = (int) $_SESSION['user_id'];
-        $row = $discussionRepository->getRowByPk($discussionId);
+        $row = $discussionRepository->fetchRowByPk($discussionId);
         if (!$row) {
             return false;
         }
@@ -1312,7 +1353,7 @@ class StudentController extends BaseController {
     private function studentGroupDiscussionDeleteFromPage($groupeRepository, $discussionRepository, int $groupId, int $discussionId): void
     {
         $ok = $this->studentDiscussionDeleteAuthorized($discussionRepository, $groupeRepository, $discussionId, $groupId);
-        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion supprimee.' : 'Suppression impossible (non autorisee).');
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion supprimee.' : 'Suppression impossible (non autorisee).');
         $this->foRedirect('groupes/' . $groupId);
     }
 
@@ -1321,7 +1362,7 @@ class StudentController extends BaseController {
         $uid = (int) $_SESSION['user_id'];
         $groupe = $groupeRepository->findById($id);
         if (!$groupe || (int) ($groupe['id_createur'] ?? $groupe['created_by'] ?? 0) !== $uid) {
-            $this->setFlash('error', 'Suppression reservee au createur du groupe.');
+            $this->sessionService()->flashPersist('error', 'Suppression reservee au createur du groupe.');
             $this->foRedirect('groupes');
             return;
         }
@@ -1330,7 +1371,7 @@ class StudentController extends BaseController {
         $discussionRepository->deleteAllForGroup($id);
         $groupeRepository->deleteMembresForGroup($id);
         $ok = $groupeRepository->delete($id);
-        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Groupe supprime.' : 'Impossible de supprimer le groupe.');
+        $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Groupe supprime.' : 'Impossible de supprimer le groupe.');
         $this->foRedirect('groupes');
     }
 
@@ -1356,7 +1397,7 @@ class StudentController extends BaseController {
 
         $event = $this->model('EvenementRepository')->findApprovedById($eventId);
         if (!$event) {
-            $this->setFlash('error', 'Event not found or not available.');
+            $this->sessionService()->flashPersist('error', 'Event not found or not available.');
             $this->redirect('student/evenements');
             return;
         }
@@ -1364,7 +1405,7 @@ class StudentController extends BaseController {
         $resRepo = $this->model('EvenementRessourceRepository');
         $existing = $resRepo->findStudentParticipation($eventId, $studentId);
         if ($existing) {
-            $this->setFlash('info', 'You already requested participation for this event.');
+            $this->sessionService()->flashPersist('info', 'You already requested participation for this event.');
             $this->redirect('student/evenements');
             return;
         }
@@ -1373,9 +1414,9 @@ class StudentController extends BaseController {
         $studentName = $user['name'] ?? 'Student';
 
         if ($resRepo->createPendingParticipation($eventId, $studentId, $studentName)) {
-            $this->setFlash('success', 'Participation request sent! Waiting for teacher approval.');
+            $this->sessionService()->flashPersist('success', 'Participation request sent! Waiting for teacher approval.');
         } else {
-            $this->setFlash('error', 'Failed to send participation request.');
+            $this->sessionService()->flashPersist('error', 'Failed to send participation request.');
         }
 
         $this->redirect('student/evenements');
@@ -1400,15 +1441,15 @@ class StudentController extends BaseController {
         $resRepo = $this->model('EvenementRessourceRepository');
         $existing = $resRepo->findStudentParticipation($eventId, $studentId);
         if (!$existing || $existing['details'] !== 'pending') {
-            $this->setFlash('error', 'Only pending participation requests can be cancelled.');
+            $this->sessionService()->flashPersist('error', 'Only pending participation requests can be cancelled.');
             $this->redirect('student/evenements');
             return;
         }
 
         if ($resRepo->cancelPendingParticipation($eventId, $studentId)) {
-            $this->setFlash('success', 'Participation request cancelled.');
+            $this->sessionService()->flashPersist('success', 'Participation request cancelled.');
         } else {
-            $this->setFlash('error', 'Failed to cancel participation.');
+            $this->sessionService()->flashPersist('error', 'Failed to cancel participation.');
         }
 
         $this->redirect('student/evenements');
@@ -1460,16 +1501,12 @@ class StudentController extends BaseController {
         return $this->textMatchesQuery($name, $q) || $this->textMatchesQuery($desc, $q);
     }
 
-    private function getGroupIdForSort(array $g): int
-    {
-        return (int) ($g['id_groupe'] ?? $g['id'] ?? 0);
-    }
-
     /**
      * @param array<int, array<string, mixed>> $rows
      */
     private function sortGroupRows(array &$rows, string $sort): void
     {
+        $studentQuery = $this->model('StudentQueryService');
         $nameCmp = static function (array $a, array $b): int {
             $ta = (string) ($a['nom_groupe'] ?? '');
             $tb = (string) ($b['nom_groupe'] ?? '');
@@ -1489,13 +1526,13 @@ class StudentController extends BaseController {
                 });
                 return;
             case 'newest':
-                usort($rows, function (array $a, array $b): int {
-                    return $this->getGroupIdForSort($b) <=> $this->getGroupIdForSort($a);
+                usort($rows, function (array $a, array $b) use ($studentQuery): int {
+                    return $studentQuery->sortKeyGroupId($b) <=> $studentQuery->sortKeyGroupId($a);
                 });
                 return;
             case 'oldest':
-                usort($rows, function (array $a, array $b): int {
-                    return $this->getGroupIdForSort($a) <=> $this->getGroupIdForSort($b);
+                usort($rows, function (array $a, array $b) use ($studentQuery): int {
+                    return $studentQuery->sortKeyGroupId($a) <=> $studentQuery->sortKeyGroupId($b);
                 });
                 return;
             case 'name_asc':
@@ -1517,16 +1554,12 @@ class StudentController extends BaseController {
             || $this->textMatchesQuery($groupe, $q);
     }
 
-    private function getDiscussionIdForSort(array $d): int
-    {
-        return (int) ($d['id_discussion'] ?? $d['id'] ?? 0);
-    }
-
     /**
      * @param array<int, array<string, mixed>> $rows
      */
     private function sortDiscussionRows(array &$rows, string $sort): void
     {
+        $studentQuery = $this->model('StudentQueryService');
         $titleCmp = static function (array $a, array $b): int {
             $ta = (string) ($a['titre'] ?? $a['title'] ?? '');
             $tb = (string) ($b['titre'] ?? $b['title'] ?? '');
@@ -1569,14 +1602,14 @@ class StudentController extends BaseController {
                 });
                 return;
             case 'oldest':
-                usort($rows, function (array $a, array $b): int {
-                    return $this->getDiscussionIdForSort($a) <=> $this->getDiscussionIdForSort($b);
+                usort($rows, function (array $a, array $b) use ($studentQuery): int {
+                    return $studentQuery->sortKeyDiscussionId($a) <=> $studentQuery->sortKeyDiscussionId($b);
                 });
                 return;
             case 'newest':
             default:
-                usort($rows, function (array $a, array $b): int {
-                    return $this->getDiscussionIdForSort($b) <=> $this->getDiscussionIdForSort($a);
+                usort($rows, function (array $a, array $b) use ($studentQuery): int {
+                    return $studentQuery->sortKeyDiscussionId($b) <=> $studentQuery->sortKeyDiscussionId($a);
                 });
         }
     }
@@ -1585,7 +1618,7 @@ class StudentController extends BaseController {
         if (!$this->isLoggedIn()) { $this->redirect('auth/login'); return; }
         $resRepo = $this->model('EvenementRessourceRepository');
         if (!$resRepo->ressourcesTableExists()) {
-            $this->setFlash('error', 'Ticket system is not available yet.');
+            $this->sessionService()->flashPersist('error', 'Ticket system is not available yet.');
             $this->redirect('student/my-events');
             return;
         }
@@ -1593,7 +1626,7 @@ class StudentController extends BaseController {
         $studentId = (int) $_SESSION['user_id'];
         $ticket = $resRepo->findApprovedTicketForStudent($pId, $studentId);
         if (!$ticket) {
-            $this->setFlash('error', 'Ticket not found or not approved yet.');
+            $this->sessionService()->flashPersist('error', 'Ticket not found or not approved yet.');
             $this->redirect('student/my-participations');
             return;
         }
@@ -1613,7 +1646,7 @@ class StudentController extends BaseController {
         $locationDisplay = $loc !== '' ? $loc : 'To be announced';
 
         header('Content-Type: text/html; charset=utf-8');
-        $this->renderStandaloneView('student/ticket', [
+        $this->renderStandaloneView('FrontOffice/student/ticket', [
             'ticket' => $ticket,
             'qrUrl' => $qrUrl,
             'eventDateDisplay' => $eventDateDisplay,

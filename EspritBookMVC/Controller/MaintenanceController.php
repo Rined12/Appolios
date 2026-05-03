@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '/BaseController.php';
-require_once __DIR__ . '/../Service/AccountMaintenanceService.php';
+require_once __DIR__ . '/../Model/ApplicationServices.php';
 
 /**
  * CLI maintenance tasks (user accounts). Invoke via Controller/cli.php only.

@@ -5,11 +5,8 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Repository/UserRepository.php';
-require_once __DIR__ . '/../Repository/CourseRepository.php';
-require_once __DIR__ . '/../Repository/EnrollmentRepository.php';
-require_once __DIR__ . '/../Repository/GroupeRepository.php';
-require_once __DIR__ . '/../Repository/DiscussionRepository.php';
+require_once __DIR__ . '/../Model/Repositories.php';
+require_once __DIR__ . '/../Model/PresentationHelpers.php';
 
 
 class AdminController extends BaseController {
@@ -18,7 +15,7 @@ class AdminController extends BaseController {
     {
         if (str_starts_with($view, 'BackOffice/admin/')) {
             if (!array_key_exists('unread_contact_messages_count', $data)) {
-                $data['unread_contact_messages_count'] = $this->model('ContactMessageRepository')->getUnreadCount();
+                $data['unread_contact_messages_count'] = $this->model('ContactMessageRepository')->countUnreadMessages();
             }
             if (!array_key_exists('pendingTeacherApps', $data)) {
                 $data['pendingTeacherApps'] = $this->model('TeacherApplicationRepository')->countPending();
@@ -33,7 +30,7 @@ class AdminController extends BaseController {
     public function dashboard() {
         // Check if admin
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Admin privileges required.');
             $this->redirect('admin/login');
             return;
         }
@@ -52,11 +49,12 @@ class AdminController extends BaseController {
             'totalCourses'      => $courseRepository->count(),
             'totalEnrollments'  => $enrollmentRepository->countAll(),
             'totalEvenements'   => $evenementRepository->countAll(),
-            'recentCourses'     => $courseRepository->getAllWithCreator(),
+            'recentCourses'     => $courseRepository->fetchAllWithCreator(),
             'recentEvenements'  => $evenementRepository->findRecent(3),
-            'recentUsers'       => $userRepository->getStudents(),
+            'recentUsers'       => $userRepository->fetchStudentRows(),
             'pendingTeacherApps'=> $teacherAppRepository->countPending(),
-            'flash'             => $this->getFlash()
+            'admin_display_name'=> (string) ($_SESSION['user_name'] ?? 'Admin'),
+            'flash'             => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('BackOffice/admin/dashboard', $data);
@@ -67,7 +65,7 @@ class AdminController extends BaseController {
      */
     public function users() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Admin privileges required.');
             $this->redirect('admin/login');
             return;
         }
@@ -79,7 +77,8 @@ class AdminController extends BaseController {
             'title' => 'Manage Users - APPOLIOS',
             'description' => 'User management panel',
             'users' => $users,
-            'flash' => $this->getFlash()
+            'admin_session_user_id' => (int) ($_SESSION['user_id'] ?? 0),
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('BackOffice/admin/users', $data);
@@ -90,7 +89,7 @@ class AdminController extends BaseController {
      */
     public function exportUsersPDF() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied.');
+            $this->sessionService()->flashPersist('error', 'Access denied.');
             $this->redirect('admin/login');
             return;
         }
@@ -126,14 +125,14 @@ class AdminController extends BaseController {
      */
     public function blockUser($id) {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied.');
+            $this->sessionService()->flashPersist('error', 'Access denied.');
             $this->redirect('admin/login');
             return;
         }
 
         // Prevent blocking self
         if ((int) $id === (int) $_SESSION['user_id']) {
-            $this->setFlash('error', 'You cannot block yourself.');
+            $this->sessionService()->flashPersist('error', 'You cannot block yourself.');
             $this->redirect('admin/users');
             return;
         }
@@ -142,15 +141,15 @@ class AdminController extends BaseController {
         $user = $userRepository->findById((int) $id);
 
         if (!$user) {
-            $this->setFlash('error', 'User not found.');
+            $this->sessionService()->flashPersist('error', 'User not found.');
             $this->redirect('admin/users');
             return;
         }
 
         if ($userRepository->block((int) $id)) {
-            $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been blocked successfully.');
+            $this->sessionService()->flashPersist('success', 'User ' . htmlspecialchars($user['name']) . ' has been blocked successfully.');
         } else {
-            $this->setFlash('error', 'Failed to block user.');
+            $this->sessionService()->flashPersist('error', 'Failed to block user.');
         }
 
         $this->redirect('admin/users');
@@ -161,7 +160,7 @@ class AdminController extends BaseController {
      */
     public function unblockUser($id) {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied.');
+            $this->sessionService()->flashPersist('error', 'Access denied.');
             $this->redirect('admin/login');
             return;
         }
@@ -170,15 +169,15 @@ class AdminController extends BaseController {
         $user = $userRepository->findById((int) $id);
 
         if (!$user) {
-            $this->setFlash('error', 'User not found.');
+            $this->sessionService()->flashPersist('error', 'User not found.');
             $this->redirect('admin/users');
             return;
         }
 
         if ($userRepository->unblock((int) $id)) {
-            $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been unblocked successfully.');
+            $this->sessionService()->flashPersist('success', 'User ' . htmlspecialchars($user['name']) . ' has been unblocked successfully.');
         } else {
-            $this->setFlash('error', 'Failed to unblock user.');
+            $this->sessionService()->flashPersist('error', 'Failed to unblock user.');
         }
 
         $this->redirect('admin/users');
@@ -189,23 +188,22 @@ class AdminController extends BaseController {
      */
     public function contactMessages() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Admin privileges required.');
             $this->redirect('admin/login');
             return;
         }
 
-        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
         $contactRepository = $this->model('ContactMessageRepository');
 
-        $messages = $contactRepository->getAllMessages(100, 0);
-        $unreadCount = $contactRepository->getUnreadCount();
+        $messages = $contactRepository->fetchAllMessages(100, 0);
+        $unreadCount = $contactRepository->countUnreadMessages();
 
         $data = [
             'title' => 'Contact Messages Inbox - APPOLIOS',
             'description' => 'View and manage contact us messages',
             'messages' => $messages,
             'unreadCount' => $unreadCount,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('BackOffice/admin/contact_messages', $data);
@@ -216,18 +214,17 @@ class AdminController extends BaseController {
      */
     public function viewContactMessage($id) {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Admin privileges required.');
             $this->redirect('admin/login');
             return;
         }
 
-        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
         $contactRepository = $this->model('ContactMessageRepository');
 
-        $message = $contactRepository->getById((int) $id);
+        $message = $contactRepository->fetchMessageRow((int) $id);
 
         if (!$message) {
-            $this->setFlash('error', 'Message not found.');
+            $this->sessionService()->flashPersist('error', 'Message not found.');
             $this->redirect('admin/contact-messages');
             return;
         }
@@ -235,14 +232,14 @@ class AdminController extends BaseController {
         // Auto-mark as read when viewing
         if (!$message['is_read']) {
             $contactRepository->markAsRead((int) $id, (int) $_SESSION['user_id']);
-            $message = $contactRepository->getById((int) $id);
+            $message = $contactRepository->fetchMessageRow((int) $id);
         }
 
         $data = [
             'title' => 'View Message - APPOLIOS',
             'description' => 'Contact message details',
             'message' => $message,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('BackOffice/admin/view_contact_message', $data);
@@ -253,18 +250,17 @@ class AdminController extends BaseController {
      */
     public function markMessageUnread($id) {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied.');
+            $this->sessionService()->flashPersist('error', 'Access denied.');
             $this->redirect('admin/login');
             return;
         }
 
-        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
         $contactRepository = $this->model('ContactMessageRepository');
 
         if ($contactRepository->markAsUnread((int) $id)) {
-            $this->setFlash('success', 'Message marked as unread.');
+            $this->sessionService()->flashPersist('success', 'Message marked as unread.');
         } else {
-            $this->setFlash('error', 'Failed to mark message as unread.');
+            $this->sessionService()->flashPersist('error', 'Failed to mark message as unread.');
         }
 
         $this->redirect('admin/contact-messages');
@@ -275,25 +271,24 @@ class AdminController extends BaseController {
      */
     public function deleteContactMessage($id) {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied.');
+            $this->sessionService()->flashPersist('error', 'Access denied.');
             $this->redirect('admin/login');
             return;
         }
 
-        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
         $contactRepository = $this->model('ContactMessageRepository');
 
-        $message = $contactRepository->getById((int) $id);
+        $message = $contactRepository->fetchMessageRow((int) $id);
         if (!$message) {
-            $this->setFlash('error', 'Message not found.');
+            $this->sessionService()->flashPersist('error', 'Message not found.');
             $this->redirect('admin/contact-messages');
             return;
         }
 
         if ($contactRepository->delete((int) $id)) {
-            $this->setFlash('success', 'Message deleted successfully.');
+            $this->sessionService()->flashPersist('success', 'Message deleted successfully.');
         } else {
-            $this->setFlash('error', 'Failed to delete message.');
+            $this->sessionService()->flashPersist('error', 'Failed to delete message.');
         }
 
         $this->redirect('admin/contact-messages');
@@ -304,19 +299,19 @@ class AdminController extends BaseController {
      */
     public function courses() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Admin privileges required.');
             $this->redirect('admin/login');
             return;
         }
 
         $courseRepository = $this->model('CourseRepository');
-        $courses = $courseRepository->getAllWithCreator();
+        $courses = $courseRepository->fetchAllWithCreator();
 
         $data = [
             'title' => 'Manage Courses - APPOLIOS',
             'description' => 'Course management panel',
             'courses' => $courses,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('BackOffice/admin/courses', $data);
@@ -327,7 +322,7 @@ class AdminController extends BaseController {
      */
     public function addCourse() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Admin privileges required.');
             $this->redirect('admin/login');
             return;
         }
@@ -335,7 +330,8 @@ class AdminController extends BaseController {
         $data = [
             'title' => 'Add Course - APPOLIOS',
             'description' => 'Create a new course',
-            'flash' => $this->getFlash()
+            'old' => $this->sessionService()->consumeOld(),
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('BackOffice/admin/add_course', $data);
@@ -371,7 +367,7 @@ class AdminController extends BaseController {
         }
 
         if (!empty($errors)) {
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
             $this->redirect('admin/add-course');
             return;
@@ -387,10 +383,10 @@ class AdminController extends BaseController {
         ]);
 
         if ($result) {
-            $this->setFlash('success', 'Course created successfully!');
+            $this->sessionService()->flashPersist('success', 'Course created successfully!');
             $this->redirect('admin/courses');
         } else {
-            $this->setFlash('error', 'Failed to create course. Please try again.');
+            $this->sessionService()->flashPersist('error', 'Failed to create course. Please try again.');
             $this->redirect('admin/add-course');
         }
     }
@@ -408,7 +404,7 @@ class AdminController extends BaseController {
         $course = $courseRepository->findById($id);
 
         if (!$course) {
-            $this->setFlash('error', 'Course not found');
+            $this->sessionService()->flashPersist('error', 'Course not found');
             $this->redirect('admin/courses');
             return;
         }
@@ -417,7 +413,7 @@ class AdminController extends BaseController {
             'title' => 'Edit Course - APPOLIOS',
             'description' => 'Update course details',
             'course' => $course,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('BackOffice/admin/edit_course', $data);
@@ -451,9 +447,9 @@ class AdminController extends BaseController {
         }
 
         if (!empty($errors)) {
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
-            $this->setFlash('error', 'Please fix the errors below.');
+            $this->sessionService()->flashPersist('error', 'Please fix the errors below.');
             $this->redirect('admin/edit-course/' . (int) $id);
             return;
         }
@@ -467,9 +463,9 @@ class AdminController extends BaseController {
         ]);
 
         if ($result) {
-            $this->setFlash('success', 'Course updated successfully!');
+            $this->sessionService()->flashPersist('success', 'Course updated successfully!');
         } else {
-            $this->setFlash('error', 'Failed to update course.');
+            $this->sessionService()->flashPersist('error', 'Failed to update course.');
         }
 
         $this->redirect('admin/courses');
@@ -487,9 +483,9 @@ class AdminController extends BaseController {
         $courseRepository = $this->model('CourseRepository');
 
         if ($courseRepository->delete($id)) {
-            $this->setFlash('success', 'Course deleted successfully!');
+            $this->sessionService()->flashPersist('success', 'Course deleted successfully!');
         } else {
-            $this->setFlash('error', 'Failed to delete course.');
+            $this->sessionService()->flashPersist('error', 'Failed to delete course.');
         }
 
         $this->redirect('admin/courses');
@@ -506,7 +502,7 @@ class AdminController extends BaseController {
 
         // Prevent admin from deleting themselves
         if ($id == $_SESSION['user_id']) {
-            $this->setFlash('error', 'You cannot delete your own account.');
+            $this->sessionService()->flashPersist('error', 'You cannot delete your own account.');
             $this->redirect('admin/users');
             return;
         }
@@ -514,9 +510,9 @@ class AdminController extends BaseController {
         $userRepository = $this->model('UserRepository');
 
         if ($userRepository->delete($id)) {
-            $this->setFlash('success', 'User deleted successfully!');
+            $this->sessionService()->flashPersist('success', 'User deleted successfully!');
         } else {
-            $this->setFlash('error', 'Failed to delete user.');
+            $this->sessionService()->flashPersist('error', 'Failed to delete user.');
         }
 
         $this->redirect('admin/users');
@@ -527,19 +523,19 @@ class AdminController extends BaseController {
      */
     public function teachers() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Admin privileges required.');
             $this->redirect('admin/login');
             return;
         }
 
         $userRepository = $this->model('UserRepository');
-        $teachers = $userRepository->getTeachers();
+        $teachers = $userRepository->fetchTeacherRows();
 
         $data = [
             'title' => 'Manage Teachers - APPOLIOS',
             'description' => 'Teacher management panel',
             'teachers' => $teachers,
-            'flash' => $this->getFlash()
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('BackOffice/admin/teachers', $data);
@@ -550,13 +546,13 @@ class AdminController extends BaseController {
      */
     public function exportTeachersPDF() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied.');
+            $this->sessionService()->flashPersist('error', 'Access denied.');
             $this->redirect('admin/login');
             return;
         }
 
         $userRepository = $this->model('UserRepository');
-        $teachers = $userRepository->getTeachers();
+        $teachers = $userRepository->fetchTeacherRows();
         $teacherRows = [];
         foreach ($teachers as $t) {
             $ts = strtotime((string) ($t['created_at'] ?? ''));
@@ -583,7 +579,7 @@ class AdminController extends BaseController {
      */
     public function addTeacher() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Admin privileges required.');
             $this->redirect('admin/login');
             return;
         }
@@ -591,7 +587,8 @@ class AdminController extends BaseController {
         $data = [
             'title' => 'Add Teacher - APPOLIOS',
             'description' => 'Create a new teacher account',
-            'flash' => $this->getFlash()
+            'old' => $this->sessionService()->consumeOld(),
+            'flash' => $this->sessionService()->flashConsumeForView()
         ];
 
         $this->view('BackOffice/admin/add_teacher', $data);
@@ -637,7 +634,7 @@ class AdminController extends BaseController {
         }
 
         if (!empty($errors)) {
-            $this->setErrors($errors);
+            $this->sessionService()->validationPersist($errors);
             $_SESSION['old'] = $_POST;
             $this->redirect('admin/add-teacher');
             return;
@@ -651,10 +648,10 @@ class AdminController extends BaseController {
         ]);
 
         if ($result) {
-            $this->setFlash('success', 'Teacher account created successfully!');
+            $this->sessionService()->flashPersist('success', 'Teacher account created successfully!');
             $this->redirect('admin/teachers');
         } else {
-            $this->setFlash('error', 'Failed to create teacher account. Please try again.');
+            $this->sessionService()->flashPersist('error', 'Failed to create teacher account. Please try again.');
             $this->redirect('admin/add-teacher');
         }
     }
@@ -664,7 +661,7 @@ class AdminController extends BaseController {
      */
     public function teacherApplications() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->sessionService()->flashPersist('error', 'Access denied. Admin privileges required.');
             $this->redirect('admin/login');
             return;
         }
@@ -672,14 +669,16 @@ class AdminController extends BaseController {
         $teacherAppRepository = $this->model('TeacherApplicationRepository');
         $userRepository = $this->model('UserRepository');
 
+        $flashEntity = $this->sessionService()->takeFlash();
         $data = [
             'title' => 'Teacher Applications - APPOLIOS',
             'description' => 'Manage teacher registration requests',
-            'applications' => $teacherAppRepository->getPendingApplications(),
+            'applications' => $teacherAppRepository->fetchPendingApplications(),
             'pendingCount' => $teacherAppRepository->countPending(),
             'pendingTeacherApps' => $teacherAppRepository->countPending(),
             'adminSidebarActive' => 'teacher-applications',
-            'flash' => $this->getFlash()
+            'flash' => $this->flashMessageToViewArray($flashEntity),
+            'flash_banner' => FlashBannerPresenter::fromFlash($flashEntity),
         ];
 
         $this->view('BackOffice/admin/teacher_applications', $data);
@@ -703,7 +702,7 @@ class AdminController extends BaseController {
         $adminNotes = $this->sanitize($_POST['admin_notes'] ?? '');
 
         if ($applicationId <= 0) {
-            $this->setFlash('error', 'Invalid application id.');
+            $this->sessionService()->flashPersist('error', 'Invalid application id.');
             $this->redirect('admin/teacher-applications');
             return;
         }
@@ -712,9 +711,9 @@ class AdminController extends BaseController {
         $userRepository = $this->model('UserRepository');
 
         // Get application details
-        $application = $teacherAppRepository->getById($applicationId);
+        $application = $teacherAppRepository->fetchApplicationRow($applicationId);
         if (!$application) {
-            $this->setFlash('error', 'Application not found.');
+            $this->sessionService()->flashPersist('error', 'Application not found.');
             $this->redirect('admin/teacher-applications');
             return;
         }
@@ -730,9 +729,9 @@ class AdminController extends BaseController {
         if ($userId) {
             // Update application status
             $teacherAppRepository->approve($applicationId, (int) $_SESSION['user_id'], $adminNotes);
-            $this->setFlash('success', 'Teacher application approved! The teacher can now login with their email and the password they registered with.');
+            $this->sessionService()->flashPersist('success', 'Teacher application approved! The teacher can now login with their email and the password they registered with.');
         } else {
-            $this->setFlash('error', 'Failed to create teacher account.');
+            $this->sessionService()->flashPersist('error', 'Failed to create teacher account.');
         }
 
         $this->redirect('admin/teacher-applications');
@@ -756,22 +755,22 @@ class AdminController extends BaseController {
         $adminNotes = $this->sanitize($_POST['admin_notes'] ?? '');
 
         if ($applicationId <= 0) {
-            $this->setFlash('error', 'Invalid application id.');
+            $this->sessionService()->flashPersist('error', 'Invalid application id.');
             $this->redirect('admin/teacher-applications');
             return;
         }
 
         if (empty($adminNotes)) {
-            $this->setFlash('error', 'Rejection reason is required.');
+            $this->sessionService()->flashPersist('error', 'Rejection reason is required.');
             $this->redirect('admin/teacher-applications');
             return;
         }
 
         $teacherAppRepository = $this->model('TeacherApplicationRepository');
-        $application = $teacherAppRepository->getById($applicationId);
+        $application = $teacherAppRepository->fetchApplicationRow($applicationId);
 
         if (!$application) {
-            $this->setFlash('error', 'Application not found.');
+            $this->sessionService()->flashPersist('error', 'Application not found.');
             $this->redirect('admin/teacher-applications');
             return;
         }
@@ -786,9 +785,9 @@ class AdminController extends BaseController {
         $result = $teacherAppRepository->reject($applicationId, (int) $_SESSION['user_id'], $adminNotes);
 
         if ($result) {
-            $this->setFlash('success', 'Teacher application rejected.');
+            $this->sessionService()->flashPersist('success', 'Teacher application rejected.');
         } else {
-            $this->setFlash('error', 'Failed to reject application.');
+            $this->sessionService()->flashPersist('error', 'Failed to reject application.');
         }
 
         $this->redirect('admin/teacher-applications');
@@ -806,13 +805,13 @@ class AdminController extends BaseController {
         $id = is_numeric($first) ? (int) $first : 0;
 
         if ($first === 'create') {
-            $this->view('BackOffice/admin/sl_groupes_create', [
+            $this->view('BackOffice/admin/sl_groupes/create', [
                 'title' => 'Create Group - APPOLIOS',
                 'description' => 'Create social learning group',
                 'adminSidebarActive' => 'sl-groupes',
                 'old' => $_SESSION['sl_group_old'] ?? [],
                 'errors' => $_SESSION['sl_group_errors'] ?? [],
-                'flash' => $this->getFlash(),
+                'flash' => $this->sessionService()->flashConsumeForView(),
             ]);
             unset($_SESSION['sl_group_old'], $_SESSION['sl_group_errors']);
             return;
@@ -852,11 +851,11 @@ class AdminController extends BaseController {
             $createdId = $groupeRepository->create($createData);
             if ($createdId) {
                 $groupeRepository->ajouterMembre((int) $createdId, (int) $_SESSION['user_id'], 'admin');
-                $this->setFlash('success', 'Group created successfully.');
+                $this->sessionService()->flashPersist('success', 'Group created successfully.');
                 $this->redirect('admin/sl-groupes');
                 return;
             }
-            $this->setFlash('error', 'Failed to create group.');
+            $this->sessionService()->flashPersist('error', 'Failed to create group.');
             $this->redirect('admin/sl-groupes/create');
             return;
         }
@@ -864,18 +863,18 @@ class AdminController extends BaseController {
         if ($id > 0 && $second === 'edit') {
             $row = $groupeRepository->findById($id);
             if (!$row) {
-                $this->setFlash('error', 'Group not found.');
+                $this->sessionService()->flashPersist('error', 'Group not found.');
                 $this->redirect('admin/sl-groupes');
                 return;
             }
-            $this->view('BackOffice/admin/sl_groupes_edit', [
+            $this->view('BackOffice/admin/sl_groupes/edit', [
                 'title' => 'Edit Group - APPOLIOS',
                 'description' => 'Update group',
                 'adminSidebarActive' => 'sl-groupes',
                 'groupe' => $row,
                 'old' => $_SESSION['sl_group_old'] ?? [],
                 'errors' => $_SESSION['sl_group_errors'] ?? [],
-                'flash' => $this->getFlash(),
+                'flash' => $this->sessionService()->flashConsumeForView(),
             ]);
             unset($_SESSION['sl_group_old'], $_SESSION['sl_group_errors']);
             return;
@@ -884,7 +883,7 @@ class AdminController extends BaseController {
         if ($id > 0 && $second === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $row = $groupeRepository->findById($id);
             if (!$row) {
-                $this->setFlash('error', 'Group not found.');
+                $this->sessionService()->flashPersist('error', 'Group not found.');
                 $this->redirect('admin/sl-groupes');
                 return;
             }
@@ -918,7 +917,7 @@ class AdminController extends BaseController {
                 'statut' => (string) ($row['statut'] ?? 'actif'),
                 'approval_statut' => $approval,
             ]);
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Group updated successfully.' : 'Failed to update group.');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Group updated successfully.' : 'Failed to update group.');
             $this->redirect('admin/sl-groupes');
             return;
         }
@@ -928,32 +927,52 @@ class AdminController extends BaseController {
             $discussionRepository->deleteAllForGroup($id);
             $groupeRepository->deleteMembresForGroup($id);
             $ok = $groupeRepository->delete($id);
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Group deleted.' : 'Failed to delete group.');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Group deleted.' : 'Failed to delete group.');
             $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        if ($id > 0 && $second === 'activity-pdf') {
+            $row = $groupeRepository->findById($id);
+            if (!$row) {
+                $this->sessionService()->flashPersist('error', 'Group not found.');
+                $this->redirect('admin/sl-groupes');
+                return;
+            }
+            try {
+                $report = $this->model('GroupActivityReportService')->build($id);
+            } catch (Throwable $e) {
+                $this->sessionService()->flashPersist('error', 'Unable to build group report.');
+                $this->redirect('admin/sl-groupes');
+                return;
+            }
+            $report['backUrl'] = APP_ENTRY . '?url=admin/sl-groupes';
+            $report['report_title'] = 'Group Activity Report';
+            $this->renderStandaloneView('Reports/group_activity_report_pdf', $report);
             return;
         }
 
         if ($id > 0 && $second === 'approve' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $row = $groupeRepository->findById($id);
             $ok = $row ? $groupeRepository->updateGroupe($id, ['nom_groupe' => $row['nom_groupe'], 'description' => $row['description'], 'statut' => $row['statut'] ?? 'actif', 'approval_statut' => 'approuve']) : false;
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Groupe approuve.' : 'Approbation echouee.');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Groupe approuve.' : 'Approbation echouee.');
             $this->redirect('admin/sl-groupes');
             return;
         }
         if ($id > 0 && $second === 'reject' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $row = $groupeRepository->findById($id);
             $ok = $row ? $groupeRepository->updateGroupe($id, ['nom_groupe' => $row['nom_groupe'], 'description' => $row['description'], 'statut' => $row['statut'] ?? 'actif', 'approval_statut' => 'rejete']) : false;
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Groupe rejete.' : 'Rejet echoue.');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Groupe rejete.' : 'Rejet echoue.');
             $this->redirect('admin/sl-groupes');
             return;
         }
 
-        $this->view('BackOffice/admin/sl_groupes', [
+        $this->view('BackOffice/admin/sl_groupes/index', [
             'title' => 'Admin Groupes - APPOLIOS',
             'description' => 'Validation des groupes',
-            'groupes' => $groupeRepository->getAllWithCreator(300, 0),
+            'groupes' => $groupeRepository->fetchAllWithCreator(300, 0),
             'adminSidebarActive' => 'sl-groupes',
-            'flash' => $this->getFlash(),
+            'flash' => $this->sessionService()->flashConsumeForView(),
         ]);
     }
 
@@ -971,17 +990,17 @@ class AdminController extends BaseController {
 
         if ($first === 'create') {
             $groups = array_values(array_filter(
-                $groupeRepository->getAllWithCreator(500, 0),
+                $groupeRepository->fetchAllWithCreator(500, 0),
                 static fn(array $g): bool => (string) ($g['approval_statut'] ?? '') === 'approuve'
             ));
-            $this->view('BackOffice/admin/sl_discussions_create', [
+            $this->view('BackOffice/admin/sl_discussions/create', [
                 'title' => 'Create Discussion - APPOLIOS',
                 'description' => 'Create discussion in approved group',
                 'adminSidebarActive' => 'sl-discussions',
                 'groups' => $groups,
                 'old' => $_SESSION['sl_disc_old'] ?? [],
                 'errors' => $_SESSION['sl_disc_errors'] ?? [],
-                'flash' => $this->getFlash(),
+                'flash' => $this->sessionService()->flashConsumeForView(),
             ]);
             unset($_SESSION['sl_disc_old'], $_SESSION['sl_disc_errors']);
             return;
@@ -1022,31 +1041,31 @@ class AdminController extends BaseController {
                 htmlspecialchars($contenu, ENT_QUOTES, 'UTF-8')
             );
             if ($ok && $approval !== 'en_cours') {
-                $inserted = $discussionRepository->getByAuthor((int) $_SESSION['user_id']);
+                $inserted = $discussionRepository->fetchByAuthor((int) $_SESSION['user_id']);
                 if (!empty($inserted)) {
                     $latestId = (int) ($inserted[0]['id_discussion'] ?? $inserted[0]['id'] ?? 0);
                     if ($latestId > 0) {
-                        $discussionRepository->setApprovalStatus($latestId, $approval);
+                        $discussionRepository->updateApprovalStatus($latestId, $approval);
                     }
                 }
             }
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion created successfully.' : 'Failed to create discussion.');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion created successfully.' : 'Failed to create discussion.');
             $this->redirect('admin/sl-discussions');
             return;
         }
 
         if ($id > 0 && $second === 'edit') {
-            $discussion = $discussionRepository->getRowByPk($id);
+            $discussion = $discussionRepository->fetchRowByPk($id);
             if (!$discussion) {
-                $this->setFlash('error', 'Discussion not found.');
+                $this->sessionService()->flashPersist('error', 'Discussion not found.');
                 $this->redirect('admin/sl-discussions');
                 return;
             }
             $groups = array_values(array_filter(
-                $groupeRepository->getAllWithCreator(500, 0),
+                $groupeRepository->fetchAllWithCreator(500, 0),
                 static fn(array $g): bool => (string) ($g['approval_statut'] ?? '') === 'approuve'
             ));
-            $this->view('BackOffice/admin/sl_discussions_edit', [
+            $this->view('BackOffice/admin/sl_discussions/edit', [
                 'title' => 'Edit Discussion - APPOLIOS',
                 'description' => 'Update discussion',
                 'adminSidebarActive' => 'sl-discussions',
@@ -1054,16 +1073,16 @@ class AdminController extends BaseController {
                 'groups' => $groups,
                 'old' => $_SESSION['sl_disc_old'] ?? [],
                 'errors' => $_SESSION['sl_disc_errors'] ?? [],
-                'flash' => $this->getFlash(),
+                'flash' => $this->sessionService()->flashConsumeForView(),
             ]);
             unset($_SESSION['sl_disc_old'], $_SESSION['sl_disc_errors']);
             return;
         }
 
         if ($id > 0 && $second === 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $discussion = $discussionRepository->getRowByPk($id);
+            $discussion = $discussionRepository->fetchRowByPk($id);
             if (!$discussion) {
-                $this->setFlash('error', 'Discussion not found.');
+                $this->sessionService()->flashPersist('error', 'Discussion not found.');
                 $this->redirect('admin/sl-discussions');
                 return;
             }
@@ -1104,40 +1123,40 @@ class AdminController extends BaseController {
                 $groupId
             );
             if ($ok) {
-                $discussionRepository->setApprovalStatus($id, $approval);
+                $discussionRepository->updateApprovalStatus($id, $approval);
             }
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion updated successfully.' : 'Failed to update discussion.');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion updated successfully.' : 'Failed to update discussion.');
             $this->redirect('admin/sl-discussions');
             return;
         }
 
         if ($id > 0 && $second === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $ok = $discussionRepository->deleteByPrimaryKey($id);
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion deleted.' : 'Failed to delete discussion.');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion deleted.' : 'Failed to delete discussion.');
             $this->redirect('admin/sl-discussions');
             return;
         }
 
         if ($id > 0 && $second === 'approve' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $ok = $discussionRepository->setApprovalStatus($id, 'approuve');
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion approuvee.' : 'Echec de l approbation.');
+            $ok = $discussionRepository->updateApprovalStatus($id, 'approuve');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion approuvee.' : 'Echec de l approbation.');
             $this->redirect('admin/sl-discussions');
             return;
         }
         if ($id > 0 && $second === 'reject' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-            $ok = $discussionRepository->setApprovalStatus($id, 'rejete');
-            $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion rejetee.' : 'Echec du rejet.');
+            $ok = $discussionRepository->updateApprovalStatus($id, 'rejete');
+            $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion rejetee.' : 'Echec du rejet.');
             $this->redirect('admin/sl-discussions');
             return;
         }
         if ($id > 0 && $second === 'chat') {
-            $discussion = $discussionRepository->getRowByPk($id);
+            $discussion = $discussionRepository->fetchRowByPk($id);
             if (!$discussion) {
-                $this->setFlash('error', 'Discussion not found.');
+                $this->sessionService()->flashPersist('error', 'Discussion not found.');
                 $this->redirect('admin/sl-discussions');
                 return;
             }
-            $this->view('BackOffice/admin/sl_discussions_chat', [
+            $this->view('BackOffice/admin/sl_discussions/chat', [
                 'title' => 'Admin Live Chat - APPOLIOS',
                 'description' => 'Live discussion room',
                 'discussion' => $discussion,
@@ -1146,7 +1165,7 @@ class AdminController extends BaseController {
                 'currentUserId' => (int) ($_SESSION['user_id'] ?? 0),
                 'currentUserName' => (string) ($_SESSION['user_name'] ?? 'Admin'),
                 'adminSidebarActive' => 'sl-discussions',
-                'flash' => $this->getFlash(),
+                'flash' => $this->sessionService()->flashConsumeForView(),
             ]);
             return;
         }
@@ -1155,18 +1174,18 @@ class AdminController extends BaseController {
             return;
         }
 
-        $this->view('BackOffice/admin/sl_discussions', [
+        $this->view('BackOffice/admin/sl_discussions/index', [
             'title' => 'Admin Discussions - APPOLIOS',
             'description' => 'Validation des discussions',
-            'discussions' => $discussionRepository->getAllForAdmin(400),
+            'discussions' => $discussionRepository->fetchAllForAdmin(400),
             'adminSidebarActive' => 'sl-discussions',
-            'flash' => $this->getFlash(),
+            'flash' => $this->sessionService()->flashConsumeForView(),
         ]);
     }
 
     private function adminDiscussionUploadAttachment($discussionRepository, int $discussionId): void
     {
-        $discussion = $discussionRepository->getRowByPk($discussionId);
+        $discussion = $discussionRepository->fetchRowByPk($discussionId);
         if (!$discussion) {
             $this->jsonResponse(['ok' => false, 'error' => 'Discussion not found.'], 404);
         }

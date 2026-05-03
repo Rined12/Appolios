@@ -6,9 +6,9 @@ $register_old = $register_old ?? [];
 $register_inline_errors = $register_inline_errors ?? [];
 ?>
 
-<section class="neo-auth-wrap">
+<div class="section neo-auth-wrap">
     <div class="neo-glass-card neo-auth-grid">
-        <aside class="neo-auth-info">
+        <div class="aside neo-auth-info">
             <h2>Create Your Learning Profile</h2>
             <p class="neo-muted" style="margin-top: 0.5rem;">Join APPOLIOS to unlock courses, projects, and career-focused paths.</p>
             <div class="neo-badges" style="margin-top: 1rem;">
@@ -16,7 +16,7 @@ $register_inline_errors = $register_inline_errors ?? [];
                 <span class="neo-badge success">Certificates</span>
                 <span class="neo-badge warning">Skill Levels</span>
             </div>
-        </aside>
+        </div>
 
         <div class="neo-auth-form">
             <!-- Back to Home Button -->
@@ -169,4 +169,4 @@ $register_inline_errors = $register_inline_errors ?? [];
             <p class="neo-muted" style="margin-top: 0.85rem; font-size: 0.9rem;">Already have an account? <a href="<?= APP_ENTRY ?>?url=login" style="color: #93c5fd;">Sign in</a></p>
         </div>
     </div>
-</section>
+</div>

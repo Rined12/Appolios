@@ -20,19 +20,19 @@ class RessourceController extends BaseController {
 
     public function evenementRessources() {
         if (!$this->isAdmin()) {
-            $this->setFlash('error','Access denied.'); $this->redirect('admin/login'); return;
+            $this->sessionService()->flashPersist('error','Access denied.'); $this->redirect('admin/login'); return;
         }
 
         $selectedId = (int)($_GET['evenement_id'] ?? 0);
         if ($selectedId <= 0) {
-            $this->setFlash('error','Please choose an evenement first.');
+            $this->sessionService()->flashPersist('error','Please choose an evenement first.');
             $this->redirect('event/evenements'); return;
         }
 
         [$evenementRepo, $resRepo] = $this->services();
         $selectedEvenement = $evenementRepo->findById($selectedId);
         if (!$selectedEvenement) {
-            $this->setFlash('error','Evenement not found.');
+            $this->sessionService()->flashPersist('error','Evenement not found.');
             $this->redirect('event/evenements'); return;
         }
 
@@ -65,7 +65,8 @@ class RessourceController extends BaseController {
             'participations'      => $participationsList,
             'participation_pending_count' => $participationPendingCount,
             'admin_is_creator'    => $adminIsCreator,
-            'flash'               => $this->getFlash(),
+            'old'                 => $this->sessionService()->consumeOld(),
+            'flash'               => $this->sessionService()->flashConsumeForView(),
         ]);
     }
 
@@ -114,14 +115,14 @@ class RessourceController extends BaseController {
                 echo json_encode(['success'=>true,'message'=>$labels[$type].' saved successfully.','verified_in_right_list'=>true,'resource_id'=>(int)$createdId]);
                 exit;
             }
-            $this->setFlash('success', $labels[$type].' added successfully.');
+            $this->sessionService()->flashPersist('success', $labels[$type].' added successfully.');
         } else {
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode(['success'=>false,'message'=>'Save verification failed.','verified_in_right_list'=>false]);
                 exit;
             }
-            $this->setFlash('error','Save verification failed.');
+            $this->sessionService()->flashPersist('error','Save verification failed.');
         }
         $this->redirect('ressource/evenement-ressources&evenement_id='.$evenementId);
     }
@@ -135,7 +136,7 @@ class RessourceController extends BaseController {
         $details     = $this->sanitize($_POST['details'] ?? '');
 
         if ($evenementId <= 0 || empty($title)) {
-            $this->setFlash('error','Invalid data.');
+            $this->sessionService()->flashPersist('error','Invalid data.');
             $this->redirect('ressource/evenement-ressources&evenement_id='.$evenementId.'&edit_id='.(int)$id);
             return;
         }
@@ -143,14 +144,14 @@ class RessourceController extends BaseController {
         [, $resRepo] = $this->services();
         $resource = $resRepo->findById((int)$id);
         if (!$resource || (int)$resource['evenement_id'] !== $evenementId) {
-            $this->setFlash('error','Resource not found for this evenement.');
+            $this->sessionService()->flashPersist('error','Resource not found for this evenement.');
             $this->redirect('ressource/evenement-ressources&evenement_id='.$evenementId);
             return;
         }
 
         $resRepo->update((int)$id, ['title'=>$title,'details'=>$details,'evenement_id'=>$evenementId])
-            ? $this->setFlash('success','Ressource updated successfully.')
-            : $this->setFlash('error','Failed to update ressource.');
+            ? $this->sessionService()->flashPersist('success','Ressource updated successfully.')
+            : $this->sessionService()->flashPersist('error','Failed to update ressource.');
         $this->redirect('ressource/evenement-ressources&evenement_id='.$evenementId);
     }
 
@@ -160,14 +161,14 @@ class RessourceController extends BaseController {
 
         $evenementId = (int)($_POST['evenement_id'] ?? 0);
         if ($evenementId <= 0) {
-            $this->setFlash('error','Invalid evenement context.');
+            $this->sessionService()->flashPersist('error','Invalid evenement context.');
             $this->redirect('event/evenements'); return;
         }
 
         [, $resRepo] = $this->services();
         $resRepo->delete((int)$id, $evenementId)
-            ? $this->setFlash('success','Ressource deleted successfully.')
-            : $this->setFlash('error','Failed to delete ressource.');
+            ? $this->sessionService()->flashPersist('success','Ressource deleted successfully.')
+            : $this->sessionService()->flashPersist('error','Failed to delete ressource.');
         $this->redirect('ressource/evenement-ressources&evenement_id='.$evenementId);
     }
 
@@ -178,8 +179,8 @@ class RessourceController extends BaseController {
         $evenementId = (int)($_POST['from_evenement_id'] ?? 0);
         [, $resRepo] = $this->services();
         $resRepo->updateParticipationStatusAdmin((int)$id, 'approved')
-            ? $this->setFlash('success', 'Participation approved.')
-            : $this->setFlash('error', 'Failed to approve participation.');
+            ? $this->sessionService()->flashPersist('success', 'Participation approved.')
+            : $this->sessionService()->flashPersist('error', 'Failed to approve participation.');
 
         $this->redirect('ressource/evenement-ressources&evenement_id=' . $evenementId);
     }
@@ -193,8 +194,8 @@ class RessourceController extends BaseController {
 
         [, $resRepo] = $this->services();
         $resRepo->updateParticipationStatusAdmin((int)$id, 'rejected', $reason)
-            ? $this->setFlash('success', 'Participation rejected with reason.')
-            : $this->setFlash('error', 'Failed to reject participation.');
+            ? $this->sessionService()->flashPersist('success', 'Participation rejected with reason.')
+            : $this->sessionService()->flashPersist('error', 'Failed to reject participation.');
 
         $this->redirect('ressource/evenement-ressources&evenement_id=' . $evenementId);
     }
@@ -208,15 +209,15 @@ class RessourceController extends BaseController {
         [$evenementRepo, $resRepo] = $this->services();
         $event = $evenementRepo->findById($evenementId);
         if (!$event || (int)($event['created_by'] ?? -1) !== (int)$_SESSION['user_id']) {
-            $this->setFlash('error', 'Access denied. You can only delete participations for events you created.');
+            $this->sessionService()->flashPersist('error', 'Access denied. You can only delete participations for events you created.');
             $this->redirect('ressource/evenement-ressources&evenement_id=' . $evenementId);
             return;
         }
 
         if ($resRepo->deleteParticipationForEvent((int)$id, $evenementId) > 0) {
-            $this->setFlash('success', 'Participation removed successfully.');
+            $this->sessionService()->flashPersist('success', 'Participation removed successfully.');
         } else {
-            $this->setFlash('error', 'Participation not found.');
+            $this->sessionService()->flashPersist('error', 'Participation not found.');
         }
         $this->redirect('ressource/evenement-ressources&evenement_id=' . $evenementId);
     }

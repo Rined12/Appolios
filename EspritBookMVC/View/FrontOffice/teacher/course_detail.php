@@ -33,27 +33,25 @@ $teacherSidebarActive = 'courses';
                 </div>
 
                 <!-- Video Player -->
-                <?php if (!empty($course['video_url'])): ?>
+                <?php $course_video_payload = $course_video_payload ?? ['type' => 'none']; ?>
+                <?php if (($course_video_payload['type'] ?? '') !== 'none'): ?>
                     <div class="table-container">
                         <div class="table-header">
                             <h3 style="margin: 0;">Course Video</h3>
                         </div>
                         <div style="padding: 20px;">
                             <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: var(--border-radius-sm); background: var(--primary-color);">
-                                <?php
-                                $videoUrl = $course['video_url'];
-                                if (strpos($videoUrl, 'youtube.com') !== false || strpos($videoUrl, 'youtu.be') !== false) {
-                                    if (strpos($videoUrl, 'youtu.be') !== false) {
-                                        $videoId = basename(parse_url($videoUrl, PHP_URL_PATH));
-                                    } else {
-                                        parse_str(parse_url($videoUrl, PHP_URL_QUERY), $params);
-                                        $videoId = $params['v'] ?? '';
-                                    }
-                                    echo '<iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" src="https://www.youtube.com/embed/' . htmlspecialchars($videoId) . '" frameborder="0" allowfullscreen></iframe>';
-                                } else {
-                                    echo '<video controls style="width: 100%;"><source src="' . htmlspecialchars($videoUrl) . '" type="video/mp4">Your browser does not support video playback.</video>';
-                                }
-                                ?>
+                                <?php if (($course_video_payload['type'] ?? '') === 'youtube'): ?>
+                                    <iframe style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" src="<?= htmlspecialchars((string) ($course_video_payload['embed_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" frameborder="0" allowfullscreen></iframe>
+                                <?php elseif (($course_video_payload['type'] ?? '') === 'mp4'): ?>
+                                    <?php $videoUrl = htmlspecialchars((string) ($course_video_payload['src'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                                    <object data="<?= $videoUrl ?>" type="video/mp4" width="640" height="360">
+                                        <param name="src" value="<?= $videoUrl ?>">
+                                        <param name="autoplay" value="false">
+                                        <param name="controls" value="true">
+                                        <a href="<?= $videoUrl ?>">Download video</a>
+                                    </object>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>

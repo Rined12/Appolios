@@ -19,22 +19,30 @@ class EventController extends BaseController {
     }
 
     public function evenements() {
-        if (!$this->isAdmin()) { $this->setFlash('error','Access denied.'); $this->redirect('admin/login'); return; }
+        if (!$this->isAdmin()) { $this->sessionService()->flashPersist('error','Access denied.'); $this->redirect('admin/login'); return; }
         [$evenementRepo] = $this->evenementServices();
+        $evenements = $evenementRepo->findAllWithCreatorAndResourceCount();
+        $uid = (int) ($_SESSION['user_id'] ?? 0);
+        foreach ($evenements as &$ev) {
+            $ev['viewer_can_delete_evenement'] = (int) ($ev['created_by'] ?? 0) === $uid;
+        }
+        unset($ev);
         $this->view('BackOffice/admin/evenements', [
             'title'      => 'Manage Evenements - APPOLIOS',
             'description'=> 'Evenement management panel',
-            'evenements' => $evenementRepo->findAllWithCreatorAndResourceCount(),
-            'flash'      => $this->getFlash(),
+            'evenements' => $evenements,
+            'flash'      => $this->sessionService()->flashConsumeForView(),
         ]);
     }
 
     public function addEvenement() {
-        if (!$this->isAdmin()) { $this->setFlash('error','Access denied.'); $this->redirect('admin/login'); return; }
+        if (!$this->isAdmin()) { $this->sessionService()->flashPersist('error','Access denied.'); $this->redirect('admin/login'); return; }
         $this->view('BackOffice/admin/add_evenement', [
             'title'      => 'Add Evenement - APPOLIOS',
             'description'=> 'Create a new evenement',
-            'flash'      => $this->getFlash(),
+            'old'        => $this->sessionService()->consumeOld(),
+            'minDate'    => date('Y-m-d', strtotime('+1 day')),
+            'flash'      => $this->sessionService()->flashConsumeForView(),
         ]);
     }
 
@@ -66,7 +74,7 @@ class EventController extends BaseController {
         if ($capaciteMax < 0)    $errors['capacite_max'] = 'Capacity must be positive';
 
         if (!empty($errors)) {
-            $this->setErrors($errors); $_SESSION['old'] = $_POST;
+            $this->sessionService()->validationPersist($errors); $_SESSION['old'] = $_POST;
             $this->redirect('event/add-evenement'); return;
         }
 
@@ -82,12 +90,12 @@ class EventController extends BaseController {
         ]);
 
         if ($result) {
-            $this->setFlash('success','Evenement created successfully!');
+            $this->sessionService()->flashPersist('success','Evenement created successfully!');
             if (isset($_POST['action']) && $_POST['action']==='save_and_resources')
                 $this->redirect('ressource/evenement-ressources&evenement_id='.$result);
             else $this->redirect('event/evenements');
         } else {
-            $this->setFlash('error','Failed to create evenement.');
+            $this->sessionService()->flashPersist('error','Failed to create evenement.');
             $this->redirect('event/add-evenement');
         }
     }
@@ -96,10 +104,24 @@ class EventController extends BaseController {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
         [$evenementRepo] = $this->evenementServices();
         $evenement = $evenementRepo->findById((int)$id);
-        if (!$evenement) { $this->setFlash('error','Evenement not found.'); $this->redirect('event/evenements'); return; }
+        if (!$evenement) { $this->sessionService()->flashPersist('error','Evenement not found.'); $this->redirect('event/evenements'); return; }
+        $old = $this->sessionService()->consumeOld();
+        $minDate = date('Y-m-d', strtotime('+1 day'));
+        $form = [
+            'title' => $old['title'] ?? ($evenement['titre'] ?? $evenement['title'] ?? ''),
+            'description' => $old['description'] ?? ($evenement['description'] ?? ''),
+            'date_debut' => $old['date_debut'] ?? ($evenement['date_debut'] ?? ''),
+            'date_fin' => $old['date_fin'] ?? ($evenement['date_fin'] ?? ''),
+            'heure_debut' => $old['heure_debut'] ?? (isset($evenement['heure_debut']) ? substr((string) $evenement['heure_debut'], 0, 5) : ''),
+            'heure_fin' => $old['heure_fin'] ?? (isset($evenement['heure_fin']) ? substr((string) $evenement['heure_fin'], 0, 5) : ''),
+            'lieu' => $old['lieu'] ?? (($evenement['lieu'] ?? '') ?: ($evenement['location'] ?? '')),
+            'capacite_max' => $old['capacite_max'] ?? ($evenement['capacite_max'] ?? ''),
+            'type' => $old['type'] ?? ($evenement['type'] ?? 'general'),
+            'statut' => $old['statut'] ?? ($evenement['statut'] ?? 'planifie'),
+        ];
         $this->view('BackOffice/admin/edit_evenement', [
             'title'=>'Edit Evenement - APPOLIOS','description'=>'Update evenement details',
-            'evenement'=>$evenement,'flash'=>$this->getFlash(),
+            'evenement'=>$evenement,'form'=>$form,'minDate'=>$minDate,'flash'=>$this->sessionService()->flashConsumeForView(),
         ]);
     }
 
@@ -131,7 +153,7 @@ class EventController extends BaseController {
         if ($capaciteMax < 0)    $errors['capacite_max'] = 'Capacity must be positive';
 
         if (!empty($errors)) {
-            $this->setErrors($errors); $_SESSION['old'] = $_POST;
+            $this->sessionService()->validationPersist($errors); $_SESSION['old'] = $_POST;
             $this->redirect('event/edit-evenement/'.(int)$id); return;
         }
 
@@ -145,22 +167,22 @@ class EventController extends BaseController {
             'event_date'=>$dateDebut.' '.($heureDebut?:'00:00').':00',
         ]);
 
-        if ($result) { $this->setFlash('success','Evenement updated!'); $this->redirect('event/evenements'); }
-        else { $this->setFlash('error','Failed to update.'); $this->redirect('event/edit-evenement/'.(int)$id); }
+        if ($result) { $this->sessionService()->flashPersist('success','Evenement updated!'); $this->redirect('event/evenements'); }
+        else { $this->sessionService()->flashPersist('error','Failed to update.'); $this->redirect('event/edit-evenement/'.(int)$id); }
     }
 
     public function deleteEvenement($id) {
         if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
         [$evenementRepo] = $this->evenementServices();
         $ev = $evenementRepo->findById((int)$id);
-        if (!$ev) { $this->setFlash('error','Not found.'); $this->redirect('event/evenements'); return; }
+        if (!$ev) { $this->sessionService()->flashPersist('error','Not found.'); $this->redirect('event/evenements'); return; }
         if ($ev['created_by'] != $_SESSION['user_id']) {
-            $this->setFlash('error','You can only delete events you created.');
+            $this->sessionService()->flashPersist('error','You can only delete events you created.');
             $this->redirect('event/evenements'); return;
         }
         $evenementRepo->delete((int)$id)
-            ? $this->setFlash('success','Evenement deleted!')
-            : $this->setFlash('error','Failed to delete.');
+            ? $this->sessionService()->flashPersist('success','Evenement deleted!')
+            : $this->sessionService()->flashPersist('error','Failed to delete.');
         $this->redirect('event/evenements');
     }
 
@@ -171,8 +193,8 @@ class EventController extends BaseController {
         $pending  = $evenementRepo->findPendingTeacherRequests();
         $rejected = $evenementRepo->findRejectedTeacherRequests();
 
-        foreach ($pending  as &$ev) { $ev['ressources'] = $resRepo->getGroupedPublicRessources((int)$ev['id']); }
-        foreach ($rejected as &$ev) { $ev['ressources'] = $resRepo->getGroupedPublicRessources((int)$ev['id']); }
+        foreach ($pending  as &$ev) { $ev['ressources'] = $resRepo->fetchGroupedPublicRessources((int)$ev['id']); }
+        foreach ($rejected as &$ev) { $ev['ressources'] = $resRepo->fetchGroupedPublicRessources((int)$ev['id']); }
         unset($ev);
 
         $this->view('BackOffice/admin/evenement_requests', [
@@ -180,7 +202,7 @@ class EventController extends BaseController {
             'description'     =>'Review pending evenement requests from teachers',
             'requests'        => $pending,
             'rejectedRequests'=> $rejected,
-            'flash'           => $this->getFlash(),
+            'flash'           => $this->sessionService()->flashConsumeForView(),
         ]);
     }
 
@@ -189,11 +211,11 @@ class EventController extends BaseController {
         if ($_SERVER['REQUEST_METHOD']!=='POST') { $this->redirect('event/evenement-requests'); return; }
         [$evenementRepo] = $this->evenementServices();
         if (!$evenementRepo->findById((int)$id)) {
-            $this->setFlash('error','Not found.'); $this->redirect('event/evenement-requests'); return;
+            $this->sessionService()->flashPersist('error','Not found.'); $this->redirect('event/evenement-requests'); return;
         }
         $evenementRepo->updateApproval((int)$id,'approved',(int)$_SESSION['user_id'],null)
-            ? $this->setFlash('success','Request approved.')
-            : $this->setFlash('error','Failed to approve.');
+            ? $this->sessionService()->flashPersist('success','Request approved.')
+            : $this->sessionService()->flashPersist('error','Failed to approve.');
         $this->redirect('event/evenement-requests');
     }
 
@@ -202,16 +224,16 @@ class EventController extends BaseController {
         if ($_SERVER['REQUEST_METHOD']!=='POST') { $this->redirect('event/evenement-requests'); return; }
         $reason = $this->sanitize($_POST['rejection_reason'] ?? '');
         if (empty($reason)) {
-            $this->setErrors(['rejection_reason_'.$id=>'Veuillez renseigner ce champ.']);
+            $this->sessionService()->validationPersist(['rejection_reason_'.$id=>'Veuillez renseigner ce champ.']);
             $this->redirect('event/evenement-requests'); return;
         }
         [$evenementRepo] = $this->evenementServices();
         if (!$evenementRepo->findById((int)$id)) {
-            $this->setFlash('error','Not found.'); $this->redirect('event/evenement-requests'); return;
+            $this->sessionService()->flashPersist('error','Not found.'); $this->redirect('event/evenement-requests'); return;
         }
         $evenementRepo->updateApproval((int)$id,'rejected',(int)$_SESSION['user_id'],$reason)
-            ? $this->setFlash('success','Request rejected.')
-            : $this->setFlash('error','Failed to reject.');
+            ? $this->sessionService()->flashPersist('success','Request rejected.')
+            : $this->sessionService()->flashPersist('error','Failed to reject.');
         $this->redirect('event/evenement-requests');
     }
 }

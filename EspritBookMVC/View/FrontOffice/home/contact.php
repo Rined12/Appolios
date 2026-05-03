@@ -4,7 +4,7 @@
  */
 ?>
 
-<section class="home-lite-page" style="padding-top: 120px; padding-bottom: 60px;">
+<div class="section home-lite-page" style="padding-top: 120px; padding-bottom: 60px;">
     <div class="home-lite-container">
         <div class="home-lite-hero-copy" style="text-align: center; max-width: 800px; margin: 0 auto; margin-bottom: 60px;">
             <span class="home-lite-kicker" style="justify-content: center;">Get in Touch</span>
@@ -79,7 +79,7 @@
             </div>
         </div>
     </div>
-</section>
+</div>
 
 <style>
     input:focus, textarea:focus {

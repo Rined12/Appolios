@@ -3,12 +3,14 @@
  * APPOLIOS - Admin Add Teacher Page
  */
 
-$old = $_SESSION['old'] ?? [];
-unset($_SESSION['old']);
+$old = $old ?? [];
 ?>
 
-<div class="dashboard">
-    <div class="container">
+<div class="dashboard student-events-page">
+    <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
+        <div class="admin-layout">
+            <?php $adminSidebarActive = 'teachers'; require __DIR__ . '/partials/sidebar.php'; ?>
+            <div class="admin-main">
         <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <h1>Add New Teacher</h1>
@@ -69,6 +71,8 @@ unset($_SESSION['old']);
 
                 <button type="submit" class="btn btn-yellow btn-block" style="margin-top: 20px;">Create Teacher Account</button>
             </form>
+        </div>
+            </div>
         </div>
     </div>
 </div>

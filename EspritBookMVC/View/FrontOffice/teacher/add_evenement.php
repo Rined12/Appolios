@@ -15,7 +15,7 @@ $teacherSidebarActive = 'evenements';
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
 
             <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
-                <section class="neo-auth-wrap" style="background: transparent; font-family: 'Inter', sans-serif;">
+                <div class="section neo-auth-wrap" style="background: transparent; font-family: 'Inter', sans-serif;">
                     
                     <div class="neo-glass-card" style="width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(43, 72, 101, 0.08); border: 1px solid rgba(233, 241, 250, 0.8); overflow: hidden; display: flex; flex-direction: column;">
                         
@@ -137,7 +137,7 @@ $teacherSidebarActive = 'evenements';
                         </div>
 
                     </div>
-                </section>
+                </div>
             </div>
         </div>
     </div>

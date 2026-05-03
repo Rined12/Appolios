@@ -6,9 +6,9 @@
 // Flash message is passed from controller via $data['flash']
 ?>
 
-<section class="neo-auth-wrap neo-login-page">
+<div class="section neo-auth-wrap neo-login-page">
     <div class="neo-glass-card neo-auth-grid">
-        <aside class="neo-auth-info">
+        <div class="aside neo-auth-info">
             <h2>Welcome Back</h2>
             <p class="neo-muted" style="margin-top: 0.5rem;">Access your dashboard, continue courses, and track your achievements.</p>
             <div class="neo-badges" style="margin-top: 1rem;">
@@ -21,7 +21,7 @@
                 <div class="neo-login-hero-circle"></div>
                 <img src="<?= APP_URL ?>/View/assets/images/instructor/06.jpg" alt="Student learning" class="neo-login-hero-photo">
             </div>
-        </aside>
+        </div>
 
         <div class="neo-auth-form">
             <!-- Back to Home Button -->
@@ -62,4 +62,4 @@
             <p class="neo-muted" style="margin-top: 0.85rem; font-size: 0.9rem;">Don't have an account? <a href="<?= APP_ENTRY ?>?url=register" style="color: #93c5fd;">Create one</a></p>
         </div>
     </div>
-</section>
+</div>

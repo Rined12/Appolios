@@ -4,11 +4,11 @@
  */
 ?>
 
-<section class="neo-auth-wrap neo-login-page" style="padding: 2rem; background: #fdfdfd; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif;">
+<div class="section neo-auth-wrap neo-login-page" style="padding: 2rem; background: #fdfdfd; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif;">
     <div class="neo-glass-card neo-auth-grid" style="max-width: 1150px; width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(43, 72, 101, 0.08); border: 1px solid rgba(233, 241, 250, 0.8); overflow: hidden; display: grid; grid-template-columns: 1fr 1.1fr; gap: 0;">
         
         <!-- Left Side: Visual & Info -->
-        <aside class="neo-auth-info" style="background: #fcfcfc; padding: 3.5rem 3rem; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid #eef2f6; position: relative; overflow: hidden;">
+        <div class="aside neo-auth-info" style="background: #fcfcfc; padding: 3.5rem 3rem; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid #eef2f6; position: relative; overflow: hidden;">
             <!-- Decorative blobs -->
             <div style="position: absolute; top: -50px; left: -50px; width: 200px; height: 200px; background: #e9f1fa; border-radius: 50%; z-index: 0; opacity: 0.7;"></div>
             <div style="position: absolute; bottom: 10%; right: -30px; width: 150px; height: 150px; background: #e1edf7; border-radius: 50%; z-index: 0; opacity: 0.5;"></div>
@@ -39,7 +39,7 @@
                 <div style="position: absolute; top: 10%; left: 5%; width: 90%; height: 80%; background: #E19864; border-radius: 20px; transform: rotate(-3deg); z-index: -1; opacity: 0.2;"></div>
                 <img src="<?= APP_URL ?>/View/assets/images/instructor/06.jpg" alt="Teacher Illustration" style="width: 100%; max-width: 320px; border-radius: 16px; box-shadow: 0 12px 24px rgba(43, 72, 101, 0.15); border: 4px solid #fff; object-fit: cover; aspect-ratio: 4/3;">
             </div>
-        </aside>
+        </div>
 
         <!-- Right Side: Forms/Lists -->
         <div class="neo-auth-form" style="padding: 3.5rem 3rem; background: #ffffff; display: flex; flex-direction: column;">
@@ -206,7 +206,7 @@
             </div>
         </div>
     </div>
-</section>
+</div>
 
 <!-- ═══════════════════════════════════════════ -->
 <!-- EVENT DETAILS MODAL                         -->

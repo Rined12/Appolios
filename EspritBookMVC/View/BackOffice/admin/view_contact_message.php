@@ -4,12 +4,12 @@
  */
 ?>
 
-<div class="dashboard">
+<div class="dashboard student-events-page">
     <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
         <div class="admin-layout">
             <?php $adminSidebarActive = 'contact-messages'; require __DIR__ . '/partials/sidebar.php'; ?>
 
-            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0; font-family: 'Inter', sans-serif;">
+            <div class="admin-main">
     <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
         <div>
             <h1>View Message</h1>

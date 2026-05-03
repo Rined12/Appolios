@@ -4,16 +4,16 @@
  */
 ?>
 
-<section class="hero" style="min-height: auto; padding: 120px 0 60px;">
+<div class="section hero" style="min-height: auto; padding: 120px 0 60px;">
     <div class="container">
         <div class="hero-text" style="text-align: center; max-width: 800px; margin: 0 auto;">
             <h1>Terms of Service</h1>
             <p>Last updated: <?= date('F d, Y') ?></p>
         </div>
     </div>
-</section>
+</div>
 
-<section class="section" style="padding-top: 40px;">
+<div class="section section" style="padding-top: 40px;">
     <div class="container">
         <div style="max-width: 800px; margin: 0 auto;">
             <div class="table-container">
@@ -68,4 +68,4 @@
             </div>
         </div>
     </div>
-</section>
+</div>

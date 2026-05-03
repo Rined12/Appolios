@@ -4,8 +4,11 @@
  */
 ?>
 
-<div class="dashboard">
-    <div class="container">
+<div class="dashboard student-events-page">
+    <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
+        <div class="admin-layout">
+            <?php $adminSidebarActive = 'teachers'; require __DIR__ . '/partials/sidebar.php'; ?>
+            <div class="admin-main">
         <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center;">
             <div>
                 <h1>Manage Teachers</h1>
@@ -261,6 +264,8 @@
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
             </div>
         </div>
     </div>

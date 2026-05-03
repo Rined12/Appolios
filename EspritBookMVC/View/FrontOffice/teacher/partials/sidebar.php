@@ -6,8 +6,8 @@
 $teacherSidebarActive = $teacherSidebarActive ?? '';
 ?>
 
-<aside class="admin-sidebar dark-theme teacher-sidebar-admin">
-    <nav class="admin-sidebar-nav" aria-label="Teacher Navigation">
+<div class="aside admin-sidebar dark-theme teacher-sidebar-admin">
+    <div class="nav admin-sidebar-nav" aria-label="Teacher Navigation">
         <a href="<?= APP_ENTRY ?>?url=teacher/courses" class="admin-side-link <?= $teacherSidebarActive === 'courses' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -63,7 +63,7 @@ $teacherSidebarActive = $teacherSidebarActive ?? '';
             </span>
             <span>Participations</span>
         </a>
-    </nav>
+    </div>
 
     <!-- Quick Actions -->
     <div class="admin-sidebar-footer" style="padding: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); margin-top: 1rem;">
@@ -87,4 +87,4 @@ $teacherSidebarActive = $teacherSidebarActive ?? '';
             </a>
         </div>
     </div>
-</aside>
+</div>

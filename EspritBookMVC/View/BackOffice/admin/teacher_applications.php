@@ -4,12 +4,12 @@
  */
 ?>
 
-<div class="dashboard">
+<div class="dashboard student-events-page">
     <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
         <div class="admin-layout">
-            <?php require __DIR__ . '/partials/sidebar.php'; ?>
+            <?php $adminSidebarActive = 'teacher-applications'; require __DIR__ . '/partials/sidebar.php'; ?>
 
-            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
+            <div class="admin-main">
                 <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
                         <h1>Teacher Applications</h1>
@@ -23,11 +23,10 @@
                     </a>
                 </div>
 
-        <?php if (isset($_SESSION['flash'])): ?>
-            <div class="alert alert-<?= $_SESSION['flash']['type'] === 'error' ? 'danger' : 'success' ?>" style="margin-bottom: 20px; padding: 12px 20px; border-radius: 8px; background: <?= $_SESSION['flash']['type'] === 'error' ? 'rgba(220, 53, 69, 0.1)' : 'rgba(25, 135, 84, 0.1)' ?>; border: 1px solid <?= $_SESSION['flash']['type'] === 'error' ? 'rgba(220, 53, 69, 0.3)' : 'rgba(25, 135, 84, 0.3)' ?>; color: <?= $_SESSION['flash']['type'] === 'error' ? '#dc3545' : '#198754' ?>;">
-                <?= htmlspecialchars($_SESSION['flash']['message']) ?>
+        <?php if (!empty($flash_banner)): ?>
+            <div class="alert alert-<?= htmlspecialchars((string) ($flash_banner['alert_class'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="<?= htmlspecialchars((string) ($flash_banner['inner_style'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                <?= htmlspecialchars((string) ($flash_banner['message'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
             </div>
-            <?php unset($_SESSION['flash']); ?>
         <?php endif; ?>
 
         <!-- Stats Cards -->
@@ -90,6 +89,8 @@
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
             </div>
         </div>
     </div>
@@ -167,7 +168,3 @@ window.onclick = function(event) {
     }
 }
 </script>
-            </div>
-        </div>
-    </div>
-</div>

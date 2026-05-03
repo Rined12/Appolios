@@ -11,11 +11,10 @@
             <p>Update your account information</p>
         </div>
 
-        <?php if (isset($_SESSION['flash'])): ?>
-            <div class="alert alert-<?= $_SESSION['flash']['type'] === 'error' ? 'danger' : 'success' ?>" style="margin-bottom: 20px; padding: 12px 20px; border-radius: 8px; background: <?= $_SESSION['flash']['type'] === 'error' ? 'rgba(220, 53, 69, 0.1)' : 'rgba(25, 135, 84, 0.1)' ?>; border: 1px solid <?= $_SESSION['flash']['type'] === 'error' ? 'rgba(220, 53, 69, 0.3)' : 'rgba(25, 135, 84, 0.3)' ?>; color: <?= $_SESSION['flash']['type'] === 'error' ? '#dc3545' : '#198754' ?>;">
-                <?= htmlspecialchars($_SESSION['flash']['message']) ?>
+        <?php if (!empty($flash_banner)): ?>
+            <div class="alert alert-<?= htmlspecialchars((string) ($flash_banner['alert_class'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="<?= htmlspecialchars((string) ($flash_banner['inner_style'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                <?= htmlspecialchars((string) ($flash_banner['message'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
             </div>
-            <?php unset($_SESSION['flash']); ?>
         <?php endif; ?>
 
         <div style="max-width: 600px; margin: 0 auto;">

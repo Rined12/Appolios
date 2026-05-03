@@ -12,22 +12,22 @@ $participationMap = $participationMap ?? [];
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
 
             <div class="admin-main">
-                <section class="student-events-hero-top">
+                <div class="section student-events-hero-top">
                     <div class="student-events-hero-copy">
                         <span class="student-events-hero-kicker">Student Space</span>
                         <h1>Upcoming Events</h1>
-                        <p>Welcome <?= htmlspecialchars($userName ?? ($_SESSION['user_name'] ?? 'Student')) ?>, discover event details and resources.</p>
+                        <p>Welcome <?= htmlspecialchars((string) ($userName ?? 'Student')) ?>, discover event details and resources.</p>
                     </div>
 
                     <div class="student-events-hero-media" aria-hidden="true">
-                        <article class="student-events-visual-card student-events-visual-card-main">
+                        <div class="article student-events-visual-card student-events-visual-card-main">
                             <img src="<?= APP_URL ?>/View/assets/images/about/06.jpg" alt="Students collaborating around a table" class="student-events-visual-img">
-                        </article>
-                        <article class="student-events-visual-card student-events-visual-card-sub">
+                        </div>
+                        <div class="article student-events-visual-card student-events-visual-card-sub">
                             <img src="<?= APP_URL ?>/View/assets/images/about/09.jpg" alt="Online conference session" class="student-events-visual-img">
-                        </article>
+                        </div>
                     </div>
-                </section>
+                </div>
 
                 <div class="student-events-tabs" style="margin-bottom: 2rem; display: flex; gap: 1rem; border-bottom: 2px solid #eef2f6; padding-bottom: 10px;">
                     <button class="student-tab-btn active" data-tab="all-events" style="background: none; border: none; padding: 10px 20px; font-weight: 700; font-size: 1rem; color: #548CA8; cursor: pointer; position: relative; transition: all 0.2s;">
@@ -74,7 +74,7 @@ $participationMap = $participationMap ?? [];
                     <?php if (!empty($evenements)): ?>
                         <div class="student-events-grid">
                             <?php foreach ($evenements as $event): ?>
-                                <article class="student-event-card">
+                                <div class="article student-event-card">
                                     <div class="student-event-topline">
                                         <span class="student-event-status"><?= htmlspecialchars(strtoupper($event['statut'] ?? 'PLANIFIE')) ?></span>
                                         <span class="student-event-type"><?= htmlspecialchars($event['type'] ?? 'General') ?></span>
@@ -120,7 +120,7 @@ $participationMap = $participationMap ?? [];
                                         </form>
                                     <?php endif; ?>
                                     <a href="<?= APP_ENTRY ?>?url=student/evenement/<?= (int) $event['id'] ?>" class="btn btn-block" style="border:1.5px solid #548CA8;color:#548CA8;background:transparent;margin-top:6px;display:block;text-align:center;padding:10px;border-radius:8px;font-weight:600;text-decoration:none;">View Details</a>
-                                </article>
+                                </div>
                             <?php endforeach; ?>
                         </div>
                     <?php else: ?>

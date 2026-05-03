@@ -4,8 +4,11 @@
  */
 ?>
 
-<div class="dashboard">
-    <div class="container">
+<div class="dashboard student-events-page">
+    <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
+        <div class="admin-layout">
+            <?php $adminSidebarActive = 'users'; require __DIR__ . '/partials/sidebar.php'; ?>
+            <div class="admin-main">
         <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
                 <h1>Manage Users</h1>
@@ -262,7 +265,7 @@
                                     </td>
                                     <td><?= date('M d, Y', strtotime($user['created_at'])) ?></td>
                                     <td>
-                                        <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                                        <?php if ((int) ($user['id'] ?? 0) !== (int) ($admin_session_user_id ?? 0)): ?>
                                             <?php if ($user['is_blocked'] ?? 0): ?>
                                                 <a href="<?= APP_ENTRY ?>?url=admin/unblock-user/<?= $user['id'] ?>" class="btn action-btn" style="padding: 5px 10px; font-size: 0.8rem; background: #28a745; color: white;" onclick="return confirm('Are you sure you want to unblock this user?')">Unblock</a>
                                             <?php else: ?>
@@ -281,6 +284,8 @@
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
             </div>
         </div>
     </div>

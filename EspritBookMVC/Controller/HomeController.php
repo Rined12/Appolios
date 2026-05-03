@@ -5,8 +5,8 @@
  */
 
 require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../Repository/CourseRepository.php';
-require_once __DIR__ . '/../Presentation/FlashBannerPresenter.php';
+require_once __DIR__ . '/../Model/Repositories.php';
+require_once __DIR__ . '/../Model/PresentationHelpers.php';
 
 class HomeController extends BaseController {
 
@@ -52,11 +52,11 @@ class HomeController extends BaseController {
      * Contact page
      */
     public function contact() {
-        $flash = $this->getFlash();
+        $flashEntity = $this->sessionService()->takeFlash();
         $data = [
             'title' => 'Contact Us',
             'description' => 'Get in touch with APPOLIOS',
-            'flash_banner' => FlashBannerPresenter::fromSessionFlash($flash),
+            'flash_banner' => FlashBannerPresenter::fromFlash($flashEntity),
         ];
 
         $this->view('FrontOffice/home/contact', $data);
@@ -94,13 +94,12 @@ class HomeController extends BaseController {
         }
 
         if (!empty($errors)) {
-            $this->setFlash('error', implode('<br>', $errors));
+            $this->sessionService()->flashPersist('error', implode('<br>', $errors));
             $this->redirect('contact');
             return;
         }
 
         // Save to database
-        require_once __DIR__ . '/../Repository/ContactMessageRepository.php';
         $contactRepository = $this->model('ContactMessageRepository');
 
         $result = $contactRepository->createMessage([
@@ -111,9 +110,9 @@ class HomeController extends BaseController {
         ]);
 
         if ($result) {
-            $this->setFlash('success', 'Thank you! Your message has been sent successfully. We will get back to you soon.');
+            $this->sessionService()->flashPersist('success', 'Thank you! Your message has been sent successfully. We will get back to you soon.');
         } else {
-            $this->setFlash('error', 'Sorry, there was an error sending your message. Please try again.');
+            $this->sessionService()->flashPersist('error', 'Sorry, there was an error sending your message. Please try again.');
         }
 
         $this->redirect('contact');
@@ -161,7 +160,11 @@ class HomeController extends BaseController {
         }
 
         $courseRepository = $this->model('CourseRepository');
-        $courses = $courseRepository->getAllWithCreator();
+        $courses = $courseRepository->fetchAllWithCreator();
+        foreach ($courses as &$courseRow) {
+            $courseRow['description_teaser'] = substr((string) ($courseRow['description'] ?? ''), 0, 150);
+        }
+        unset($courseRow);
 
         $data = [
             'title' => 'All Courses',
