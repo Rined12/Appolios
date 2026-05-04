@@ -198,6 +198,26 @@ class StudentController extends BaseController {
                     'student/badges'
                 );
             }
+            
+            // Generate certificate on course completion
+            require_once __DIR__ . '/../Service/CertificateService.php';
+            $certService = new CertificateService();
+            $existingCert = $certService->getCertificate($userId, $courseId);
+            
+            if (!$existingCert) {
+                $certService->generateCertificate($userId, $courseId);
+                
+                $courseModel = $this->model('Course');
+                $course = $courseModel->findById($courseId);
+                
+                $this->createNotification(
+                    $userId,
+                    'certificate',
+                    '🎓 Certificate Earned!',
+                    "Congratulations! You've completed '" . ($course['title'] ?? 'the course') . "'. Your certificate is ready!",
+                    'student/certificates'
+                );
+            }
         }
     }
 
@@ -584,13 +604,22 @@ $courseModel = $this->model('Course');
         $rating = (int) ($_POST['rating'] ?? 0);
         $reviewText = $this->sanitize($_POST['comment'] ?? '');
 
+        error_log("Review data - POST: " . print_r($_POST, true));
+        error_log("Review data - rating: $rating, comment: $reviewText");
+
+        // Debug: check session
+        error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+
         if ($rating < 1 || $rating > 5) {
             echo json_encode(['success' => false, 'message' => 'Please select a rating.']);
             exit;
         }
 
         $enrollmentModel = $this->model('Enrollment');
-        if (!$enrollmentModel->isEnrolled($_SESSION['user_id'], $courseId)) {
+        $isEnrolled = $enrollmentModel->isEnrolled($_SESSION['user_id'], $courseId);
+        error_log("Review submission - user: " . ($_SESSION['user_id'] ?? 'none') . ", course: $courseId, enrolled: " . ($isEnrolled ? 'yes' : 'no'));
+        
+        if (!$isEnrolled) {
             echo json_encode(['success' => false, 'message' => 'You must enroll first.']);
             exit;
         }
@@ -603,12 +632,17 @@ $courseModel = $this->model('Course');
             exit;
         }
 
-        $reviewModel->create([
+        $result = $reviewModel->create([
             'user_id' => $_SESSION['user_id'],
             'course_id' => $courseId,
             'rating' => $rating,
             'comment' => $reviewText
         ]);
+        
+        if (!$result) {
+            echo json_encode(['success' => false, 'message' => 'Failed to save review.']);
+            exit;
+        }
         
         // Award XP for review
         $this->awardXP($_SESSION['user_id'], 20, 'Wrote a course review');

@@ -7,10 +7,10 @@
 require_once __DIR__ . '/../Model/BaseModel.php';
 
 class ReviewController extends BaseModel {
-    protected string $table = 'reviews';
+    protected string $table = 'course_reviews';
     
     public function getByCourseId($courseId) {
-        $sql = "SELECT r.*, u.name as user_name
+        $sql = "SELECT r.*, u.name as user_name, r.review_text as comment
                 FROM {$this->table} r
                 JOIN users u ON r.user_id = u.id
                 WHERE r.course_id = ?
@@ -32,7 +32,7 @@ class ReviewController extends BaseModel {
     }
 
     public function create($data) {
-        $sql = "INSERT INTO {$this->table} (user_id, course_id, rating, comment, created_at)
+        $sql = "INSERT INTO {$this->table} (user_id, course_id, rating, review_text, created_at)
                 VALUES (?, ?, ?, ?, NOW())";
         try {
             $stmt = $this->db->prepare($sql);
@@ -44,6 +44,7 @@ class ReviewController extends BaseModel {
             ]);
             return $this->db->lastInsertId();
         } catch (PDOException $e) {
+            error_log("Review create error: " . $e->getMessage());
             return false;
         }
     }

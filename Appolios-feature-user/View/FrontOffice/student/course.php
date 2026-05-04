@@ -66,7 +66,7 @@ $chapters = $course['chapters'] ?? [];
 
                     <!-- Course Info -->
                     <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
-                        <?php if ($isPaid): ?>
+                        <?php if ($isPaid && !$isEnrolled): ?>
                         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <span style="font-size: 0.85rem; opacity: 0.9;">Course Price</span>
@@ -279,6 +279,13 @@ function markComplete(lid, cid, chapterIndex, lessonIndex) {
                     completedLessons++; 
                     updateProgress();
                     updateLessonUI(chapterIndex, lessonIndex);
+                    
+                    var lessonDiv = document.getElementById('lesson-' + chapterIndex + '-' + lessonIndex);
+                    if (lessonDiv) {
+                        lessonDiv.setAttribute('data-completed', 'true');
+                        lessonDiv.style.borderLeft = '3px solid #22c55e';
+                    }
+                    
                     if (d.progress >= 100) {
                         var msg = '🎓 Congratulations! You completed the course!';
                         if (d.badge && d.badge.name) {

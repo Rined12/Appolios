@@ -135,34 +135,6 @@ function toggleChapter(idx) {
     }
 }
                 </script>
-                <?php endif; ?>
-            </div>
-                    <div style="padding: 20px;">
-                        <?php if (!empty($enrolledStudents)): ?>
-                            <div style="max-height: 400px; overflow-y: auto;">
-                                <?php foreach ($enrolledStudents as $student): ?>
-                                    <div style="display: flex; align-items: center; gap: 15px; padding: 15px; border-bottom: 1px solid var(--gray);">
-                                        <div style="width: 40px; height: 40px; background: var(--secondary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
-                                            <?= strtoupper(substr($student['name'], 0, 1)) ?>
-                                        </div>
-                                        <div style="flex: 1;">
-                                            <p style="margin: 0; font-weight: 500;"><?= htmlspecialchars($student['name']) ?></p>
-                                            <p style="margin: 0; font-size: 0.85rem; color: var(--gray-dark);"><?= htmlspecialchars($student['email']) ?></p>
-                                        </div>
-                                        <div style="text-align: right;">
-                                            <p style="margin: 0; font-size: 0.85rem; font-weight: 600;"><?= $student['progress'] ?>%</p>
-                                            <p style="margin: 0; font-size: 0.75rem; color: var(--gray-dark);">progress</p>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php else: ?>
-                            <p style="text-align: center; color: var(--gray-dark); padding: 20px;">No students enrolled yet.</p>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
             </div>
         </div>
     </div>
