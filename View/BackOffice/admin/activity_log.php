@@ -1,161 +1,238 @@
 <?php
 /**
- * APPOLIOS - Activity Log / History Page
+ * APPOLIOS - Historique d'Activité (Neo Admin Pro)
  */
 ?>
 
-<div class="dashboard">
-    <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
-        <div class="admin-layout">
-            <?php require __DIR__ . '/partials/sidebar.php'; ?>
+<div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1 style="font-size: 1.8rem; font-weight: 800; color: #1e293b; margin: 0 0 0.5rem 0;">Journal d'Activité</h1>
+        <p style="color: #64748b; margin: 0;">Historique complet des actions effectuées sur la plateforme.</p>
+    </div>
+    <div style="display: flex; gap: 12px;">
+        <button onclick="toggleFilters()" class="btn-admin" style="background: white; border: 1px solid #e2e8f0; color: #475569;">
+            <i class="bi bi-filter"></i> Filtres
+        </button>
+        <a href="<?= APP_ENTRY ?>?url=admin/activity-log" class="btn-admin" style="background: #f1f5f9; color: #475569;">
+            <i class="bi bi-arrow-clockwise"></i> Actualiser
+        </a>
+    </div>
+</div>
 
-            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
-                <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <h1>Activity Log</h1>
-                        <p>Track all user activities on the platform</p>
-                    </div>
-                    <a href="javascript:history.back()" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; background: #6c757d;">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="transform: rotate(180deg);">
-                            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
-                        </svg>
-                        Back
-                    </a>
-                </div>
-
-                <?php if (isset($_SESSION['flash'])): ?>
-                    <div class="alert alert-<?= $_SESSION['flash']['type'] === 'error' ? 'danger' : 'success' ?>" style="margin-bottom: 20px;">
-                        <?= htmlspecialchars($_SESSION['flash']['message']) ?>
-                    </div>
-                    <?php unset($_SESSION['flash']); ?>
-                <?php endif; ?>
-
-                <!-- Stats Cards -->
-                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, rgba(84, 140, 168, 0.1) 0%, rgba(84, 140, 168, 0.05) 100%); border: 1px solid rgba(84, 140, 168, 0.2); border-radius: 12px; padding: 20px;">
-                        <div style="font-size: 2rem; font-weight: 700; color: #548CA8;"><?= $stats['total'] ?? 0 ?></div>
-                        <div style="color: #64748b; font-size: 0.9rem;">Total Activities</div>
-                    </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 12px; padding: 20px;">
-                        <div style="font-size: 2rem; font-weight: 700; color: #22c55e;"><?= $stats['logins'] ?? 0 ?></div>
-                        <div style="color: #64748b; font-size: 0.9rem;">Logins</div>
-                    </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 20px;">
-                        <div style="font-size: 2rem; font-weight: 700; color: #ef4444;"><?= $stats['logouts'] ?? 0 ?></div>
-                        <div style="color: #64748b; font-size: 0.9rem;">Logouts</div>
-                    </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%); border: 1px solid rgba(251, 146, 60, 0.2); border-radius: 12px; padding: 20px;">
-                        <div style="font-size: 2rem; font-weight: 700; color: #fb923c;"><?= $stats['registers'] ?? 0 ?></div>
-                        <div style="color: #64748b; font-size: 0.9rem;">Registrations</div>
-                    </div>
-                </div>
-
-                <!-- Filters -->
-                <div class="table-container" style="margin-bottom: 20px;">
-                    <div class="table-header">
-                        <h3 style="margin: 0;">Filters</h3>
-                    </div>
-                    <form method="GET" action="<?= APP_ENTRY ?>?url=admin/activity-log" style="padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                        <input type="hidden" name="url" value="admin/activity-log">
-
-                        <div>
-                            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Activity Type</label>
-                            <select name="activity_type" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem;">
-                                <option value="">All Types</option>
-                                <option value="login" <?= ($filters['activity_type'] ?? '') === 'login' ? 'selected' : '' ?>>Login</option>
-                                <option value="logout" <?= ($filters['activity_type'] ?? '') === 'logout' ? 'selected' : '' ?>>Logout</option>
-                                <option value="register" <?= ($filters['activity_type'] ?? '') === 'register' ? 'selected' : '' ?>>Register</option>
-                                <option value="reset_password" <?= ($filters['activity_type'] ?? '') === 'reset_password' ? 'selected' : '' ?>>Reset Password</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Date From</label>
-                            <input type="date" name="date_from" value="<?= htmlspecialchars($filters['date_from'] ?? '') ?>" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem;">
-                        </div>
-
-                        <div>
-                            <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Date To</label>
-                            <input type="date" name="date_to" value="<?= htmlspecialchars($filters['date_to'] ?? '') ?>" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem;">
-                        </div>
-
-                        <div style="display: flex; align-items: flex-end;">
-                            <button type="submit" class="btn" style="padding: 10px 20px; background: #548CA8; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                                Filter
-                            </button>
-                            <a href="<?= APP_ENTRY ?>?url=admin/activity-log" class="btn" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: 10px;">
-                                Reset
-                            </a>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Activities Table -->
-                <div class="table-container">
-                    <div class="table-header">
-                        <h3 style="margin: 0;">Recent Activities</h3>
-                    </div>
-                    <div class="table-responsive">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>User</th>
-                                    <th>Role</th>
-                                    <th>Activity</th>
-                                    <th>Description</th>
-                                    <th>IP Address</th>
-                                    <th>Timestamp</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (!empty($activities)): ?>
-                                    <?php foreach ($activities as $activity): ?>
-                                        <tr>
-                                            <td><?= htmlspecialchars($activity['id']) ?></td>
-                                            <td>
-                                                <?php if ($activity['user_name']): ?>
-                                                    <strong><?= htmlspecialchars($activity['user_name']) ?></strong><br>
-                                                    <small style="color: #64748b;"><?= htmlspecialchars($activity['user_email']) ?></small>
-                                                <?php else: ?>
-                                                    <span style="color: #94a3b8;">Guest</span>
-                                                <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <span class="badge badge-<?= $activity['user_role'] ?? 'secondary' ?>" style="padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; background: <?= $activity['user_role'] === 'admin' ? '#E19864' : ($activity['user_role'] === 'teacher' ? '#548CA8' : '#28a745'); ?>; color: white;">
-                                                    <?= ucfirst($activity['user_role'] ?? 'N/A') ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span style="padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; background: <?= $activity['activity_type'] === 'login' ? 'rgba(34, 197, 94, 0.1)' : ($activity['activity_type'] === 'logout' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(84, 140, 168, 0.1)'); ?>; color: <?= $activity['activity_type'] === 'login' ? '#22c55e' : ($activity['activity_type'] === 'logout' ? '#ef4444' : '#548CA8'); ?>;">
-                                                    <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $activity['activity_type']))) ?>
-                                                </span>
-                                            </td>
-                                            <td style="max-width: 300px;"><?= htmlspecialchars($activity['activity_description']) ?></td>
-                                            <td><code style="padding: 2px 6px; background: #f1f5f9; border-radius: 4px; font-size: 0.85rem;"><?= htmlspecialchars($activity['ip_address']) ?></code></td>
-                                            <td>
-                                                <div style="font-weight: 600;"><?= date('M d, Y', strtotime($activity['created_at'])) ?></div>
-                                                <div style="color: #64748b; font-size: 0.85rem;"><?= date('H:i:s', strtotime($activity['created_at'])) ?></div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">
-                                            <i class="bi bi-inbox" style="font-size: 3rem; display: block; margin-bottom: 10px; color: #cbd5e1;"></i>
-                                            No activities found.
-                                        </td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+<!-- Quick Stats Row -->
+<div class="stats-grid-pro" style="margin-bottom: 2rem;">
+    <div class="stat-card-pro">
+        <div class="stat-icon-pro" style="background: #eef2ff; color: #4338ca;">
+            <i class="bi bi-list-task"></i>
+        </div>
+        <div>
+            <div class="stat-label">Total Logs</div>
+            <div class="stat-value"><?= $stats['total'] ?? 0 ?></div>
+        </div>
+    </div>
+    <div class="stat-card-pro">
+        <div class="stat-icon-pro" style="background: #ecfdf5; color: #059669;">
+            <i class="bi bi-box-arrow-in-right"></i>
+        </div>
+        <div>
+            <div class="stat-label">Connexions</div>
+            <div class="stat-value"><?= $stats['logins'] ?? 0 ?></div>
+        </div>
+    </div>
+    <div class="stat-card-pro">
+        <div class="stat-icon-pro" style="background: #fff7ed; color: #c2410c;">
+            <i class="bi bi-person-plus-fill"></i>
+        </div>
+        <div>
+            <div class="stat-label">Inscriptions</div>
+            <div class="stat-value"><?= $stats['registers'] ?? 0 ?></div>
         </div>
     </div>
 </div>
 
+<!-- Filters Panel -->
+<div id="filters-panel" class="admin-card" style="display: none; margin-bottom: 2rem;">
+    <form method="GET" action="<?= APP_ENTRY ?>" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: flex-end;">
+        <input type="hidden" name="url" value="admin/activity-log">
+        
+        <div>
+            <label class="admin-label-pro">Type d'activité</label>
+            <select name="activity_type" class="admin-select-pro">
+                <option value="">Tous les types</option>
+                <option value="login" <?= ($filters['activity_type'] ?? '') === 'login' ? 'selected' : '' ?>>Connexion</option>
+                <option value="logout" <?= ($filters['activity_type'] ?? '') === 'logout' ? 'selected' : '' ?>>Déconnexion</option>
+                <option value="register" <?= ($filters['activity_type'] ?? '') === 'register' ? 'selected' : '' ?>>Inscription</option>
+                <option value="ban_user" <?= ($filters['activity_type'] ?? '') === 'ban_user' ? 'selected' : '' ?>>Bannissement</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="admin-label-pro">Date de début</label>
+            <input type="date" name="date_from" value="<?= htmlspecialchars($filters['date_from'] ?? '') ?>" class="admin-input-pro">
+        </div>
+
+        <div>
+            <label class="admin-label-pro">Date de fin</label>
+            <input type="date" name="date_to" value="<?= htmlspecialchars($filters['date_to'] ?? '') ?>" class="admin-input-pro">
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+            <button type="submit" class="btn-admin btn-admin-primary" style="flex: 1; justify-content: center;">Appliquer</button>
+            <a href="<?= APP_ENTRY ?>?url=admin/activity-log" class="btn-admin" style="background: #f1f5f9; color: #475569;">Réinitialiser</a>
+        </div>
+    </form>
+</div>
+
+<div class="admin-card" style="padding: 0; overflow: hidden;">
+    <div style="overflow-x: auto;">
+        <table class="admin-table-pro">
+            <thead>
+                <tr>
+                    <th>Utilisateur</th>
+                    <th>Événement</th>
+                    <th>Détails</th>
+                    <th>Adresse IP</th>
+                    <th>Date & Heure</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (!empty($activities)): ?>
+                    <?php foreach ($activities as $activity): ?>
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <?php if ($activity['user_name']): ?>
+                                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; color: var(--admin-primary);">
+                                            <?= strtoupper(substr($activity['user_name'], 0, 1)) ?>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 700; color: #1e293b;"><?= htmlspecialchars($activity['user_name']) ?></div>
+                                            <div class="admin-badge" style="padding: 0; background: none; color: #94a3b8; font-size: 0.7rem; font-weight: 500;">
+                                                <?= ucfirst($activity['user_role'] ?? 'Guest') ?>
+                                            </div>
+                                        </div>
+                                    <?php else: ?>
+                                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #94a3b8;">
+                                            <i class="bi bi-person"></i>
+                                        </div>
+                                        <span style="color: #94a3b8; font-style: italic; font-size: 0.9rem;">Visiteur</span>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td>
+                                <?php 
+                                $typeColor = 'var(--admin-primary)';
+                                if (str_contains($activity['activity_type'], 'login')) $typeColor = '#10b981';
+                                if (str_contains($activity['activity_type'], 'logout')) $typeColor = '#ef4444';
+                                if (str_contains($activity['activity_type'], 'ban')) $typeColor = '#f59e0b';
+                                ?>
+                                <span class="admin-badge" style="background: <?= $typeColor ?>15; color: <?= $typeColor ?>; border: 1px solid <?= $typeColor ?>30;">
+                                    <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $activity['activity_type']))) ?>
+                                </span>
+                            </td>
+                            <td style="font-size: 0.85rem; color: #64748b; max-width: 250px;"><?= htmlspecialchars($activity['activity_description']) ?></td>
+                            <td><code style="font-size: 0.8rem; background: #f8fafc; padding: 4px 8px; border-radius: 6px; color: #475569; border: 1px solid #e2e8f0;"><?= htmlspecialchars($activity['ip_address']) ?></code></td>
+                            <td>
+                                <div style="font-weight: 700; color: #1e293b;"><?= date('d M, Y', strtotime($activity['created_at'])) ?></div>
+                                <div style="font-size: 0.75rem; color: #94a3b8;"><?= date('H:i:s', strtotime($activity['created_at'])) ?></div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr><td colspan="5" style="text-align:center; padding: 4rem; color: #94a3b8;">
+                        <i class="bi bi-slash-circle" style="font-size: 2rem; display: block; margin-bottom: 1rem;"></i>
+                        Aucune activité enregistrée.
+                    </td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <?php if ($totalPages > 1): ?>
+        <div style="padding: 1.5rem 2rem; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #fcfdfe;">
+            <div style="color: #64748b; font-size: 0.85rem; font-weight: 500;">
+                Affichage de <strong><?= count($activities) ?></strong> sur <strong><?= $totalActivities ?></strong> logs
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+                <?php 
+                $queryParams = $_GET; 
+                unset($queryParams['url']); // Remove url as it's handled by APP_ENTRY
+                ?>
+
+                <!-- Previous -->
+                <?php if ($page > 1): ?>
+                    <?php $queryParams['page'] = $page - 1; ?>
+                    <a href="<?= APP_ENTRY ?>?url=admin/activity-log&<?= http_build_query($queryParams) ?>" class="page-link-pro">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                <?php endif; ?>
+
+                <!-- Pages -->
+                <?php 
+                $start = max(1, $page - 2);
+                $end = min($totalPages, $page + 2);
+                for ($i = $start; $i <= $end; $i++): 
+                    $queryParams['page'] = $i;
+                ?>
+                    <a href="<?= APP_ENTRY ?>?url=admin/activity-log&<?= http_build_query($queryParams) ?>" 
+                       class="page-link-pro <?= $i === $page ? 'active' : '' ?>">
+                        <?= $i ?>
+                    </a>
+                <?php endfor; ?>
+
+                <!-- Next -->
+                <?php if ($page < $totalPages): ?>
+                    <?php $queryParams['page'] = $page + 1; ?>
+                    <a href="<?= APP_ENTRY ?>?url=admin/activity-log&<?= http_build_query($queryParams) ?>" class="page-link-pro">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+</div>
+
 <style>
-.badge-secondary { background: #6c757d !important; }
+.page-link-pro {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 700;
+    transition: all 0.2s;
+}
+.page-link-pro:hover {
+    border-color: var(--admin-primary);
+    color: var(--admin-primary);
+    background: #f8fafc;
+}
+.page-link-pro.active {
+    background: var(--admin-primary);
+    color: white;
+    border-color: var(--admin-primary);
+    box-shadow: 0 4px 12px rgba(67, 56, 202, 0.2);
+}
+</style>
+
+
+<script>
+function toggleFilters() {
+    const p = document.getElementById('filters-panel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+</script>
+
+<style>
+.admin-label-pro { display: block; font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 8px; }
+.admin-input-pro, .admin-select-pro { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; background: white; outline: none; }
+.admin-input-pro:focus, .admin-select-pro:focus { border-color: var(--admin-primary); }
 </style>

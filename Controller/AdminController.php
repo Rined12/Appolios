@@ -177,7 +177,7 @@ class AdminController extends BaseController
             return;
         }
 
-        $users = $this->getStudents();
+        $users = $this->getUsers();
 
         $data = [
             'title' => 'Users Report Export - APPOLIOS',
@@ -188,6 +188,34 @@ class AdminController extends BaseController
         ];
 
         $this->view('BackOffice/admin/export_users', $data);
+    }
+
+    public function exportTeachersPDF()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $teachers = $this->getTeachers();
+
+        $data = [
+            'title' => 'Teachers Report Export - APPOLIOS',
+            'description' => 'Complete list of registered teachers',
+            'teachers' => $teachers,
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/export_teachers', $data);
+    }
+
+    private function getUsers()
+    {
+        $sql = "SELECT id, name, email, role, is_blocked, created_at FROM users ORDER BY created_at DESC";
+        $stmt = $this->getDb()->query($sql);
+        return $stmt->fetchAll();
     }
 
     /**
@@ -1267,11 +1295,14 @@ class AdminController extends BaseController
             'date_to' => $_GET['date_to'] ?? null,
         ];
 
-        $limit = 100;
-        $offset = 0;
+        $limit = 10;
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        if ($page < 1) $page = 1;
+        $offset = ($page - 1) * $limit;
 
         $activities = $this->getFilteredActivities($filters, $limit, $offset);
-        $totalActivities = $this->countAllActivities();
+        $totalActivities = $this->countFilteredActivities($filters);
+        $totalPages = ceil($totalActivities / $limit);
 
         // Get stats
         $stats = [
@@ -1289,6 +1320,9 @@ class AdminController extends BaseController
             'filters' => $filters,
             'adminSidebarActive' => 'activity-log',
             'unreadCount' => $this->getContactMessageUnreadCount(),
+            'page' => $page,
+            'totalPages' => $totalPages,
+            'totalActivities' => $totalActivities,
             'flash' => $this->getFlash()
         ];
 
@@ -1329,6 +1363,7 @@ class AdminController extends BaseController
             return $stmt->fetchAll();
         }
     }
+
 
     public function findUserById($id)
     {
@@ -1708,6 +1743,40 @@ class AdminController extends BaseController
         $stmt->execute($params);
         return $stmt->fetchAll();
     }
+
+    public function countFilteredActivities(array $filters): int {
+        $where = [];
+        $params = [];
+
+        if (!empty($filters['user_id'])) {
+            $where[] = "user_id = ?";
+            $params[] = $filters['user_id'];
+        }
+
+        if (!empty($filters['activity_type'])) {
+            $where[] = "activity_type = ?";
+            $params[] = $filters['activity_type'];
+        }
+
+        if (!empty($filters['date_from'])) {
+            $where[] = "created_at >= ?";
+            $params[] = $filters['date_from'];
+        }
+
+        if (!empty($filters['date_to'])) {
+            $where[] = "created_at <= ?";
+            $params[] = $filters['date_to'];
+        }
+
+        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        $sql = "SELECT COUNT(*) as count FROM activity_log {$whereClause}";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch();
+        return (int) ($result['count'] ?? 0);
+    }
+
 
     /**
      * Get activity type labels

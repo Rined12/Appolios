@@ -6,15 +6,17 @@
 $studentSidebarActive = 'profile';
 ?>
 
+<?php if (!isset($adminSidebarActive)): ?>
 <div class="dashboard student-profile-page">
     <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
-
             <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
-                <div class="dashboard-header">
-                    <h1>My Profile</h1>
-                    <p>Manage your account information</p>
+<?php endif; ?>
+
+                <div class="dashboard-header" style="<?= isset($adminSidebarActive) ? 'margin-bottom: 2rem;' : '' ?>">
+                    <h1 style="<?= isset($adminSidebarActive) ? 'font-size: 1.8rem; font-weight: 800; color: #1e293b; margin: 0 0 0.5rem 0;' : '' ?>">Mon Profil</h1>
+                    <p style="<?= isset($adminSidebarActive) ? 'color: #64748b; margin: 0;' : '' ?>">Gérez vos informations personnelles et votre sécurité.</p>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
@@ -151,11 +153,12 @@ $studentSidebarActive = 'profile';
                         <?php endif; ?>
                     </div>
                 </div>
+<?php if (!isset($adminSidebarActive)): ?>
             </div>
         </div>
-
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Face ID Modal -->
 <div id="faceid-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">

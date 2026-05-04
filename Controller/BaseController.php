@@ -24,15 +24,31 @@ abstract class BaseController
     public function view(string $view, array $data = []): void
     {
         $viewFile = __DIR__ . '/../View/' . $view . '.php';
-        $headerFile = __DIR__ . '/../View/layouts/header.php';
-        $footerFile = __DIR__ . '/../View/layouts/footer.php';
+        
+        // Determine layout based on view path or user role
+        $isAdmin = $this->isAdmin();
+        $isAdminView = str_contains($view, 'BackOffice/admin');
+        $isProfileView = ($view === 'FrontOffice/student/profile');
+
+        if ($isAdminView || ($isAdmin && $isProfileView)) {
+            $headerFile = __DIR__ . '/../View/BackOffice/admin/partials/admin_header.php';
+            $footerFile = __DIR__ . '/../View/BackOffice/admin/partials/admin_footer.php';
+            
+            // Set active sidebar item for profile if needed
+            if ($isProfileView) {
+                $data['adminSidebarActive'] = 'profile';
+            }
+        } else {
+            $headerFile = __DIR__ . '/../View/layouts/header.php';
+            $footerFile = __DIR__ . '/../View/layouts/footer.php';
+        }
 
         if (!file_exists($viewFile)) {
             throw new Exception("View '{$view}' not found");
         }
 
         if (!file_exists($headerFile) || !file_exists($footerFile)) {
-            throw new Exception('Layout files are missing in View/layouts.');
+            throw new Exception('Layout files are missing.');
         }
 
         if (!isset($data['errors'])) {
