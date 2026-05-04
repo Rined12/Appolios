@@ -22,10 +22,8 @@ unset($_SESSION['errors']);
             <h2>Create Your Learning Profile</h2>
             <p class="neo-muted" style="margin-top: 0.5rem;">Join APPOLIOS to unlock courses, projects, and
                 career-focused paths.</p>
-            <div class="neo-badges" style="margin-top: 1rem;">
-                <span class="neo-badge primary">Premium UI</span>
-                <span class="neo-badge success">Certificates</span>
-                <span class="neo-badge warning">Skill Levels</span>
+            <div style="margin-top: 1.5rem;">
+                <?php include __DIR__ . '/../student/ocr_component.php'; ?>
             </div>
         </aside>
 
@@ -455,6 +453,11 @@ unset($_SESSION['errors']);
 
             <p class="neo-muted" style="margin-top: 0.85rem; font-size: 0.9rem;">Already have an account? <a
                     href="<?= APP_ENTRY ?>?url=login" style="color: #93c5fd;">Sign in</a></p>
+
+            <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.1); margin: 2rem 0;">
+            
+            <!-- OCR Tool for Registration (Optional) -->
+            <!-- OCR Tool moved to sidebar -->
         </div>
     </div>
 </section>
@@ -573,6 +576,15 @@ unset($_SESSION['errors']);
         }
 
         window.toggleFaceIdEnroll = async function () {
+            if (!navigator.onLine && !loaded) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Offline',
+                    text: 'Internet connection is required to load face recognition models for the first time.'
+                });
+                return;
+            }
+
             el('reg-face-modal').style.display = 'flex';
             hideErr();
             faceReady = false;
@@ -588,7 +600,11 @@ unset($_SESSION['errors']);
                 const v = el('rf-video'); v.srcObject = stream; await v.play();
                 setStatus('Position your face in the ring…', 40);
                 startPreviewLoop();
-            } catch (e) { setStatus('Error', 0); showErr('Camera error: ' + e.message); }
+            } catch (e) { 
+                setStatus('Error', 0); 
+                const msg = !navigator.onLine ? 'Network error: Check your internet connection.' : 'Camera error: ' + e.message;
+                showErr(msg); 
+            }
         };
 
         let previewLoop = null;
