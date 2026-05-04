@@ -95,7 +95,10 @@ foreach ($categories as $cat) {
                         <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #e5e7eb;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                 <h3 style="margin: 0; color: #1f2937;">Chapters & Lessons</h3>
-                                <button type="button" onclick="addChapter()" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">+ Add Chapter</button>
+                                <div style="display: flex; gap: 8px;">
+                                    <button type="button" onclick="showAIModal()" style="background: linear-gradient(135deg, #9333ea 0%, #c026d3 100%); color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">✨ Generate with AI</button>
+                                    <button type="button" onclick="addChapter()" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600;">+ Add Chapter</button>
+                                </div>
                             </div>
 
                             <div id="chapters-container">
@@ -126,6 +129,38 @@ foreach ($categories as $cat) {
                     </form>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Generate Modal -->
+<div id="aiModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 16px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto;">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #e5e7eb;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; color: #1e293b;">✨ Generate Course with AI</h3>
+                <button onclick="closeAIModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+            </div>
+        </div>
+        <div style="padding: 1.5rem;">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Course Topic *</label>
+                <input type="text" id="aiTopic" placeholder="e.g., Python Programming for Beginners" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;">
+                <small style="color: #64748b;">Describe what the course will teach</small>
+            </div>
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Target Audience</label>
+                <select id="aiAudience" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem;">
+                    <option value="beginners">Complete Beginners</option>
+                    <option value="intermediate">Intermediate Learners</option>
+                    <option value="advanced">Advanced Users</option>
+                    <option value="professionals">Working Professionals</option>
+                    <option value="students">Students</option>
+                </select>
+            </div>
+            <button onclick="generateWithAI()" id="aiGenerateBtn" style="background: linear-gradient(135deg, #9333ea 0%, #c026d3 100%); color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; width: 100%;">Generate Course</button>
+            <div id="aiLoading" style="display: none; text-align: center; padding: 1rem; color: #64748b;">Generating course content... This may take a minute.</div>
+            <div id="aiError" style="display: none; color: #ef4444; padding: 1rem; text-align: center;"></div>
         </div>
     </div>
 </div>
@@ -506,6 +541,145 @@ function showResultModal(success, message) {
 
 function closeResultModal() {
     document.getElementById('resultModal').style.display = 'none';
+}
+
+function showAIModal() {
+    document.getElementById('aiModal').style.display = 'flex';
+}
+
+function closeAIModal() {
+    document.getElementById('aiModal').style.display = 'none';
+    document.getElementById('aiError').style.display = 'none';
+}
+
+function generateWithAI() {
+    const topic = document.getElementById('aiTopic').value.trim();
+    const audience = document.getElementById('aiAudience').value;
+    
+    if (!topic) {
+        document.getElementById('aiError').textContent = 'Please enter a course topic';
+        document.getElementById('aiError').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('aiGenerateBtn').style.display = 'none';
+    document.getElementById('aiLoading').style.display = 'block';
+    document.getElementById('aiError').style.display = 'none';
+    
+    const x = new XMLHttpRequest();
+    x.open('POST', '<?= APP_ENTRY ?>?url=teacher/generateWithAI', true);
+    x.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    x.onreadystatechange = function() {
+        if (x.readyState === 4 && x.status === 200) {
+            try {
+                const d = JSON.parse(x.responseText);
+                document.getElementById('aiLoading').style.display = 'none';
+                document.getElementById('aiGenerateBtn').style.display = 'block';
+                
+                if (d.success && d.course) {
+                    addGeneratedChapters(d.course);
+                    closeAIModal();
+                    Swal.fire({icon: 'success', title: 'Course Generated!', text: 'The AI has generated your course content. You can edit it before submitting.'});
+                } else {
+                    document.getElementById('aiError').textContent = d.error || 'Failed to generate course';
+                    document.getElementById('aiError').style.display = 'block';
+                }
+            } catch(e) {
+                document.getElementById('aiLoading').style.display = 'none';
+                document.getElementById('aiGenerateBtn').style.display = 'block';
+                document.getElementById('aiError').textContent = 'Error parsing response';
+                document.getElementById('aiError').style.display = 'block';
+            }
+        }
+    };
+    x.send('topic=' + encodeURIComponent(topic) + '&audience=' + encodeURIComponent(audience));
+}
+
+function addGeneratedChapters(courseData) {
+    document.getElementById('no-chapters').style.display = 'none';
+    
+    courseData.forEach((chapter, cIdx) => {
+        const chapterHtml = `
+            <div class="chapter-block" style="background: #f9fafb; border-radius: 10px; padding: 1rem; margin-bottom: 1rem; border: 1px solid #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h4 style="margin: 0; color: #374151;">Chapter ${chapterCount + 1}: ${escapeHtml(chapter.title || '')}</h4>
+                    <button type="button" onclick="this.closest('.chapter-block').remove(); checkNoChapters()" style="background: #ef4444; color: white; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer;">Remove</button>
+                </div>
+                
+                <div class="form-group">
+                    <label>Chapter Title *</label>
+                    <input type="text" name="chapters[${chapterCount}][title]" value="${escapeHtml(chapter.title || '')}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>Chapter Description</label>
+                    <textarea name="chapters[${chapterCount}][description]">${escapeHtml(chapter.description || '')}</textarea>
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label style="font-weight: 600; color: #374151;">Lessons</label>
+                        <button type="button" onclick="addLesson(this, ${chapterCount})" style="background: #10b981; color: white; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.85rem;">+ Add Lesson</button>
+                    </div>
+                    <div class="lessons-container">
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        const container = document.getElementById('chapters-container');
+        container.insertAdjacentHTML('beforeend', chapterHtml);
+        
+        const currentChapterIdx = chapterCount;
+        const lessonsContainer = container.lastElementChild.querySelector('.lessons-container');
+        
+        if (chapter.lessons && chapter.lessons.length > 0) {
+            chapter.lessons.forEach((lesson, lIdx) => {
+                const lessonHtml = `
+                    <div class="lesson-block" style="background: white; border-radius: 8px; padding: 1rem; margin-bottom: 0.5rem; border: 1px solid #e5e7eb;">
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                            <div style="flex: 1; min-width: 200px;">
+                                <div class="form-group" style="margin-bottom: 0.5rem;">
+                                    <label style="font-size: 0.85rem;">Lesson Title *</label>
+                                    <input type="text" name="chapters[${currentChapterIdx}][lessons][${lIdx}][title]" value="${escapeHtml(lesson.title || '')}" required style="padding: 8px;">
+                                </div>
+                            </div>
+                            
+                            <div style="flex: 1; min-width: 150px;">
+                                <div class="form-group" style="margin-bottom: 0.5rem;">
+                                    <label style="font-size: 0.85rem;">Type</label>
+                                    <select name="chapters[${currentChapterIdx}][lessons][${lIdx}][lesson_type]" style="padding: 8px; border-radius: 6px; width: 100%;">
+                                        <option value="text" selected>Text/Article</option>
+                                        <option value="pdf">PDF Document</option>
+                                        <option value="both">Text + PDF</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div style="flex: 0 0 80px; display: flex; align-items: flex-end;">
+                                <button type="button" onclick="this.closest('.lesson-block').remove()" style="background: #ef4444; color: white; padding: 8px 12px; border-radius: 4px; border: none; cursor: pointer; margin-bottom: 8px;">X</button>
+                            </div>
+                        </div>
+                        
+                        <div style="flex: 1; min-width: 200px;">
+                            <div class="form-group" style="margin-bottom: 0.5rem;">
+                                <label style="font-size: 0.85rem;">Text Content</label>
+                                <textarea name="chapters[${currentChapterIdx}][lessons][${lIdx}][content]" placeholder="Lesson text content..." style="padding: 8px; min-height: 60px;">${escapeHtml(lesson.content || '')}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                lessonsContainer.insertAdjacentHTML('beforeend', lessonHtml);
+            });
+        }
+        
+        chapterCount++;
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 </script>
 

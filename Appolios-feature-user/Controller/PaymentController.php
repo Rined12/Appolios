@@ -87,47 +87,53 @@ class PaymentController extends BaseController {
             return;
         }
         
-        $result = $this->paymentService->verifyPayment($sessionId);
+        $verification = $this->paymentService->verifyPayment($sessionId);
         
-        if ($result['success']) {
-            $enrollmentModel = $this->model('Enrollment');
-            
-            $alreadyEnrolled = $enrollmentModel->isEnrolled($_SESSION['user_id'], $result['course_id']);
-            
-            if (!$alreadyEnrolled) {
-                $enrollmentModel->enroll($_SESSION['user_id'], $result['course_id']);
-            }
-            
-            $data = [
-                'title' => 'Payment Successful',
-                'course_id' => $result['course_id'],
-                'flash' => $this->getFlash()
-            ];
-            
-            $this->view('FrontOffice/student/payment_success', $data);
-        } else {
+        if (!$verification['success']) {
             $this->setFlash('error', 'Payment verification failed.');
             $this->redirect('student/courses');
+            return;
         }
+        
+        $userId = $verification['user_id'];
+        $courseId = $verification['course_id'];
+        
+        $this->paymentService->updatePaymentStatus($sessionId, 'succeeded');
+        
+        $enrollmentModel = $this->model('Enrollment');
+        $enrollmentModel->enroll($userId, $courseId);
+        
+        $courseModel = $this->model('Course');
+        $course = $courseModel->findById($courseId);
+        
+        $this->setFlash('success', 'Payment successful! You are now enrolled in the course.');
+        $this->redirect('student/course/' . $courseId);
     }
     
     public function cancel() {
+        $courseId = $_GET['course_id'] ?? null;
+        
         $this->setFlash('error', 'Payment was cancelled.');
-        $this->redirect('student/courses');
+        
+        if ($courseId) {
+            $this->redirect('student/course/' . $courseId);
+        } else {
+            $this->redirect('student/courses');
+        }
     }
     
     public function webhook() {
         $payload = file_get_contents('php://input');
         $sigHeader = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
         
-        // For now, just log the webhook
-        error_log('Stripe Webhook received: ' . $payload);
+        $result = $this->paymentService->handleWebhook($payload, $sigHeader);
         
-        // In production, verify signature and process event
-        http_response_code(200);
+        http_response_code($result['success'] ? 200 : 400);
+        echo json_encode($result);
     }
     
     public function getPublishableKey() {
-        return $this->paymentService->getPublishableKey();
+        header('Content-Type: application/json');
+        echo json_encode(['key' => $this->paymentService->getPublishableKey()]);
     }
 }

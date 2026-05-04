@@ -96,9 +96,20 @@ $teacherSidebarActive = 'courses';
                 </div>
 
                 <!-- Chart Section -->
-                <?php if (!empty($monthlyEnrollments)): ?>
+                <?php 
+                $chartData = $monthlyEarnings ?? [];
+                $chartRange = $_GET['range'] ?? 'year';
+                ?>
+                <?php if (!empty($chartData)): ?>
                 <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; padding: 2rem; margin-top: 2rem;">
-                    <h3 style="margin: 0 0 1.5rem 0; font-size: 1.3rem; color: #1e293b; font-weight: 800;">Monthly Enrollments</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0; font-size: 1.3rem; color: #1e293b; font-weight: 800;">Earnings</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="?url=teacher/dashboard&range=day" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; <?= $chartRange === 'day' ? 'background: #3b82f6; color: white;' : 'background: #f1f5f9; color: #64748b;' ?>">Day</a>
+                            <a href="?url=teacher/dashboard&range=month" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; <?= $chartRange === 'month' ? 'background: #3b82f6; color: white;' : 'background: #f1f5f9; color: #64748b;' ?>">Month</a>
+                            <a href="?url=teacher/dashboard&range=year" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; <?= $chartRange === 'year' ? 'background: #3b82f6; color: white;' : 'background: #f1f5f9; color: #64748b;' ?>">Year</a>
+                        </div>
+                    </div>
                     <canvas id="teacherChart" height="100"></canvas>
                 </div>
                 <?php endif; ?>
@@ -232,25 +243,46 @@ $teacherSidebarActive = 'courses';
     }
 </style>
 
-<?php if (!empty($monthlyEnrollments)): ?>
+<?php 
+$chartData = $monthlyEarnings ?? [];
+$chartType = 'earnings';
+$chartLabel = 'Earnings ($)';
+$chartColor = '#10b981';
+$chartYLabel = '$';
+if (empty($chartData)) {
+    $chartData = $monthlyEnrollments ?? [];
+    $chartType = 'enrollments';
+    $chartLabel = 'Enrollments';
+    $chartColor = '#3b82f6';
+    $chartYLabel = '';
+}
+$chartLabels = $chartType === 'earnings' 
+    ? array_column($chartData, 'period') 
+    : array_column($chartData, 'month');
+$chartValues = $chartType === 'earnings' 
+    ? array_column($chartData, 'earnings') 
+    : array_column($chartData, 'count');
+?>
+
+<?php if (!empty($chartData)): ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const ctx = document.getElementById('teacherChart').getContext('2d');
-const labels = <?= json_encode(array_column($monthlyEnrollments, 'month')) ?>;
-const data = <?= json_encode(array_column($monthlyEnrollments, 'total')) ?>;
+const labels = <?= json_encode($chartLabels) ?>;
+const data = <?= json_encode($chartValues) ?>;
 
 new Chart(ctx, {
     type: 'line',
     data: {
         labels: labels,
         datasets: [{
-            label: 'Enrollments',
+            label: '<?= $chartLabel ?>',
             data: data,
-            borderColor: '#548CA8',
-            backgroundColor: 'rgba(84, 140, 168, 0.1)',
+            borderColor: '<?= $chartColor ?>',
+            backgroundColor: 'rgba(0,0,0,0.05)',
             fill: true,
             tension: 0.4,
-            pointBackgroundColor: '#548CA8',
+            pointBackgroundColor: '<?= $chartColor ?>',
             pointRadius: 5,
             pointHoverRadius: 7
         }]
@@ -258,10 +290,19 @@ new Chart(ctx, {
     options: {
         responsive: true,
         plugins: {
-            legend: { display: false }
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return '<?= $chartYLabel ?>' + context.parsed.y<?= $chartType === 'earnings' ? '.toFixed(2)' : '' ?>;
+                    }
+                }
+            }
         },
         scales: {
-            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            y: { 
+                beginAtZero: true<?= $chartType === 'enrollments' ? ", ticks: { stepSize: 1 }" : "" ?>
+            }
         }
     }
 });

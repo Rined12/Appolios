@@ -497,3 +497,30 @@ INSERT INTO badges (name, slug, description, icon, color, xp_reward, criteria_ty
 ('Streak Starter', 'streak-starter', 'Maintain a 3-day streak', 'fa-fire', '#ff9a9e', 30, 'streak_days', 3),
 ('Perfect Score', 'perfect-score', 'Pass a quiz with 100%', 'fa-check-circle', '#43e97b', 20, 'quiz_perfect', 1),
 ('Bookworm', 'bookworm', 'Bookmark 5 courses', 'fa-bookmark', '#764ba2', 15, 'bookmarks', 5);
+
+-- ============================================
+-- PAYMENTS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    course_id INT NOT NULL,
+    stripe_session_id VARCHAR(255) NOT NULL,
+    stripe_payment_id VARCHAR(255),
+    amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(10) DEFAULT 'usd',
+    status ENUM('pending', 'succeeded', 'completed', 'failed', 'cancelled') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_course_id (course_id),
+    INDEX idx_status (status),
+    INDEX idx_stripe_session (stripe_session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- Add price column to courses if not exists
+-- ============================================
+ALTER TABLE courses ADD COLUMN price DECIMAL(10,2) DEFAULT 0 AFTER status;

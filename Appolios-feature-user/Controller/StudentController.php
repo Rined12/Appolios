@@ -604,12 +604,6 @@ $courseModel = $this->model('Course');
         $rating = (int) ($_POST['rating'] ?? 0);
         $reviewText = $this->sanitize($_POST['comment'] ?? '');
 
-        error_log("Review data - POST: " . print_r($_POST, true));
-        error_log("Review data - rating: $rating, comment: $reviewText");
-
-        // Debug: check session
-        error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
-
         if ($rating < 1 || $rating > 5) {
             echo json_encode(['success' => false, 'message' => 'Please select a rating.']);
             exit;
@@ -617,7 +611,6 @@ $courseModel = $this->model('Course');
 
         $enrollmentModel = $this->model('Enrollment');
         $isEnrolled = $enrollmentModel->isEnrolled($_SESSION['user_id'], $courseId);
-        error_log("Review submission - user: " . ($_SESSION['user_id'] ?? 'none') . ", course: $courseId, enrolled: " . ($isEnrolled ? 'yes' : 'no'));
         
         if (!$isEnrolled) {
             echo json_encode(['success' => false, 'message' => 'You must enroll first.']);

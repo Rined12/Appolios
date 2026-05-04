@@ -44,7 +44,6 @@ class ReviewController extends BaseModel {
             ]);
             return $this->db->lastInsertId();
         } catch (PDOException $e) {
-            error_log("Review create error: " . $e->getMessage());
             return false;
         }
     }

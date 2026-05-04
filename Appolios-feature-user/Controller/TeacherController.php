@@ -65,6 +65,14 @@ class TeacherController extends BaseController {
         $totalStudents = $courseModel->getTeacherTotalStudents($teacherId);
         $totalEarnings = $courseModel->getTeacherTotalEarnings($teacherId);
         $coursePerformance = $courseModel->getTeacherCoursePerformance($teacherId);
+        
+        // Get chart range from query params (day, month, year)
+        $chartRange = $_GET['range'] ?? 'year';
+        
+        // Get monthly earnings instead of enrollments
+        $monthlyEarnings = $courseModel->getTeacherMonthlyEarnings($teacherId, $chartRange);
+        
+        // Fallback enrollments for if no earnings data
         $monthlyEnrollments = $courseModel->getTeacherMonthlyEnrollments($teacherId);
         
         // Calculate average rating
@@ -100,7 +108,9 @@ class TeacherController extends BaseController {
             'courses' => $myCourses,
             'stats' => $stats,
             'coursePerformance' => $coursePerformance,
-            'monthlyEnrollments' => $monthlyEnrollments
+            'monthlyEarnings' => $monthlyEarnings,
+            'monthlyEnrollments' => $monthlyEnrollments,
+            'chartRange' => $chartRange
         ];
 
         $this->view('FrontOffice/teacher/dashboard', $data);
@@ -231,6 +241,39 @@ class TeacherController extends BaseController {
     }
 
     /**
+     * Generate course with AI
+     */
+    public function generateWithAI() {
+        header('Content-Type: application/json');
+        
+        if (!$this->isLoggedIn() || $_SESSION['role'] !== 'teacher') {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            exit;
+        }
+        
+        $topic = trim($_POST['topic'] ?? '');
+        $audience = $_POST['audience'] ?? 'beginners';
+        
+        if (empty($topic)) {
+            echo json_encode(['success' => false, 'error' => 'Please enter a course topic']);
+            exit;
+        }
+        
+        require_once __DIR__ . '/../Service/AICourseGenerator.php';
+        $aiGenerator = new AICourseGenerator();
+        
+        $result = $aiGenerator->generateFullCourse($topic, $audience);
+        
+        echo json_encode($result);
+        exit;
+    }
+
+    /**
      * Save chapters and lessons for a course
      */
 private function saveCourseChapters($courseId, $postData) {
@@ -243,16 +286,11 @@ private function saveCourseChapters($courseId, $postData) {
         $chapters = $postData['chapters'] ?? [];
         
         if (empty($chapters)) {
-            error_log("No chapters in post data");
             return;
         }
         
-        error_log("Chapters count: " . count($chapters));
-        
         foreach ($chapters as $chapterIndex => $chapterData) {
             $chapterTitle = $this->sanitize($chapterData['title'] ?? '');
-            error_log("Chapter $chapterIndex: $chapterTitle");
-            
             if (empty($chapterTitle)) continue;
 
             $chapterId = $chapterController->create([
@@ -261,28 +299,21 @@ private function saveCourseChapters($courseId, $postData) {
                 'description' => $this->sanitize($chapterData['description'] ?? ''),
                 'chapter_order' => $chapterIndex + 1
             ]);
-            
-            error_log("Created chapter ID: $chapterId");
 
             if (!$chapterId) {
-                error_log("Failed to create chapter $chapterIndex");
                 continue;
             }
 
             $lessons = $chapterData['lessons'] ?? [];
-            error_log("Lessons count for chapter $chapterIndex: " . count($lessons));
             
             foreach ($lessons as $lessonIndex => $lessonData) {
                 $lessonTitle = $this->sanitize($lessonData['title'] ?? '');
-                error_log("  Lesson $lessonIndex: $lessonTitle");
-                
                 if (empty($lessonTitle)) continue;
 
                 $lessonType = $lessonData['lesson_type'] ?? 'text';
                 $content = $this->sanitize($lessonData['content'] ?? '');
                 $pdfPath = '';
                 
-                // Handle PDF upload
                 if (isset($_FILES['lessons'])) {
                     $chapterKey = $chapterIndex;
                     $lessonKey = $lessonIndex;
@@ -310,7 +341,7 @@ private function saveCourseChapters($courseId, $postData) {
                     $pdfPath = $lessonData['pdf_path'];
                 }
 
-                $lessonId = $lessonController->createLesson([
+                $lessonController->createLesson([
                     'chapter_id' => $chapterId,
                     'title' => $lessonTitle,
                     'content' => $content,
@@ -318,10 +349,8 @@ private function saveCourseChapters($courseId, $postData) {
                     'lesson_type' => $lessonType,
                     'lesson_order' => $lessonIndex + 1
                 ]);
-                
-                error_log("  Created lesson ID: $lessonId");
             }
-}
+        }
     }
 
     /**

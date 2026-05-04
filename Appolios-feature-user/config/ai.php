@@ -1,39 +1,22 @@
 <?php
 /**
  * AI Configuration
- * Free AI API settings - supports Groq and OpenRouter
- * 
- * To use your own API key:
- * - Option 1: Set environment variable (recommended)
- *   - GROQ_API_KEY for Groq
- *   - OPENROUTER_API_KEY for OpenRouter
- * - Option 2: Replace the api_key value below with your key
+ * Free AI API settings - uses OpenRouter
  */
 
 return [
-    // Choose provider: 'groq' or 'openrouter'
     'provider' => 'openrouter',
     
-    // Groq API - Free tier (sign up at https://groq.com)
-    'groq' => [
-        'api_key' => getenv('GROQ_API_KEY') ?: '',
-        'model' => 'llama-3.1-70b-versatile',
-        'endpoint' => 'https://api.groq.com/openai/v1/chat/completions'
-    ],
-    
-    // OpenRouter API - Free tier (sign up at https://openrouter.ai)
     'openrouter' => [
-        'api_key' => getenv('OPENROUTER_API_KEY') ?: '',
+        'api_key' => defined('OPENROUTER_API_KEY') ? OPENROUTER_API_KEY : getenv('OPENROUTER_API_KEY') ?: '',
         'model' => 'meta-llama/llama-3.1-8b-instruct',
         'endpoint' => 'https://openrouter.ai/api/v1/chat/completions',
         'referer' => 'appolios',
         'title' => 'Appolios E-Learning'
     ],
     
-    // Fallback settings
     'use_fallback' => true,
     
-    // Badge prompts - optimized for short generation
     'system_prompt' => 'You are a creative badge generator. Create short, unique, inspiring badge names for course completion. Always respond with valid JSON only.',
     'user_prompt_template' => 'Create a fun badge for completing a course.
 Course: {course_title}

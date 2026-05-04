@@ -57,7 +57,11 @@ class PaymentService {
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
         
         $response = curl_exec($ch);
+        $curlError = curl_error($ch);
         curl_close($ch);
+        
+        error_log("Stripe cURL response: " . $response);
+        error_log("Stripe cURL error: " . $curlError);
         
         $result = json_decode($response, true);
         
@@ -67,6 +71,9 @@ class PaymentService {
         }
         
         if (isset($result['id'])) {
+            if (empty($result['url'])) {
+                return ['success' => false, 'error' => 'Stripe session created but no URL returned'];
+            }
             $this->savePayment($userId, $courseId, $result['id'], $price);
             return ['success' => true, 'session_id' => $result['id'], 'url' => $result['url']];
         }
@@ -91,6 +98,7 @@ class PaymentService {
         
         if (isset($result['payment_status']) && $result['payment_status'] === 'paid') {
             $this->updatePaymentStatus($sessionId, 'succeeded', $result['payment_intent'] ?? null);
+            error_log("Updated payment to succeeded for session: $sessionId");
             return [
                 'success' => true,
                 'user_id' => $result['metadata']['user_id'] ?? null,
@@ -101,7 +109,7 @@ class PaymentService {
         return ['success' => false];
     }
     
-    private function updatePaymentStatus($sessionId, $status, $paymentIntent = null) {
+    public function updatePaymentStatus($sessionId, $status, $paymentIntent = null) {
         $sql = "UPDATE payments SET status = ?";
         $params = [$status];
         

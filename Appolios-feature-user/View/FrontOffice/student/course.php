@@ -8,6 +8,12 @@ $studentSidebarActive = 'courses';
 $chapters = $course['chapters'] ?? [];
 ?>
 
+<?php if (isset($_SESSION['flash'])): ?>
+<div style="background: <?= $_SESSION['flash']['type'] === 'error' ? 'rgba(220,53,69,0.1)' : 'rgba(25,135,84,0.1)' ?>; border: 1px solid <?= $_SESSION['flash']['type'] === 'error' ? 'rgba(220,53,69,0.3)' : 'rgba(25,135,84,0.3)' ?>; color: <?= $_SESSION['flash']['type'] === 'error' ? '#dc3545' : '#198754' ?>; padding: 12px 16px; border-radius: 8px; margin-bottom: 1rem;">
+    <?= htmlspecialchars($_SESSION['flash']['message']) ?>
+</div>
+<?php unset($_SESSION['flash']); endif; ?>
+
 <div class="dashboard student-events-page" style="padding: 0.5rem 0 1rem;">
     <div class="container admin-dashboard-container" style="padding-top: 0;">
         <div class="admin-layout" style="gap: 0.5rem;">
@@ -51,7 +57,7 @@ $chapters = $course['chapters'] ?? [];
                             <?php elseif ($isPaid): ?>
                                 <div style="display:flex;align-items:center;gap:10px">
                                     <span style="font-size:1.25rem;font-weight:700;color:#10b981">$<?= number_format($price, 2) ?></span>
-                                    <a href="<?= APP_ENTRY ?>?url=payment/checkout/<?= $course['id'] ?>" onclick="showLoader()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 20px; border-radius: 20px; font-weight: 600; text-decoration: none;">Buy Now</a>
+                                    <a href="<?= APP_ENTRY ?>?url=payment/checkout/<?= $course['id'] ?>" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 20px; border-radius: 20px; font-weight: 600; text-decoration: none;">Buy Now</a>
                                 </div>
                             <?php else: ?>
                                 <a href="<?= APP_ENTRY ?>?url=student/enroll/<?= $course['id'] ?>" style="background: #3b82f6; color: white; padding: 8px 16px; border-radius: 20px; font-weight: 600; text-decoration: none;">Enroll Free</a>
@@ -72,7 +78,7 @@ $chapters = $course['chapters'] ?? [];
                                 <span style="font-size: 0.85rem; opacity: 0.9;">Course Price</span>
                                 <div style="font-size: 1.75rem; font-weight: 700;">$<?= number_format($price, 2) ?></div>
                             </div>
-                            <a href="<?= APP_ENTRY ?>?url=payment/checkout/<?= $course['id'] ?>" onclick="showLoader()" style="background: white; color: #667eea; padding: 8px 16px; border-radius: 6px; font-weight: 600; text-decoration: none;">Buy Now</a>
+                            <a href="<?= APP_ENTRY ?>?url=payment/checkout/<?= $course['id'] ?>" style="background: white; color: #667eea; padding: 8px 16px; border-radius: 6px; font-weight: 600; text-decoration: none;">Buy Now</a>
                         </div>
                         <?php endif; ?>
                         <h2 style="margin: 0 0 1rem 0; font-size: 1.2rem; color: #1e293b;"><?= htmlspecialchars($course['description'] ?? '') ?></h2>
