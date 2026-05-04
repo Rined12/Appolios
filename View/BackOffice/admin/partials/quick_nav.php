@@ -15,7 +15,7 @@ $currentPage = $_GET['url'] ?? '';
     </div>
     <div class="nav-center">
         <a href="<?= APP_ENTRY ?>?url=home" class="quick-link">Home</a>
-        <a href="<?= APP_ENTRY ?>?url=courses" class="quick-link">Courses</a>
+        <a href="<?= APP_ENTRY ?>?url=admin/courses" class="quick-link <?= ($currentPage === 'admin/courses') ? 'active' : '' ?>">Courses</a>
         <a href="<?= APP_ENTRY ?>?url=about" class="quick-link">About</a>
         <a href="<?= APP_ENTRY ?>?url=contact" class="quick-link">Contact</a>
         <a href="<?= APP_ENTRY ?>?url=admin/dashboard" class="quick-link <?= ($currentPage === 'admin/dashboard') ? 'active' : '' ?>">Dashboard</a>
