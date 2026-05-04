@@ -419,10 +419,12 @@
     const copyBtn = document.getElementById('ocrCopyBtn');
     const toast = document.getElementById('ocrToast');
 
-    // Show auto-fill button if name or email field exists
-    if (document.getElementById('name') || document.getElementById('email')) {
-      autoFillBtn.style.display = 'flex';
-    }
+    // Show auto-fill button if name or email field exists (Wait for DOM)
+    document.addEventListener('DOMContentLoaded', () => {
+      if (document.getElementById('name') || document.getElementById('email')) {
+        autoFillBtn.style.display = 'flex';
+      }
+    });
 
     let currentFile = null;
 
