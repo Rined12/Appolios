@@ -14,17 +14,7 @@ class HomeController extends BaseController {
      * Redirects logged-in users to their respective dashboards
      */
     public function index() {
-        // If user is logged in, redirect admin/teacher to their dashboards.
-        // Students can access the public home page design.
-        if ($this->isLoggedIn()) {
-            if ($_SESSION['role'] === 'admin') {
-                $this->redirect('admin/dashboard');
-                return;
-            } elseif ($_SESSION['role'] === 'teacher') {
-                $this->redirect('teacher/dashboard');
-                return;
-            }
-        }
+        // Public landing page for everyone
 
         // Public landing page for non-logged users
         $data = [
@@ -138,17 +128,7 @@ class HomeController extends BaseController {
      * Admin and Teacher are redirected to their dashboards
      */
     public function courses() {
-        // Redirect admin and teacher to their dashboards
-        if ($this->isLoggedIn()) {
-            if ($_SESSION['role'] === 'admin') {
-                $this->redirect('admin/dashboard');
-                return;
-            } elseif ($_SESSION['role'] === 'teacher') {
-                $this->redirect('teacher/dashboard');
-                return;
-            }
-            // Students can view courses
-        }
+        // View courses
 
         $courseModel = $this->model('Course');
         $courses = $courseModel->getAllWithCreator();
