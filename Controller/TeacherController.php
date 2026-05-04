@@ -423,7 +423,9 @@ class TeacherController extends BaseController {
 
         $st = $this->getDb()->prepare(
             "SELECT e.title, e.capacite_max, e.event_date, e.date_debut,
-                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as participant_count
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as participant_count,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'rejected') as refused_count,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'pending') as pending_count
              FROM evenements e
              WHERE e.created_by = ?
              ORDER BY COALESCE(e.date_debut, e.event_date, e.created_at) ASC"
@@ -436,10 +438,16 @@ class TeacherController extends BaseController {
         $stTypes->execute([(int)$_SESSION['user_id']]);
         $typeStats = $stTypes->fetchAll();
 
+        // Get participants per event type
+        $stPartTypes = $this->getDb()->prepare("SELECT e.type, COUNT(r.id) as participant_count FROM evenements e JOIN evenement_ressources r ON e.id = r.evenement_id WHERE r.type = 'participation' AND r.details = 'approved' AND e.created_by = ? GROUP BY e.type");
+        $stPartTypes->execute([(int)$_SESSION['user_id']]);
+        $participantTypeStats = $stPartTypes->fetchAll();
+
         $data = [
             'title' => 'My Event Statistics - APPOLIOS',
             'eventStats' => $eventStats,
-            'typeStats' => $typeStats
+            'typeStats' => $typeStats,
+            'participantTypeStats' => $participantTypeStats
         ];
 
         $this->view('FrontOffice/teacher/stat_evenement', $data);

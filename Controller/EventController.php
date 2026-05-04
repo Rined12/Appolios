@@ -313,7 +313,9 @@ class EventController extends BaseController {
         // Get basic participation stats for the radar/line charts
         $st = $this->getDb()->query(
             "SELECT e.title, e.capacite_max, e.event_date, e.date_debut,
-                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as participant_count
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as participant_count,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'rejected') as refused_count,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'pending') as pending_count
              FROM evenements e
              ORDER BY COALESCE(e.date_debut, e.event_date, e.created_at) ASC"
         );
@@ -323,11 +325,16 @@ class EventController extends BaseController {
         $stTypes = $this->getDb()->query("SELECT type, COUNT(*) as count FROM evenements GROUP BY type");
         $typeStats = $stTypes->fetchAll();
 
+        // Get participants per event type
+        $stPartTypes = $this->getDb()->query("SELECT e.type, COUNT(r.id) as participant_count FROM evenements e JOIN evenement_ressources r ON e.id = r.evenement_id WHERE r.type = 'participation' AND r.details = 'approved' GROUP BY e.type");
+        $participantTypeStats = $stPartTypes->fetchAll();
+
         $data = [
             'title' => 'Event Statistics - APPOLIOS',
             'description' => 'Dashboard for event statistics, participation and insights',
             'eventStats' => $eventStats,
-            'typeStats' => $typeStats
+            'typeStats' => $typeStats,
+            'participantTypeStats' => $participantTypeStats
         ];
 
         $this->view('BackOffice/admin/stat_evenement', $data);
