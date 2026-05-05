@@ -10,7 +10,6 @@ require_once __DIR__ . '/../Model/Enrollment.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
 require_once __DIR__ . '/../Model/Chapter.php';
-require_once __DIR__ . '/QuizQuestionValidation.php';
 
 class StudentController extends BaseController {
 
@@ -106,8 +105,10 @@ class StudentController extends BaseController {
             $avg = (int) round((float) ($info['avg'] ?? 0));
             $attempts = (int) ($info['attempts'] ?? 0);
             $last = isset($chapterRecent[(int) $cid]) ? $chapterRecent[(int) $cid] : null;
-            $lastPct = is_array($last) && $last['last'] !== null ? (int) $last['last'] : null;
-            $prevPct = is_array($last) && $last['prev'] !== null ? (int) $last['prev'] : null;
+            $lastVal = is_array($last) ? ($last['last'] ?? null) : null;
+            $prevVal = is_array($last) ? ($last['prev'] ?? null) : null;
+            $lastPct = $lastVal !== null ? (int) $lastVal : null;
+            $prevPct = $prevVal !== null ? (int) $prevVal : null;
             $delta = ($lastPct !== null && $prevPct !== null) ? ($lastPct - $prevPct) : null;
             $lastAt = is_array($last) ? ($last['last_at'] ?? null) : null;
 
@@ -554,8 +555,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $enrollmentModel = $this->model('Enrollment');
-        if (!$enrollmentModel->isEnrolled((int) $_SESSION['user_id'], (int) $quiz['course_id'])) {
+        if (!$this->studentIsEnrolledToCourse((int) $_SESSION['user_id'], (int) $quiz['course_id'])) {
             $this->setFlash('error', 'Vous devez être inscrit au cours pour passer ce quiz.');
             $this->redirect('student/quiz');
             return;
@@ -596,8 +596,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        $enrollmentModel = $this->model('Enrollment');
-        if (!$enrollmentModel->isEnrolled((int) $_SESSION['user_id'], (int) $quiz['course_id'])) {
+        if (!$this->studentIsEnrolledToCourse((int) $_SESSION['user_id'], (int) $quiz['course_id'])) {
             $this->setFlash('error', 'Accès refusé.');
             $this->redirect('student/quiz');
             return;
@@ -607,7 +606,7 @@ class StudentController extends BaseController {
         $answers = $_POST['answers'] ?? [];
         $timedOut = !empty($_POST['timed_out']);
         if (!$timedOut) {
-            $ansErr = QuizQuestionValidation::validateStudentQuizAnswers($answers, $questions);
+            $ansErr = $this->validateStudentQuizAnswers($answers, $questions);
             if ($ansErr !== null) {
                 $this->setFlash('error', $ansErr);
                 $this->redirect('student/quiz/' . (int) $id);
@@ -768,6 +767,62 @@ class StudentController extends BaseController {
             'coach' => $coach,
             'weakChapters' => $weakChapters,
             'cert' => $cert,
+        ]);
+    }
+
+    public function remedial($id)
+    {
+        if (!$this->requireStudentRole()) {
+            return;
+        }
+
+        $quizId = (int) $id;
+        if ($quizId <= 0) {
+            $this->redirect('student/quiz');
+            return;
+        }
+
+        $quiz = $this->findQuizWithChapterCourse($quizId);
+        if (!$quiz) {
+            $this->setFlash('error', 'Quiz introuvable.');
+            $this->redirect('student/quiz');
+            return;
+        }
+
+        if (!empty($quiz['status']) && $quiz['status'] !== 'approved') {
+            $this->setFlash('error', 'Ce quiz n’est pas disponible pour le moment.');
+            $this->redirect('student/quiz');
+            return;
+        }
+
+        if (!$this->studentIsEnrolledToCourse((int) $_SESSION['user_id'], (int) ($quiz['course_id'] ?? 0))) {
+            $this->setFlash('error', 'Accès refusé.');
+            $this->redirect('student/quiz');
+            return;
+        }
+
+        $lastPct = $this->getLastAttemptPercentageForUserQuiz((int) $_SESSION['user_id'], $quizId);
+        if ($lastPct === null) {
+            $this->setFlash('error', 'Passe d’abord ce quiz pour débloquer le rattrapage.');
+            $this->redirect('student/quiz/' . $quizId);
+            return;
+        }
+        if ($lastPct >= 60) {
+            $this->setFlash('success', 'Bravo ! Ton dernier score est suffisant, pas besoin de rattrapage.');
+            $this->redirect('student/quiz/' . $quizId);
+            return;
+        }
+
+        $tags = (string) ($quiz['tags'] ?? '');
+        $count = 10;
+        $picked = $this->pickReadableQuestionsByTags($tags, $count);
+
+        $this->view('FrontOffice/student/training', [
+            'title' => 'Rattrapage - ' . APP_NAME,
+            'difficulty' => '',
+            'count' => $count,
+            'questions' => $picked,
+            'flash' => $this->getFlash(),
         ]);
     }
 
@@ -1241,6 +1296,11 @@ class StudentController extends BaseController {
         ]);
     }
 
+    public function training()
+    {
+        $this->questionsBankDifficulty();
+    }
+
     public function questionsBankDifficulty()
     {
         if (!$this->requireStudentRole()) {
@@ -1654,6 +1714,112 @@ class StudentController extends BaseController {
         }
         unset($r);
         return $rows;
+    }
+
+    private function getLastAttemptPercentageForUserQuiz(int $userId, int $quizId): ?int
+    {
+        $db = $this->db();
+        $sql = "SELECT percentage
+                FROM quiz_attempts
+                WHERE user_id = ? AND quiz_id = ?
+                ORDER BY submitted_at DESC
+                LIMIT 1";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $userId, (int) $quizId]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            return null;
+        }
+        return (int) ($row['percentage'] ?? 0);
+    }
+
+    private function pickReadableQuestionsByTags(string $tags, int $count = 10): array
+    {
+        $count = max(5, min(30, $count));
+
+        $all = $this->getAllReadableQuestions();
+        $tagList = preg_split('/[\s,;]+/', strtolower(trim($tags)), -1, PREG_SPLIT_NO_EMPTY);
+        $tagList = is_array($tagList) ? array_values(array_unique($tagList)) : [];
+
+        $filtered = [];
+        foreach ($all as $q) {
+            $opts = isset($q['options']) && is_array($q['options']) ? array_values($q['options']) : [];
+            if (count($opts) < 2) {
+                continue;
+            }
+
+            if (!empty($tagList)) {
+                $t = strtolower((string) ($q['tags'] ?? ''));
+                $ok = true;
+                foreach ($tagList as $tg) {
+                    if ($tg === '') continue;
+                    if (strpos($t, $tg) === false) {
+                        $ok = false;
+                        break;
+                    }
+                }
+                if (!$ok) {
+                    continue;
+                }
+            }
+
+            $ca = isset($q['correct_answer']) ? (int) $q['correct_answer'] : 0;
+            if ($ca < 0 || $ca >= count($opts)) {
+                $ca = 0;
+            }
+
+            $d = strtolower((string) ($q['difficulty'] ?? 'beginner'));
+            if (!in_array($d, ['beginner', 'intermediate', 'advanced'], true)) {
+                $d = 'beginner';
+            }
+
+            $filtered[] = [
+                'id' => (int) ($q['id'] ?? 0),
+                'title' => (string) ($q['title'] ?? 'Question'),
+                'question_text' => (string) ($q['question_text'] ?? ''),
+                'difficulty' => $d,
+                'options' => $opts,
+                'correct_answer' => $ca,
+            ];
+        }
+
+        if (count($filtered) > 1) {
+            shuffle($filtered);
+        }
+        return array_values(array_slice($filtered, 0, min($count, count($filtered))));
+    }
+
+    private function validateStudentQuizAnswers($answers, array $questions): ?string
+    {
+        if (!is_array($answers)) {
+            return 'Données de réponses invalides.';
+        }
+        foreach ($questions as $i => $q) {
+            $nopts = count($q['options'] ?? []);
+            if ($nopts < 1) {
+                continue;
+            }
+            if (!array_key_exists($i, $answers)) {
+                return 'Veuillez répondre à toutes les questions.';
+            }
+            $given = (int) $answers[$i];
+            if ($given < 0 || $given >= $nopts) {
+                return 'Une réponse sélectionnée est invalide.';
+            }
+        }
+
+        return null;
+    }
+
+    private function studentIsEnrolledToCourse(int $userId, int $courseId): bool
+    {
+        if ($userId <= 0 || $courseId <= 0) {
+            return false;
+        }
+        $db = $this->db();
+        $stmt = $db->prepare('SELECT id FROM enrollments WHERE user_id = ? AND course_id = ? LIMIT 1');
+        $stmt->execute([(int) $userId, (int) $courseId]);
+        return (bool) $stmt->fetch();
     }
 
     private function requireStudentRole(): bool {

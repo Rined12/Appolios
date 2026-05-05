@@ -11,7 +11,6 @@ require_once __DIR__ . '/../Model/Enrollment.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
 require_once __DIR__ . '/../Model/Chapter.php';
-require_once __DIR__ . '/QuizQuestionValidation.php';
 
 class AdminController extends BaseController {
 
@@ -1104,6 +1103,71 @@ class AdminController extends BaseController {
         ]);
     }
 
+    public function riskQueue()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $quizStats = $this->getQuizStatsForAdmin();
+        $quizStatsMap = [];
+        foreach ($quizStats as $r) {
+            $qid = (int) ($r['id'] ?? 0);
+            if ($qid <= 0) continue;
+            $quizStatsMap[$qid] = $r;
+        }
+
+        $quizzes = $this->getAllQuizzesForAdmin();
+        $questions = $this->getAllQuestionBankForAdmin();
+        $qbUsage = $this->getQuestionBankUsageStatsMapForAdmin();
+
+        $items = [];
+
+        foreach ($quizzes as $q) {
+            $qid = (int) ($q['id'] ?? 0);
+            if ($qid <= 0) continue;
+            $stats = $quizStatsMap[$qid] ?? [];
+            $risk = $this->riskForQuiz($q, $stats);
+            $items[] = [
+                'type' => 'quiz',
+                'id' => $qid,
+                'title' => (string) ($q['title'] ?? ''),
+                'sub' => trim((string) ($q['course_title'] ?? '') . ' — ' . (string) ($q['chapter_title'] ?? '')),
+                'risk_score' => (int) ($risk['score'] ?? 0),
+                'risk_level' => (string) ($risk['level'] ?? 'LOW'),
+                'reasons' => $risk['reasons'] ?? [],
+            ];
+        }
+
+        foreach ($questions as $qb) {
+            $id = (int) ($qb['id'] ?? 0);
+            if ($id <= 0) continue;
+            $u = $qbUsage[$id] ?? null;
+            $risk = $this->riskForQuestionBank($qb, $u);
+            $items[] = [
+                'type' => 'question',
+                'id' => $id,
+                'title' => (string) (($qb['title'] ?? '') !== '' ? $qb['title'] : 'Sans titre'),
+                'sub' => (string) ($qb['author_name'] ?? ''),
+                'risk_score' => (int) ($risk['score'] ?? 0),
+                'risk_level' => (string) ($risk['level'] ?? 'LOW'),
+                'reasons' => $risk['reasons'] ?? [],
+            ];
+        }
+
+        usort($items, static function ($a, $b) {
+            return (int) ($b['risk_score'] ?? 0) <=> (int) ($a['risk_score'] ?? 0);
+        });
+
+        $this->view('BackOffice/admin/risk_queue', [
+            'title' => 'Risk Queue - ' . APP_NAME,
+            'items' => $items,
+            'filters' => [],
+            'flash' => $this->getFlash(),
+        ]);
+    }
+
     public function quizStats() {
         if (!$this->isAdmin()) {
             $this->redirect('admin/login');
@@ -1205,8 +1269,8 @@ class AdminController extends BaseController {
             $this->redirect('admin/login');
             return;
         }
-        $chapterModel = $this->model('Chapter');
-        $chapters = $chapterModel->getAllWithCourseTitles();
+
+        $chapters = $this->getAllChaptersWithCourseTitlesForAdmin();
         $this->view('BackOffice/admin/quiz_form', [
             'title' => 'Nouveau quiz - ' . APP_NAME,
             'quiz' => null,
@@ -1227,14 +1291,13 @@ class AdminController extends BaseController {
         }
 
         $chapterId = (int) ($_POST['chapter_id'] ?? 0);
-        $chapterModel = $this->model('Chapter');
-        if (!$chapterModel->findById($chapterId)) {
+        if (!$this->adminChapterExists($chapterId)) {
             $this->setFlash('error', 'Chapitre invalide.');
             $this->redirect('admin/add-quiz');
             return;
         }
 
-        $meta = QuizQuestionValidation::validateQuizMeta($_POST);
+        $meta = $this->validateQuizMetaFromPost($_POST);
         if (!empty($meta['errors'])) {
             $this->setFlash('error', $meta['errors'][0]);
             $this->redirect('admin/add-quiz');
@@ -1254,7 +1317,7 @@ class AdminController extends BaseController {
             return;
         }
 
-        $qErr = QuizQuestionValidation::validateNormalizedQuestions($questions);
+        $qErr = $this->validateNormalizedQuizQuestions($questions);
         if (!empty($qErr)) {
             $this->setFlash('error', $qErr[0]);
             $this->redirect('admin/add-quiz');
@@ -1313,8 +1376,8 @@ class AdminController extends BaseController {
             $this->redirect('admin/quizzes');
             return;
         }
-        $chapterModel = $this->model('Chapter');
-        $chapters = $chapterModel->getAllWithCourseTitles();
+
+        $chapters = $this->getAllChaptersWithCourseTitlesForAdmin();
         $this->view('BackOffice/admin/quiz_form', [
             'title' => 'Modifier le quiz - ' . APP_NAME,
             'quiz' => $quiz,
@@ -1331,14 +1394,13 @@ class AdminController extends BaseController {
         }
 
         $chapterId = (int) ($_POST['chapter_id'] ?? 0);
-        $chapterModel = $this->model('Chapter');
-        if (!$chapterModel->findById($chapterId)) {
+        if (!$this->adminChapterExists($chapterId)) {
             $this->setFlash('error', 'Chapitre invalide.');
             $this->redirect('admin/edit-quiz/' . (int) $id);
             return;
         }
 
-        $meta = QuizQuestionValidation::validateQuizMeta($_POST);
+        $meta = $this->validateQuizMetaFromPost($_POST);
         if (!empty($meta['errors'])) {
             $this->setFlash('error', $meta['errors'][0]);
             $this->redirect('admin/edit-quiz/' . (int) $id);
@@ -1358,7 +1420,7 @@ class AdminController extends BaseController {
             return;
         }
 
-        $qErr = QuizQuestionValidation::validateNormalizedQuestions($questions);
+        $qErr = $this->validateNormalizedQuizQuestions($questions);
         if (!empty($qErr)) {
             $this->setFlash('error', $qErr[0]);
             $this->redirect('admin/edit-quiz/' . (int) $id);
@@ -1430,10 +1492,24 @@ class AdminController extends BaseController {
             $top['avg_percentage'] = round($wSum / (float) $top['attempts_total'], 1);
         }
 
+        $qaMap = [];
+        foreach ($questions as $q) {
+            $qid = (int) ($q['id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            $u = $usage[$qid] ?? null;
+            $att = is_array($u) ? (int) ($u['attempts'] ?? 0) : 0;
+            $avg = is_array($u) ? (float) ($u['avg'] ?? 0) : 0.0;
+            $qz = is_array($u) ? (int) ($u['quizzes'] ?? 0) : 0;
+            $qaMap[$qid] = $this->questionQaFromUsage($qz, $att, $avg);
+        }
+
         $this->view('BackOffice/admin/questions_bank', [
             'title' => 'Banque de questions (admin) - ' . APP_NAME,
             'questions' => $questions,
             'qbTopStats' => $top,
+            'questionQa' => $qaMap,
             'charts' => [
                 'difficulty' => [
                     'beginner' => count(array_filter($questions, static fn($q) => (string) ($q['difficulty'] ?? 'beginner') === 'beginner')),
@@ -1443,6 +1519,185 @@ class AdminController extends BaseController {
             ],
             'flash' => $this->getFlash(),
         ]);
+    }
+
+    private function questionQaFromUsage(int $quizzesCount, int $attempts, float $avgPercentage): array
+    {
+        if ($quizzesCount <= 0 || $attempts <= 0) {
+            return ['label' => 'Non utilisée', 'badge' => 'pro-badge', 'score' => null];
+        }
+        if ($attempts < 10) {
+            return ['label' => 'Données insuff.', 'badge' => 'pro-badge', 'score' => null];
+        }
+
+        $avg = max(0.0, min(100.0, $avgPercentage));
+        if ($avg >= 85.0) {
+            return ['label' => 'Trop facile', 'badge' => 'pro-badge pro-badge--beginner', 'score' => (int) round(100 - (($avg - 85.0) * 2.0))];
+        }
+        if ($avg <= 35.0) {
+            return ['label' => 'Trop difficile', 'badge' => 'pro-badge pro-badge--advanced', 'score' => (int) round(100 - ((35.0 - $avg) * 2.0))];
+        }
+
+        $target = 60.0;
+        $difficultyScore = 100.0 - (abs($avg - $target) * 1.5);
+        if ($difficultyScore < 0) $difficultyScore = 0;
+        if ($difficultyScore > 100) $difficultyScore = 100;
+
+        $attemptsNorm = log((float) ($attempts + 1), 10) / log(51.0, 10);
+        if ($attemptsNorm < 0) $attemptsNorm = 0;
+        if ($attemptsNorm > 1) $attemptsNorm = 1;
+        $reliability = $attemptsNorm * 100.0;
+
+        $score = (int) round(($difficultyScore * 0.7) + ($reliability * 0.3));
+        if ($score < 0) $score = 0;
+        if ($score > 100) $score = 100;
+
+        return ['label' => 'OK', 'badge' => 'pro-badge pro-badge--intermediate', 'score' => $score];
+    }
+
+    private function riskForQuiz(array $quiz, array $stats): array
+    {
+        $score = 0;
+        $reasons = [];
+
+        $tags = trim((string) ($quiz['tags'] ?? ''));
+        $qCount = isset($quiz['questions']) && is_array($quiz['questions']) ? count($quiz['questions']) : 0;
+        $time = (int) ($quiz['time_limit_sec'] ?? 0);
+        $attempts = (int) ($stats['attempts_count'] ?? 0);
+        $avg = (float) ($stats['avg_percentage'] ?? 0);
+        $createdAt = (string) ($quiz['created_at'] ?? '');
+
+        if ($tags === '') {
+            $score += 18;
+            $reasons[] = 'tags manquants';
+        }
+        if ($qCount < 3) {
+            $score += 22;
+            $reasons[] = 'trop peu de questions';
+        } elseif ($qCount > 20) {
+            $score += 12;
+            $reasons[] = 'quiz très long';
+        }
+        if ($time > 0 && $qCount > 0) {
+            $secPerQ = (int) floor($time / max(1, $qCount));
+            if ($secPerQ < 20) {
+                $score += 15;
+                $reasons[] = 'time_limit serré';
+            }
+        }
+
+        if ($attempts >= 10) {
+            if ($avg >= 90.0) {
+                $score += 18;
+                $reasons[] = 'score moyen trop haut';
+            } elseif ($avg <= 30.0) {
+                $score += 18;
+                $reasons[] = 'score moyen trop bas';
+            }
+        } elseif ($attempts <= 1) {
+            if ($createdAt !== '') {
+                try {
+                    $dt = new DateTime($createdAt);
+                    $age = (new DateTime())->getTimestamp() - $dt->getTimestamp();
+                    if ($age > (14 * 24 * 3600)) {
+                        $score += 10;
+                        $reasons[] = 'peu joué';
+                    }
+                } catch (Throwable $e) {
+                }
+            }
+        }
+
+        $diffDist = ['beginner' => 0, 'intermediate' => 0, 'advanced' => 0];
+        $qs = isset($quiz['questions']) && is_array($quiz['questions']) ? $quiz['questions'] : [];
+        foreach ($qs as $qq) {
+            $d = strtolower((string) ($qq['difficulty'] ?? ($quiz['difficulty'] ?? 'beginner')));
+            if (!isset($diffDist[$d])) {
+                $d = 'beginner';
+            }
+            $diffDist[$d]++;
+        }
+        $tot = array_sum($diffDist);
+        if ($tot > 0) {
+            foreach ($diffDist as $k => $v) {
+                $pct = $v / $tot;
+                if ($pct >= 0.85) {
+                    $score += 14;
+                    $reasons[] = 'déséquilibre difficulté';
+                    break;
+                }
+            }
+        }
+
+        if ($score > 100) $score = 100;
+        $level = 'LOW';
+        if ($score >= 75) $level = 'HIGH';
+        elseif ($score >= 45) $level = 'MEDIUM';
+
+        return ['score' => (int) $score, 'level' => $level, 'reasons' => array_values(array_unique($reasons))];
+    }
+
+    private function riskForQuestionBank(array $qb, $usage): array
+    {
+        $score = 0;
+        $reasons = [];
+
+        $text = trim((string) ($qb['question_text'] ?? ''));
+        $tags = trim((string) ($qb['tags'] ?? ''));
+        $opts = isset($qb['options']) && is_array($qb['options']) ? array_values($qb['options']) : [];
+        $correct = (int) ($qb['correct_answer'] ?? 0);
+
+        $u = is_array($usage) ? $usage : null;
+        $quizzes = $u ? (int) ($u['quizzes'] ?? 0) : 0;
+        $attempts = $u ? (int) ($u['attempts'] ?? 0) : 0;
+        $avg = $u ? (float) ($u['avg'] ?? 0) : 0.0;
+
+        if ($tags === '') {
+            $score += 14;
+            $reasons[] = 'tags manquants';
+        }
+        if (mb_strlen($text) < 12) {
+            $score += 18;
+            $reasons[] = 'énoncé trop court';
+        }
+        if (count($opts) < 2) {
+            $score += 40;
+            $reasons[] = 'options insuffisantes';
+        } else {
+            $norm = [];
+            foreach ($opts as $o) {
+                $norm[] = strtolower(trim((string) $o));
+            }
+            if (count(array_unique($norm)) !== count($norm)) {
+                $score += 16;
+                $reasons[] = 'options dupliquées';
+            }
+            if ($correct < 0 || $correct >= count($opts)) {
+                $score += 30;
+                $reasons[] = 'correct_answer invalide';
+            }
+        }
+
+        if ($quizzes > 0 && $attempts < 10) {
+            $score += 8;
+            $reasons[] = 'fiabilité faible';
+        }
+        if ($attempts >= 10) {
+            if ($avg >= 85.0) {
+                $score += 14;
+                $reasons[] = 'trop facile';
+            } elseif ($avg <= 35.0) {
+                $score += 14;
+                $reasons[] = 'trop difficile';
+            }
+        }
+
+        if ($score > 100) $score = 100;
+        $level = 'LOW';
+        if ($score >= 75) $level = 'HIGH';
+        elseif ($score >= 45) $level = 'MEDIUM';
+
+        return ['score' => (int) $score, 'level' => $level, 'reasons' => array_values(array_unique($reasons))];
     }
 
     public function addQuestion() {
@@ -1473,9 +1728,9 @@ class AdminController extends BaseController {
         $opts = is_array($optionsRaw) ? array_values(array_filter(array_map([$this, 'sanitize'], $optionsRaw))) : [];
         $correct = (int) ($_POST['correct_answer'] ?? 0);
         $tags = $this->sanitize($_POST['tags'] ?? '');
-        $difficulty = QuizQuestionValidation::normalizeDifficulty($_POST['difficulty'] ?? 'beginner');
+        $difficulty = $this->normalizeDifficulty($_POST['difficulty'] ?? 'beginner');
 
-        $errs = QuizQuestionValidation::validateQuestionBankFields($title, $questionText, $opts, $correct, $tags);
+        $errs = $this->validateQuestionBankFields($title, $questionText, $opts, $correct, $tags);
         if (!empty($errs)) {
             $this->setFlash('error', $errs[0]);
             $this->redirect('admin/add-question');
@@ -1537,9 +1792,9 @@ class AdminController extends BaseController {
         $opts = is_array($optionsRaw) ? array_values(array_filter(array_map([$this, 'sanitize'], $optionsRaw))) : [];
         $correct = (int) ($_POST['correct_answer'] ?? 0);
         $tags = $this->sanitize($_POST['tags'] ?? '');
-        $difficulty = QuizQuestionValidation::normalizeDifficulty($_POST['difficulty'] ?? 'beginner');
+        $difficulty = $this->normalizeDifficulty($_POST['difficulty'] ?? 'beginner');
 
-        $errs = QuizQuestionValidation::validateQuestionBankFields($title, $questionText, $opts, $correct, $tags);
+        $errs = $this->validateQuestionBankFields($title, $questionText, $opts, $correct, $tags);
         if (!empty($errs)) {
             $this->setFlash('error', $errs[0]);
             $this->redirect('admin/edit-question/' . (int) $id);
@@ -1558,6 +1813,135 @@ class AdminController extends BaseController {
 
         $this->setFlash('success', 'Question mise à jour.');
         $this->redirect('admin/questions');
+    }
+
+    private function normalizeDifficulty($raw): string
+    {
+        $s = is_string($raw) ? trim($raw) : '';
+        return in_array($s, ['beginner', 'intermediate', 'advanced'], true) ? $s : 'beginner';
+    }
+
+    private function validateQuizMetaFromPost(array $post): array
+    {
+        $errors = [];
+        $title = trim((string) ($post['title'] ?? ''));
+        if ($title === '') {
+            $errors[] = 'Le titre du quiz est obligatoire.';
+        } elseif ($this->strLen($title) > 255) {
+            $errors[] = 'Le titre est trop long (255 caractères maximum).';
+        }
+
+        $tagsRaw = isset($post['tags']) ? trim((string) $post['tags']) : '';
+        if ($this->strLen($tagsRaw) > 500) {
+            $errors[] = 'Les tags sont trop longs (500 caractères maximum).';
+        }
+        $tags = $tagsRaw === '' ? null : $tagsRaw;
+
+        $diff = $this->normalizeDifficulty($post['difficulty'] ?? 'beginner');
+
+        $timeLimit = null;
+        $tl = $post['time_limit_sec'] ?? '';
+        if ($tl !== '' && $tl !== null) {
+            if (!is_numeric($tl)) {
+                $errors[] = 'Le temps limite doit être un nombre entier ou vide.';
+            } else {
+                $n = (int) $tl;
+                if ($n < 0) {
+                    $errors[] = 'Le temps limite ne peut pas être négatif.';
+                } elseif ($n > 86400) {
+                    $errors[] = 'Le temps limite ne peut pas dépasser 24 heures (86400 s).';
+                } elseif ($n > 0) {
+                    $timeLimit = $n;
+                }
+            }
+        }
+
+        return [
+            'errors' => $errors,
+            'title' => $title,
+            'tags' => $tags,
+            'difficulty' => $diff,
+            'time_limit_sec' => $timeLimit,
+        ];
+    }
+
+    private function validateNormalizedQuizQuestions(array $questions): array
+    {
+        $errors = [];
+        foreach ($questions as $q) {
+            if ($this->strLen((string) ($q['question'] ?? '')) > 8000) {
+                $errors[] = 'Une question dépasse la longueur autorisée (8000 caractères).';
+                return $errors;
+            }
+            foreach (($q['options'] ?? []) as $o) {
+                if ($this->strLen((string) $o) > 500) {
+                    $errors[] = 'Une option de réponse dépasse la longueur autorisée (500 caractères).';
+                    return $errors;
+                }
+            }
+        }
+        return $errors;
+    }
+
+    private function validateQuestionBankFields(string $title, string $questionText, array $opts, int $correctIndex, string $tags): array
+    {
+        $errors = [];
+        if ($this->strLen($title) > 255) {
+            $errors[] = 'Le titre est trop long.';
+        }
+        if ($questionText === '') {
+            $errors[] = 'Le texte de la question est obligatoire.';
+        } elseif ($this->strLen($questionText) > 8000) {
+            $errors[] = 'Le texte de la question est trop long.';
+        }
+        if ($this->strLen($tags) > 500) {
+            $errors[] = 'Les tags sont trop longs.';
+        }
+        if (count($opts) < 2) {
+            $errors[] = 'Au moins deux options de réponse sont requises.';
+        } else {
+            foreach ($opts as $o) {
+                if ($this->strLen((string) $o) > 500) {
+                    $errors[] = 'Une option est trop longue.';
+                    break;
+                }
+            }
+            if ($correctIndex < 0 || $correctIndex >= count($opts)) {
+                $errors[] = 'L’index de la bonne réponse est invalide (doit correspondre à une option).';
+            }
+        }
+
+        return $errors;
+    }
+
+    private function strLen(string $s): int
+    {
+        if (function_exists('mb_strlen')) {
+            return (int) mb_strlen($s, 'UTF-8');
+        }
+        return strlen($s);
+    }
+
+    private function getAllChaptersWithCourseTitlesForAdmin(): array
+    {
+        $db = $this->db();
+        $sql = "SELECT ch.id, ch.course_id, ch.title, c.title AS course_title
+                FROM chapters ch
+                JOIN courses c ON c.id = ch.course_id
+                ORDER BY c.title ASC, ch.title ASC";
+        $stmt = $db->query($sql);
+        return $stmt ? $stmt->fetchAll() : [];
+    }
+
+    private function adminChapterExists(int $chapterId): bool
+    {
+        if ($chapterId <= 0) {
+            return false;
+        }
+        $db = $this->db();
+        $stmt = $db->prepare('SELECT id FROM chapters WHERE id = ? LIMIT 1');
+        $stmt->execute([(int) $chapterId]);
+        return (bool) $stmt->fetch();
     }
 
     public function deleteQuestion($id) {
