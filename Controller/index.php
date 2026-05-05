@@ -65,17 +65,35 @@ if (!empty($segments)) {
             'authenticate' => 'authenticate',
         ][$first];
     } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home', 'book', 'admin-quiz', 'student-quiz', 'teacher-quiz'], true)) {
-        if ($first === 'admin-quiz') {
-            $controller = 'AdminQuizController';
-        } elseif ($first === 'student-quiz') {
-            $controller = 'StudentQuizController';
-        } elseif ($first === 'teacher-quiz') {
-            $controller = 'TeacherQuizController';
+        if (in_array($first, ['admin-quiz', 'student-quiz', 'teacher-quiz'], true)) {
+            $controller = 'QuizController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'quiz';
+            $params = array_slice($segments, 2);
+        } elseif (in_array($first, ['admin', 'teacher'], true) && in_array(strtolower($second), ['quizzes', 'quiz-history', 'quiz-stats', 'add-quiz', 'store-quiz', 'edit-quiz', 'update-quiz', 'delete-quiz', 'approve-quiz', 'reject-quiz', 'duplicate-quiz'], true)) {
+            $controller = 'QuizController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
+        } elseif ($first === 'student' && in_array(strtolower($second), ['quiz', 'take-quiz', 'submit-quiz', 'toggle-favorite-quiz', 'toggle-redo-quiz'], true)) {
+            $controller = 'QuizController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
+        } elseif ($first === 'student' && in_array(strtolower($second), ['coach', 'quiz-history'], true)) {
+            $controller = 'QuizController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
+        } elseif (in_array($first, ['admin', 'teacher'], true) && in_array(strtolower($second), ['questions', 'add-question', 'store-question', 'edit-question', 'update-question'], true)) {
+            $controller = 'QuestionController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
+        } elseif ($first === 'student' && in_array(strtolower($second), ['questions-bank', 'training', 'questions-bank-difficulty'], true)) {
+            $controller = 'QuestionController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
         } else {
             $controller = ucfirst($first) . 'Controller';
+            $action = $second !== '' ? toCamelCaseAction($second) : ($first === 'auth' ? 'login' : 'index');
+            $params = array_slice($segments, 2);
         }
-        $action = $second !== '' ? toCamelCaseAction($second) : ($first === 'auth' ? 'login' : 'index');
-        $params = array_slice($segments, 2);
     } else {
         $controller = 'HomeController';
         $action = toCamelCaseAction($first);
