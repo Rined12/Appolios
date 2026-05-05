@@ -2,8 +2,8 @@
 $adminSidebarActive = 'questions';
 $isEdit = !empty($question);
 $action = $isEdit
-    ? APP_ENTRY . '?url=admin/update-question/' . (int) $question['id']
-    : APP_ENTRY . '?url=admin/store-question';
+    ? APP_ENTRY . '?url=admin-quiz/update-question/' . (int) $question['id']
+    : APP_ENTRY . '?url=admin-quiz/store-question';
 $opts = $isEdit ? ($question['options'] ?? ['', '']) : ['', ''];
 ?>
 <style>
@@ -94,7 +94,7 @@ $opts = $isEdit ? ($question['options'] ?? ['', '']) : ['', ''];
             <div class="admin-main admin-qf-wrap">
                 <header class="admin-qf-hero">
                     <h1><?= $isEdit ? 'Modifier la question' : 'Nouvelle question' ?></h1>
-                    <a class="admin-qf-back" href="<?= APP_ENTRY ?>?url=admin/questions">← Retour à la banque</a>
+                    <a class="admin-qf-back" href="<?= APP_ENTRY ?>?url=admin-quiz/questions">← Retour à la banque</a>
                 </header>
                 <?php if (!empty($flash)): ?>
                     <p class="flash flash-<?= htmlspecialchars($flash['type']) ?>"><?= htmlspecialchars($flash['message']) ?></p>
@@ -145,7 +145,7 @@ $opts = $isEdit ? ($question['options'] ?? ['', '']) : ['', ''];
                     </div>
                     <div class="admin-qf-actions">
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
-                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=admin/questions">Annuler</a>
+                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=admin-quiz/questions">Annuler</a>
                     </div>
                 </form>
             </div>

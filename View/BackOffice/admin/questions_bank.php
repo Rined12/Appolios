@@ -2,6 +2,7 @@
 $adminSidebarActive = 'questions';
 $top = isset($qbTopStats) && is_array($qbTopStats) ? $qbTopStats : [];
 $charts = $charts ?? [];
+$qa = isset($questionQa) && is_array($questionQa) ? $questionQa : [];
 ?>
 <div class="dashboard">
     <div class="container admin-dashboard-container">
@@ -14,7 +15,7 @@ $charts = $charts ?? [];
                         <p>Créez, modifiez et réutilisez des questions dans vos quiz.</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a href="<?= APP_ENTRY ?>?url=admin/add-question" class="btn btn-primary">Nouvelle question</a>
+                        <a href="<?= APP_ENTRY ?>?url=admin-quiz/add-question" class="btn btn-primary">Nouvelle question</a>
                     </div>
                 </div>
                 <?php if (!empty($flash)): ?>
@@ -132,6 +133,7 @@ $charts = $charts ?? [];
                                     <th>Titre</th>
                                     <th>Question</th>
                                     <th>Difficulté</th>
+                                    <th>Qualité</th>
                                     <th style="width:1%;">Actions</th>
                                 </tr>
                             </thead>
@@ -147,6 +149,11 @@ $charts = $charts ?? [];
                                         $titleShown = $titleText !== '' ? $titleText : 'Sans titre';
                                         $author = (string) ($q['author_name'] ?? '');
                                         $questionText = (string) ($q['question_text'] ?? '');
+                                        $qid = (int) ($q['id'] ?? 0);
+                                        $qInfo = $qa[$qid] ?? null;
+                                        $qualityLabel = is_array($qInfo) ? (string) ($qInfo['label'] ?? 'Données insuff.') : 'Données insuff.';
+                                        $qualityClass = is_array($qInfo) ? (string) ($qInfo['badge'] ?? 'pro-badge') : 'pro-badge';
+                                        $qualityScore = is_array($qInfo) ? ($qInfo['score'] ?? null) : null;
                                     ?>
                                     <tr data-id="<?= (int) ($q['id'] ?? 0) ?>" data-title="<?= htmlspecialchars(mb_strtolower($titleShown)) ?>" data-question="<?= htmlspecialchars(mb_strtolower($questionText)) ?>" data-difficulty="<?= htmlspecialchars($diff) ?>">
                                         <td>
@@ -160,11 +167,17 @@ $charts = $charts ?? [];
                                         <td><div class="pro-question-text"><?= htmlspecialchars($questionText) ?></div></td>
                                         <td><span class="<?= $diffClass ?>"><?= htmlspecialchars(difficulty_label_fr($diff)) ?></span></td>
                                         <td>
+                                            <span class="<?= htmlspecialchars($qualityClass) ?>"><?= htmlspecialchars($qualityLabel) ?></span>
+                                            <?php if ($qualityScore !== null): ?>
+                                                <span class="pro-cell-sub" style="display:inline-block; margin-left:8px; opacity:.9;">Score: <?= (int) $qualityScore ?>/100</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
                                             <div class="pro-actions">
-                                                <a href="<?= APP_ENTRY ?>?url=admin/edit-question/<?= (int) $q['id'] ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
+                                                <a href="<?= APP_ENTRY ?>?url=admin-quiz/edit-question/<?= (int) $q['id'] ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <a href="<?= APP_ENTRY ?>?url=admin/delete-question/<?= (int) $q['id'] ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
+                                                <a href="<?= APP_ENTRY ?>?url=admin-quiz/delete-question/<?= (int) $q['id'] ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
                                                     <i class="bi bi-trash"></i>
                                                 </a>
                                             </div>

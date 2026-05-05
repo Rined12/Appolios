@@ -21,7 +21,7 @@ $charts = $charts ?? [];
                         <p>Vue globale + détails par quiz (tentatives, moyenne, meilleurs scores).</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a href="<?= APP_ENTRY ?>?url=admin/quiz-history" class="btn btn-outline">Retour aux quiz</a>
+                        <a href="<?= APP_ENTRY ?>?url=admin-quiz/quiz-history" class="btn btn-outline">Retour aux quiz</a>
                     </div>
                 </div>
 

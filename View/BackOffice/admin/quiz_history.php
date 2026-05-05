@@ -12,12 +12,12 @@ $adminSidebarActive = 'quiz_history';
                         <p>Consultez tous les quiz et leur créateur.</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a href="<?= APP_ENTRY ?>?url=admin/quizStats" class="btn btn-stats-pro">
+                        <a href="<?= APP_ENTRY ?>?url=admin-quiz/quizStats" class="btn btn-stats-pro">
                             <i class="bi bi-graph-up" aria-hidden="true"></i>
                             Statistiques
                             <span class="btn-stats-pro-badge">PRO</span>
                         </a>
-                        <a href="<?= APP_ENTRY ?>?url=admin/quizzes" class="btn btn-outline">Retour aux quiz</a>
+                        <a href="<?= APP_ENTRY ?>?url=admin-quiz/quizzes" class="btn btn-outline">Retour aux quiz</a>
                     </div>
                 </div>
 
@@ -116,17 +116,17 @@ $adminSidebarActive = 'quiz_history';
                                         <td>
                                             <div class="pro-actions">
                                                 <?php if ($st === 'pending'): ?>
-                                                    <a href="<?= APP_ENTRY ?>?url=admin/approve-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn" title="Approuver" aria-label="Approuver">
+                                                    <a href="<?= APP_ENTRY ?>?url=admin-quiz/approve-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn" title="Approuver" aria-label="Approuver">
                                                         <i class="bi bi-check2"></i>
                                                     </a>
-                                                    <a href="<?= APP_ENTRY ?>?url=admin/reject-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn pro-icon-btn--danger" title="Refuser" aria-label="Refuser" onclick="return confirm('Refuser ce quiz ?');">
+                                                    <a href="<?= APP_ENTRY ?>?url=admin-quiz/reject-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn pro-icon-btn--danger" title="Refuser" aria-label="Refuser" onclick="return confirm('Refuser ce quiz ?');">
                                                         <i class="bi bi-x"></i>
                                                     </a>
                                                 <?php endif; ?>
-                                                <a href="<?= APP_ENTRY ?>?url=admin/edit-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
+                                                <a href="<?= APP_ENTRY ?>?url=admin-quiz/edit-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <a href="<?= APP_ENTRY ?>?url=admin/delete-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
+                                                <a href="<?= APP_ENTRY ?>?url=admin-quiz/delete-quiz/<?= (int) $q['id'] ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
                                                     <i class="bi bi-trash"></i>
                                                 </a>
                                             </div>

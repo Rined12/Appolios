@@ -2,8 +2,8 @@
 $adminSidebarActive = 'quiz';
 $isEdit = !empty($quiz);
 $action = $isEdit
-    ? APP_ENTRY . '?url=admin/update-quiz/' . (int) $quiz['id']
-    : APP_ENTRY . '?url=admin/store-quiz';
+    ? APP_ENTRY . '?url=admin-quiz/update-quiz/' . (int) $quiz['id']
+    : APP_ENTRY . '?url=admin-quiz/store-quiz';
 $questions = $isEdit && !empty($quiz['questions']) ? $quiz['questions'] : [['question' => '', 'options' => ['', ''], 'correctAnswer' => 0]];
 $questionBank = $questionBank ?? [];
 ?>
@@ -18,7 +18,7 @@ $questionBank = $questionBank ?? [];
                         <p>Créez et configurez le quiz (questions + banque de questions).</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=admin/quizzes">← Retour à la liste</a>
+                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=admin-quiz/quizzes">← Retour à la liste</a>
                     </div>
                 </div>
                 <?php if (!empty($flash)): ?>
@@ -67,7 +67,7 @@ $questionBank = $questionBank ?? [];
 
                     <section class="pro-form-section">
                     <h3>Importer depuis la banque de questions</h3>
-                    <p class="pro-form-hint">Cochez des questions déjà créées dans <a href="<?= APP_ENTRY ?>?url=admin/questions">Question</a> : elles seront ajoutées au quiz après les questions saisies ci-dessous.</p>
+                    <p class="pro-form-hint">Cochez des questions déjà créées dans <a href="<?= APP_ENTRY ?>?url=admin-quiz/questions">Question</a> : elles seront ajoutées au quiz après les questions saisies ci-dessous.</p>
                     <?php if (!empty($questionBank)): ?>
                         <div class="pro-form-bank">
                             <?php foreach ($questionBank as $bq): ?>
@@ -119,7 +119,7 @@ $questionBank = $questionBank ?? [];
                     <button type="button" class="btn btn-outline" id="add-q">+ Question</button>
                     <div class="pro-form-actions">
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
-                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=admin/quizzes">Annuler</a>
+                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=admin-quiz/quizzes">Annuler</a>
                     </div>
                 </form>
                 </div>

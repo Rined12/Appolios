@@ -62,7 +62,7 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             <span>Chapitres</span>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=admin/quizzes" class="admin-side-link <?= $adminSidebarActive === 'quiz' ? 'active' : '' ?>">
+        <a href="<?= APP_ENTRY ?>?url=admin-quiz/quizzes" class="admin-side-link <?= $adminSidebarActive === 'quiz' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="9"></circle>
@@ -72,7 +72,7 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             <span>Quiz</span>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=admin/questions" class="admin-side-link <?= $adminSidebarActive === 'questions' ? 'active' : '' ?>">
+        <a href="<?= APP_ENTRY ?>?url=admin-quiz/questions" class="admin-side-link <?= $adminSidebarActive === 'questions' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 4h16v16H4z"></path>
