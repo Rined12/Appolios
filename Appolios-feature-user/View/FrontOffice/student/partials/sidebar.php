@@ -65,6 +65,8 @@ if (isset($_SESSION['user_id'])) {
                 <span>My Badges</span>
             </a>
 
+            
+
             <a href="<?= APP_ENTRY ?>?url=student/certificates" class="admin-side-link <?= $studentSidebarActive === 'certificates' ? 'active' : '' ?>">
                 <span class="admin-side-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

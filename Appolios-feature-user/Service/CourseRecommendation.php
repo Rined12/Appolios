@@ -37,7 +37,7 @@ class CourseRecommendation {
         $sql = "SELECT c.id, c.title, c.description, c.price, c.image
                 FROM courses c
                 JOIN enrollments e ON c.id = e.course_id
-                WHERE e.user_id = ? AND c.status = 'approved'";
+                WHERE e.user_id = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$userId]);
         return $stmt->fetchAll();
@@ -46,9 +46,8 @@ class CourseRecommendation {
     private function getAvailableCourses($userId) {
         $sql = "SELECT c.id, c.title, c.description, c.price, c.image, u.name as creator_name
                 FROM courses c
-                JOIN users u ON c.created_by = u.id
-                WHERE c.status = 'approved' 
-                AND c.id NOT IN (SELECT course_id FROM enrollments WHERE user_id = ?)
+                LEFT JOIN users u ON c.created_by = u.id
+                WHERE c.id NOT IN (SELECT course_id FROM enrollments WHERE user_id = ?)
                 ORDER BY c.created_at DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$userId]);

@@ -11,6 +11,23 @@ class CertificateService {
     
     public function __construct() {
         $this->db = getConnection();
+        
+        // Auto-create certificates table if it doesn't exist
+        try {
+            $this->db->query("SELECT 1 FROM certificates LIMIT 1");
+        } catch (PDOException $e) {
+            $this->db->exec("CREATE TABLE IF NOT EXISTS certificates (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                course_id INT NOT NULL,
+                certificate_code VARCHAR(50) NOT NULL UNIQUE,
+                issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                download_url VARCHAR(500),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+                UNIQUE KEY unique_user_course (user_id, course_id)
+            )");
+        }
     }
     
     public function generateCertificate($userId, $courseId) {
@@ -21,11 +38,17 @@ class CertificateService {
         
         $certificateCode = $this->generateCode($userId, $courseId);
         
-        $sql = "INSERT INTO certificates (user_id, course_id, certificate_code) VALUES (?, ?, ?)";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $courseId, $certificateCode]);
-        
-        return $this->getCertificate($userId, $courseId);
+        try {
+            $sql = "INSERT INTO certificates (user_id, course_id, certificate_code) VALUES (?, ?, ?)";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$userId, $courseId, $certificateCode]);
+            error_log("Certificate inserted: userId=$userId, courseId=$courseId, code=$certificateCode");
+            
+            return $this->getCertificate($userId, $courseId);
+        } catch (PDOException $e) {
+            error_log("Certificate INSERT error: " . $e->getMessage());
+            return false;
+        }
     }
     
     private function generateCode($userId, $courseId) {

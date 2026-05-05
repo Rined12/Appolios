@@ -22,25 +22,40 @@ $studentSidebarActive = 'courses';
                     <?php endif; ?>
                 </p>
 
-                <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
-                    <input type="text" id="searchInput" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" placeholder="Search courses..." style="flex:1;min-width:200px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem" oninput="filterCourses(this.value)">
+                <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center">
+                    <input type="text" id="searchInput" value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" placeholder="Search courses..." style="flex:1;min-width:200px;padding:8px 12px;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem" oninput="filterCoursesStudent(this.value)">
+                    <button id="bookmarkFilterBtn" onclick="toggleBookmarkFilter()" style="padding:8px 16px;background:#f1f5f9;border:1px solid #e5e7eb;border-radius:6px;font-size:0.9rem;cursor:pointer;font-weight:600;">
+                        🔖 My Bookmarks
+                    </button>
                 </div>
                 <script>
-                function filterCourses(value) {
-                    var filter = value.toLowerCase();
-                    var container = document.getElementById('courseContainer');
-                    if (!container) return;
-                    var cards = container.children;
-                    for (var i = 0; i < cards.length; i++) {
-                        var card = cards[i];
-                        var text = card.textContent || card.innerText;
-                        if (text.toLowerCase().indexOf(filter) > -1) {
-                            card.style.display = '';
-                        } else {
-                            card.style.display = 'none';
+                (function() {
+                    var showBookmarksOnly = false;
+                    window.filterCoursesStudent = function(value) {
+                        var filter = (value || '').toLowerCase();
+                        var container = document.getElementById('courseContainer');
+                        if (!container) return;
+                        var cards = container.children;
+                        for (var i = 0; i < cards.length; i++) {
+                            var card = cards[i];
+                            var text = card.textContent || card.innerText;
+                            var isBookmarked = card.classList.contains('bookmarked');
+                            if (text.toLowerCase().indexOf(filter) > -1 && (!showBookmarksOnly || isBookmarked)) {
+                                card.style.display = '';
+                            } else {
+                                card.style.display = 'none';
+                            }
                         }
-                    }
-                }
+                    };
+                    window.toggleBookmarkFilter = function() {
+                        showBookmarksOnly = !showBookmarksOnly;
+                        var btn = document.getElementById('bookmarkFilterBtn');
+                        btn.style.background = showBookmarksOnly ? '#667eea' : '#f1f5f9';
+                        btn.style.color = showBookmarksOnly ? 'white' : '#1e293b';
+                        var searchInput = document.getElementById('searchInput');
+                        filterCoursesStudent(searchInput ? searchInput.value : '');
+                    };
+                })();
                 </script>
 
                 <?php 
@@ -52,8 +67,8 @@ $studentSidebarActive = 'courses';
                     <div id="courseContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 0.5rem;">
                         <!-- AI Recommended Courses (highlighted) -->
                         <?php if ($hasRecommendations): ?>
-                            <?php foreach ($recommendations as $rec): ?>
-                                <article style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25); position: relative;">
+                            <?php foreach ($recommendations as $rec): $isBookmarked = isset($bookmarkedCourseIds[$rec['id']]); ?>
+                                <article class="<?= $isBookmarked ? 'bookmarked' : '' ?>" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.25); position: relative;<?= $isBookmarked ? ';border:2px solid #667eea' : '' ?>">
                                     <!-- AI Badge -->
                                     <div style="position: absolute; top: 10px; right: 10px; z-index: 10; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; display: flex; align-items: center; gap: 4px;">
                                         <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -84,8 +99,8 @@ $studentSidebarActive = 'courses';
                         
                         <!-- Regular Courses -->
                         <?php if ($hasCourses): ?>
-                            <?php foreach ($courses as $course): ?>
-                                <article style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                            <?php foreach ($courses as $course): $isBookmarked = isset($bookmarkedCourseIds[$course['id']]); ?>
+                                <article class="<?= $isBookmarked ? 'bookmarked' : '' ?>" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);<?= $isBookmarked ? ';border:2px solid #667eea' : '' ?>">
                                     <?php if (!empty($course['image'])): ?>
                                         <img src="<?= htmlspecialchars($course['image']) ?>" alt="<?= htmlspecialchars($course['title']) ?>" style="width: 100%; height: 140px; object-fit: cover;">
                                     <?php else: ?>

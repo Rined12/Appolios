@@ -8,7 +8,7 @@ return [
     'provider' => 'openrouter',
     
     'openrouter' => [
-        'api_key' => defined('OPENROUTER_API_KEY') ? OPENROUTER_API_KEY : getenv('OPENROUTER_API_KEY') ?: '',
+        'api_key' => getenv('OPENROUTER_API_KEY') ?: '',
         'model' => 'meta-llama/llama-3.1-8b-instruct',
         'endpoint' => 'https://openrouter.ai/api/v1/chat/completions',
         'referer' => 'appolios',

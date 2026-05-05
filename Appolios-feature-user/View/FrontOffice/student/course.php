@@ -277,11 +277,12 @@ function markComplete(lid, cid, chapterIndex, lessonIndex) {
     var x = new XMLHttpRequest();
     x.open('POST', 'index.php?url=student/completeLesson', true);
     x.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-    x.onreadystatechange = function() {
+x.onreadystatechange = function() {
         if (x.readyState === 4 && x.status === 200) {
             try { 
                 var d = JSON.parse(x.responseText); 
-                if (d.success) { 
+                console.log("Lesson complete response:", d);
+                if (d.success) {
                     completedLessons++; 
                     updateProgress();
                     updateLessonUI(chapterIndex, lessonIndex);

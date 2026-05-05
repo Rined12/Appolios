@@ -91,8 +91,9 @@ class StudentController extends BaseController {
         $completedFromDb = $progressController->getCompletedLessons($_SESSION['user_id'], $actualCourseId);
         $completedLessons = array_column($completedFromDb, 'lesson_id');
         
+        // Force add the lesson if not in DB result yet
         if (!in_array($lessonId, $completedLessons)) {
-            $completedLessons[] = $lessonId;
+            $completedLessons[] = (int)$lessonId;
         }
         
         $_SESSION['completed_lessons'][$actualCourseId] = $completedLessons;
@@ -102,12 +103,47 @@ class StudentController extends BaseController {
         $progress = $totalLessons > 0 ? round(($completedCount / $totalLessons) * 100) : 0;
 
         $enrollmentModel->updateProgress($_SESSION['user_id'], $actualCourseId, $progress);
-
+        
         $this->awardXP($_SESSION['user_id'], 15, 'Completed a lesson');
+        
+        // Generate certificate when last lesson is completed
+        error_log("CERT CHECK: progress=$progress, completed=$completedCount, total=$totalLessons");
+        if ($progress >= 100 && $completedCount >= $totalLessons && $totalLessons > 0) {
+            $db = getConnection();
+            $certCode = 'APP-' . date('Ymd') . '-' . rand(1000, 9999);
+            try {
+                // First ensure table exists
+                $db->exec("CREATE TABLE IF NOT EXISTS certificates (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    course_id INT NOT NULL,
+                    certificate_code VARCHAR(50) NOT NULL UNIQUE,
+                    issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_user_course (user_id, course_id)
+                )");
+                
+                $stmt = $db->prepare("INSERT INTO certificates (user_id, course_id, certificate_code) VALUES (?, ?, ?)");
+                $stmt->execute([$_SESSION['user_id'], $actualCourseId, $certCode]);
+                error_log("CERT CREATED: $certCode for user " . $_SESSION['user_id'] . " course $actualCourseId");
+                
+                $courseModel = $this->model('Course');
+                $course = $courseModel->findById($actualCourseId);
+                $this->createNotification($_SESSION['user_id'], 'certificate', '🎓 Certificate Earned!', "Congratulations! You've completed '" . ($course['title'] ?? 'the course') . "'. Your certificate is ready!", 'student/certificates');
+            } catch (Exception $e) {
+                error_log("CERT ERROR: " . $e->getMessage());
+            }
+        }
+        
         $this->checkAndAwardBadges($_SESSION['user_id'], $actualCourseId, $completedCount, $totalLessons, $progress);
 
         header('Content-Type: application/json');
-        echo json_encode(['success' => true, 'progress' => $progress]);
+        echo json_encode([
+            'success' => true, 
+            'progress' => $progress, 
+            'total' => $totalLessons, 
+            'completed' => $completedCount,
+            'debug' => "progress: $progress, enrollmentProgress: $enrollmentProgress"
+        ]);
         exit;
     }
     
@@ -187,7 +223,7 @@ class StudentController extends BaseController {
                 $progress
             );
             
-            if (!$badgeModel->hasBadge($userId, $badge['name'])) {
+if (!$badgeModel->hasBadge($userId, $badge['name'])) {
                 $badgeModel->awardBadge($userId, $badge['name'], $badge['icon'], $badge['description']);
                 
                 $this->createNotification(
@@ -203,9 +239,11 @@ class StudentController extends BaseController {
             require_once __DIR__ . '/../Service/CertificateService.php';
             $certService = new CertificateService();
             $existingCert = $certService->getCertificate($userId, $courseId);
+            error_log("Certificate check - userId: $userId, courseId: $courseId, existing: " . ($existingCert ? 'yes' : 'no'));
             
             if (!$existingCert) {
-                $certService->generateCertificate($userId, $courseId);
+                $cert = $certService->generateCertificate($userId, $courseId);
+                error_log("Certificate generated: " . ($cert ? 'success' : 'failed'));
                 
                 $courseModel = $this->model('Course');
                 $course = $courseModel->findById($courseId);
@@ -367,6 +405,7 @@ class StudentController extends BaseController {
             'description' => 'Student dashboard',
             'userName' => $_SESSION['user_name'],
             'allCourses' => $allCourses,
+            'availableCoursesCount' => count($allCourses),
             'enrollments' => $enrollments,
             'enrolledIds' => $enrolledIds,
             'badges' => $userBadges,
@@ -383,6 +422,21 @@ class StudentController extends BaseController {
         ];
 
         $this->view('FrontOffice/student/dashboard', $data);
+    }
+    
+    public function leaderboard() {
+        if (!$this->isLoggedIn()) { $this->redirect('login'); return; }
+        $db = getConnection();
+        $stmt = $db->query("SELECT u.id, u.name, COALESCE(ux.total_xp, 0) as xp FROM users u LEFT JOIN user_xp ux ON u.id = ux.user_id WHERE u.role = 'student' AND u.is_blocked = 0 ORDER BY ux.total_xp DESC");
+        $students = $stmt->fetchAll();
+        $this->view('FrontOffice/student/leaderboard', ['title'=>'Leaderboard','leaderboard'=>array_slice($students, 0, 10),'userName'=>$_SESSION['user_name']]);
+    }
+    
+    public function ranks() {
+        if (!$this->isLoggedIn()) { $this->redirect('login'); return; }
+        $xpController = new UserXPController();
+        $xpData = $xpController->getByUserId($_SESSION['user_id']);
+        $this->view('FrontOffice/student/ranks', ['title'=>'Ranks','totalXP'=>$xpData['total_xp']??0,'levelInfo'=>$xpController->getLevel($xpData['total_xp']??0),'userName'=>$_SESSION['user_name']]);
     }
 
     /**
@@ -472,14 +526,6 @@ $courseModel = $this->model('Course');
         
         $allCourses = $courseModel->getAllWithCreator();
 
-        // Filter only approved courses for students
-        $allCourses = array_filter($allCourses, function($course) {
-            return ($course['status'] ?? '') === 'approved';
-        });
-
-        // Re-index array
-        $allCourses = array_values($allCourses);
-
         // Filter by search query
         $searchQuery = $_GET['search'] ?? '';
         if (!empty($searchQuery)) {
@@ -503,22 +549,23 @@ $courseModel = $this->model('Course');
         $enrollments = $enrollmentModel->getUserEnrollments($_SESSION['user_id']);
         $enrolledIds = array_column($enrollments, 'course_id');
         
+        // Get bookmarked course IDs
+        require_once __DIR__ . '/../Model/CourseBookmark.php';
+        $bookmarkModel = new CourseBookmark();
+        $bookmarks = $bookmarkModel->getUserBookmarks($_SESSION['user_id']);
+        $bookmarkedCourseIds = array_flip(array_column($bookmarks, 'course_id'));
+        
         // Get course recommendations
         require_once __DIR__ . '/../Service/CourseRecommendation.php';
         $recommendationModel = new CourseRecommendation();
         $recommendations = $recommendationModel->getRecommendations($_SESSION['user_id'], 4);
-        
-        // Exclude recommended courses from regular list to avoid duplicates
-        $recommendedIds = array_column($recommendations, 'id');
-        $allCourses = array_filter($allCourses, function($course) use ($recommendedIds) {
-            return !in_array($course['id'], $recommendedIds);
-        });
         
         $data = [
             'title' => 'Browse Courses - APPOLIOS',
             'description' => 'Explore all available courses',
             'courses' => array_values($allCourses),
             'enrolledIds' => $enrolledIds,
+            'bookmarkedCourseIds' => $bookmarkedCourseIds,
             'recommendations' => $recommendations,
             'flash' => $this->getFlash()
         ];

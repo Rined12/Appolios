@@ -5,7 +5,7 @@
 
 $studentSidebarActive = 'dashboard';
 $enrollmentCount = count($enrollments ?? []);
-$availableCount = count($allCourses ?? []);
+$availableCount = $availableCoursesCount ?? count($allCourses ?? []);
 $avgProgress = 0;
 
 if (!empty($enrollments)) {
@@ -31,12 +31,39 @@ if (!empty($enrollments)) {
                         <h1>Dashboard</h1>
                         <p>Welcome back, <strong><?= htmlspecialchars($userName) ?></strong>. Track your progress and keep learning.</p>
                         
-                        <div style="margin-top: 1.5rem;">
+<div style="margin-top: 1.5rem; display: flex; gap: 0.75rem; align-items: center;">
                             <a href="<?= APP_ENTRY ?>?url=student/courses" class="student-courses-hero-btn student-courses-hero-btn-primary" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; text-decoration: none;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></svg>
                                 Explore Courses
                             </a>
+                            <button onclick="showRanksModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; border: none; background: #667eea; color: white; cursor: pointer; font-weight: 600;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/></svg>
+                                Ranks
+                            </button>
                         </div>
+
+<script>
+function showRanksModal() {
+    Swal.fire({
+        title: '🎖️ Military Ranks',
+        html: `<div style="text-align:left;max-height:400px;overflow-y:auto;">
+            <table style="width:100%;border-collapse:collapse;">
+                <tr style="background:#f1f5f9;"><th style="padding:8px;">Rank</th><th style="padding:8px;">XP Required</th></tr>
+                <tr><td style="padding:8px;">⭐ Recruit</td><td style="padding:8px;">0+ XP</td></tr>
+                <tr style="background:#f8fafc"><td style="padding:8px;">⭐⭐ Private</td><td style="padding:8px;">100+ XP</td></tr>
+                <tr><td style="padding:8px;">⭐⭐⭐ Corporal</td><td style="padding:8px;">300+ XP</td></tr>
+                <tr style="background:#f8fafc"><td style="padding:8px;">🔱 Sergeant</td><td style="padding:8px;">600+ XP</td></tr>
+                <tr><td style="padding:8px;">🔱🔱 Lieutenant</td><td style="padding:8px;">1000+ XP</td></tr>
+                <tr style="background:#f8fafc"><td style="padding:8px;">🎖️ Captain</td><td style="padding:8px;">2000+ XP</td></tr>
+                <tr><td style="padding:8px;">👑 Major</td><td style="padding:8px;">4000+ XP</td></tr>
+                <tr style="background:#f8fafc"><td style="padding:8px;">🏆 General</td><td style="padding:8px;">8000+ XP</td></tr>
+            </table>
+        </div>`,
+        width: '400px',
+        confirmButtonColor: '#667eea'
+    });
+}
+</script>
                     </div>
 
                     <div class="student-events-hero-media" aria-hidden="true">
@@ -82,69 +109,7 @@ if (!empty($enrollments)) {
                     </div>
                 </div>
 
-                <!-- Advanced Statistics with Charts -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                    <?php $enrolled = $enrolledCount ?? 0; $completed = $completedCount ?? 0; $inProgress = $inProgressCount ?? 0; $avgProg = $averageProgress ?? 0; $radius = 35; $circumference = 2 * 3.14159 * $radius; ?>
-                    
-                    <!-- Progress Chart -->
-                    <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6;">
-                        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: #1e293b; font-weight: 700;">Overall Progress</h3>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 2rem;">
-                            <svg width="100" height="100" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="<?= $radius ?>" fill="none" stroke="#e5e7eb" stroke-width="8"/>
-                                <circle cx="50" cy="50" r="<?= $radius ?>" fill="none" stroke="#3b82f6" stroke-width="8"
-                                    stroke-linecap="round" stroke-dasharray="<?= ($avgProg / 100) * $circumference ?> <?= $circumference ?>" 
-                                    stroke-dashoffset="0" transform="rotate(-90 50 50)"
-                                    style="transition: stroke-dasharray 0.8s ease;"/>
-                            </svg>
-                            <div>
-                                <p style="font-size: 2rem; font-weight: 800; color: #1e293b; margin: 0;"><?= number_format($avgProg, 1) ?>%</p>
-                                <p style="margin: 0; color: #64748b; font-size: 0.9rem;">Average Progress</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Enrollment Status Chart -->
-                    <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6;">
-                        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: #1e293b; font-weight: 700;">Course Status</h3>
-                        <div style="display: flex; flex-direction: column; gap: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #eff6ff; border-radius: 8px;">
-                                <span style="color: #3b82f6; font-weight: 600;">Enrolled</span>
-                                <span style="font-size: 1.25rem; font-weight: 800; color: #1e293b;"><?= $enrolled ?></span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #fef3c7; border-radius: 8px;">
-                                <span style="color: #d97706; font-weight: 600;">In Progress</span>
-                                <span style="font-size: 1.25rem; font-weight: 800; color: #1e293b;"><?= $inProgress ?></span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: #dcfce7; border-radius: 8px;">
-                                <span style="color: #16a34a; font-weight: 600;">Completed</span>
-                                <span style="font-size: 1.25rem; font-weight: 800; color: #1e293b;"><?= $completed ?></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Recent Activity -->
-                    <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6;">
-                        <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: #1e293b; font-weight: 700;">Recent Enrollments</h3>
-                        <?php if (!empty($progressDetails)): ?>
-                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                                <?php foreach (array_slice($progressDetails, 0, 3) as $detail): ?>
-                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid #f1f5f9;">
-                                        <div>
-                                            <p style="margin: 0; font-weight: 600; color: #1e293b; font-size: 0.9rem;"><?= htmlspecialchars(substr($detail['title'], 0, 25)) ?>...</p>
-                                            <p style="margin: 0; color: #94a3b8; font-size: 0.75rem;"><?= date('M d, Y', strtotime($detail['enrolled_at'])) ?></p>
-                                        </div>
-                                        <span style="background: <?= $detail['progress'] == 100 ? '#dcfce7' : ($detail['progress'] > 0 ? '#fef3c7' : '#f1f5f9') ?>; color: <?= $detail['progress'] == 100 ? '#16a34a' : ($detail['progress'] > 0 ? '#d97706' : '#64748b') ?>; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">
-                                            <?= $detail['progress'] ?>%
-                                        </span>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php else: ?>
-                            <p style="color: #94a3b8; text-align: center;">No enrollments yet</p>
-                        <?php endif; ?>
-                    </div>
-                </div>
+                
 
                 <div class="pro-dashboard-grid">
                     <!-- MAIN COLUMN -->
@@ -331,7 +296,10 @@ if (!empty($enrollments)) {
                                 </div>
                             </div>
 
-                            <a href="<?= APP_ENTRY ?>?url=student/profile" style="display: inline-block; width: 100%; background: white; color: #E19864; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: 700; border: 1.5px solid #eef2f6; transition: all 0.2s;" onmouseover="this.style.background='#fff7ed'; this.style.borderColor='#f9b384'" onmouseout="this.style.background='white'; this.style.borderColor='#eef2f6'">Edit Profile</a>
+                            <div style="display: flex; gap: 0.5rem;">
+                            <a href="<?= APP_ENTRY ?>?url=student/leaderboard" style="flex: 1; display: inline-block; background: #667eea; color: white; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: 700; text-align: center;">Leaderboard</a>
+                            <a href="<?= APP_ENTRY ?>?url=student/profile" style="flex: 1; display: inline-block; background: white; color: #E19864; text-decoration: none; padding: 12px; border-radius: 10px; font-weight: 700; border: 1.5px solid #eef2f6; text-align: center;">Edit Profile</a>
+                        </div>
                         </div>
                     </div>
                 </div>
