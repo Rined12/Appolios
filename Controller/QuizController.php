@@ -17,76 +17,73 @@ class QuizController extends BaseController
     {
         $this->requireTeacher();
 
-        header('Content-Type: application/json; charset=utf-8');
+        $teacherId = (int) $_SESSION['user_id'];
+        $rows = $this->queryTeacherQuizRemediationRows($teacherId);
+        $items = [];
 
-        try {
-            $teacherId = (int) $_SESSION['user_id'];
-            $rows = $this->queryTeacherQuizRemediationRows($teacherId);
-            $items = [];
-
-            foreach ($rows as $r) {
-                $id = (int) ($r['id'] ?? 0);
-                if ($id <= 0) {
-                    continue;
-                }
-
-                $attempts = (int) ($r['attempts_count'] ?? 0);
-                $avg = (float) ($r['avg_percentage'] ?? 0);
-                $status = (string) ($r['status'] ?? '');
-
-                $attemptsNorm = log((float) ($attempts + 1), 10) / log(51.0, 10);
-                if ($attemptsNorm < 0) $attemptsNorm = 0;
-                if ($attemptsNorm > 1) $attemptsNorm = 1;
-
-                $avgNorm = 1.0 - max(0.0, min(1.0, $avg / 100.0));
-
-                $score = (int) round((($attemptsNorm * 0.55) + ($avgNorm * 0.45)) * 100.0);
-                if ($status === 'pending') {
-                    $score = min(100, $score + 10);
-                }
-                if ($score < 0) $score = 0;
-                if ($score > 100) $score = 100;
-
-                $level = 'LOW';
-                if ($score >= 70) $level = 'HIGH';
-                elseif ($score >= 40) $level = 'MEDIUM';
-
-                $recs = [];
-                if ($attempts < 5) {
-                    $recs[] = 'Manque de données : encourage les étudiants à tenter ce quiz (partage / annonce / devoir).';
-                }
-                if ($attempts >= 10 && $avg <= 45) {
-                    $recs[] = 'Quiz difficile : vérifie les questions les plus piégeuses et ajoute 1–2 questions plus progressives.';
-                } elseif ($attempts >= 10 && $avg >= 85) {
-                    $recs[] = 'Quiz trop facile : augmente la difficulté ou ajoute des questions avancées.';
-                } else {
-                    $recs[] = 'Quiz équilibré : tu peux améliorer la couverture en ajoutant une question ciblée sur les notions clés.';
-                }
-                if ($status === 'pending') {
-                    $recs[] = 'Statut en attente : pense à soumettre/valider le quiz pour le rendre visible.';
-                }
-
-                $items[] = [
-                    'id' => $id,
-                    'title' => (string) ($r['title'] ?? ''),
-                    'sub' => trim(((string) ($r['course_title'] ?? '')) . ' — ' . ((string) ($r['chapter_title'] ?? ''))),
-                    'attempts' => $attempts,
-                    'avg' => round($avg, 1),
-                    'score' => $score,
-                    'level' => $level,
-                    'recommendations' => $recs,
-                ];
+        foreach ($rows as $r) {
+            $id = (int) ($r['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
             }
 
-            usort($items, static function ($a, $b) {
-                return (int) ($b['score'] ?? 0) <=> (int) ($a['score'] ?? 0);
-            });
+            $attempts = (int) ($r['attempts_count'] ?? 0);
+            $avg = (float) ($r['avg_percentage'] ?? 0);
+            $status = (string) ($r['status'] ?? '');
 
-            echo json_encode(['ok' => true, 'items' => $items]);
-        } catch (Throwable $e) {
-            echo json_encode(['ok' => false, 'items' => [], 'error' => 'Erreur interne']);
+            $attemptsNorm = log((float) ($attempts + 1), 10) / log(51.0, 10);
+            if ($attemptsNorm < 0) $attemptsNorm = 0;
+            if ($attemptsNorm > 1) $attemptsNorm = 1;
+
+            $avgNorm = 1.0 - max(0.0, min(1.0, $avg / 100.0));
+
+            $score = (int) round((($attemptsNorm * 0.55) + ($avgNorm * 0.45)) * 100.0);
+            if ($status === 'pending') {
+                $score = min(100, $score + 10);
+            }
+            if ($score < 0) $score = 0;
+            if ($score > 100) $score = 100;
+
+            $level = 'LOW';
+            if ($score >= 70) $level = 'HIGH';
+            elseif ($score >= 40) $level = 'MEDIUM';
+
+            $recs = [];
+            if ($attempts < 5) {
+                $recs[] = 'Manque de données : encourage les étudiants à tenter ce quiz (partage / annonce / devoir).';
+            }
+            if ($attempts >= 10 && $avg <= 45) {
+                $recs[] = 'Quiz difficile : vérifie les questions les plus piégeuses et ajoute 1–2 questions plus progressives.';
+            } elseif ($attempts >= 10 && $avg >= 85) {
+                $recs[] = 'Quiz trop facile : augmente la difficulté ou ajoute des questions avancées.';
+            } else {
+                $recs[] = 'Quiz équilibré : tu peux améliorer la couverture en ajoutant une question ciblée sur les notions clés.';
+            }
+            if ($status === 'pending') {
+                $recs[] = 'Statut en attente : pense à soumettre/valider le quiz pour le rendre visible.';
+            }
+
+            $items[] = [
+                'id' => $id,
+                'title' => (string) ($r['title'] ?? ''),
+                'sub' => trim(((string) ($r['course_title'] ?? '')) . ' — ' . ((string) ($r['chapter_title'] ?? ''))),
+                'attempts' => $attempts,
+                'avg' => round($avg, 1),
+                'score' => $score,
+                'level' => $level,
+                'recommendations' => $recs,
+            ];
         }
-        exit;
+
+        usort($items, static function ($a, $b) {
+            return (int) ($b['score'] ?? 0) <=> (int) ($a['score'] ?? 0);
+        });
+
+        $this->view('FrontOffice/teacher/remediation_plan', [
+            'title' => 'Plan de rattrapage - ' . APP_NAME,
+            'items' => $items,
+            'flash' => $this->getFlash(),
+        ]);
     }
 
     public function riskQueue()

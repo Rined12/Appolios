@@ -14,35 +14,17 @@ $top = isset($quizTopStats) && is_array($quizTopStats) ? $quizTopStats : [];
                         <h1>Quiz</h1>
                         <p>Créez et gérez vos quiz.</p>
                     </div>
-
-<div id="teacherRemedModal" class="modal" style="display:none; position:fixed; inset:0; background: rgba(2, 6, 23, .72); z-index: 9999;">
-  <div style="max-width: 980px; margin: 40px auto; background: rgba(15, 23, 42, .98); border: 1px solid rgba(148, 163, 184, 0.16); border-radius: 14px; overflow:hidden;">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(148, 163, 184, 0.14);">
-      <div>
-        <div style="font-weight: 950; font-size: 18px;">Plan de rattrapage (Smart)</div>
-        <div class="pro-cell-sub">Recommandations automatiques basées sur les tentatives et la difficulté observée.</div>
-      </div>
-      <div style="display:flex; gap: 8px;">
-        <button type="button" class="btn btn-outline" id="teacherRemedRefresh">Actualiser</button>
-        <button type="button" class="btn btn-outline" id="teacherRemedClose">Fermer</button>
-      </div>
-    </div>
-    <div style="padding: 14px 16px;">
-      <div id="teacherRemedBody" class="pro-table-card" style="padding: 12px; background: rgba(255,255,255,.03);"></div>
-    </div>
-  </div>
-</div>
                     <div class="pro-table-actions">
                         <a href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz-stats" class="btn btn-stats-pro">
                             <i class="bi bi-graph-up" aria-hidden="true"></i>
                             Statistiques
                             <span class="btn-stats-pro-badge">PRO</span>
                         </a>
-                        <button type="button" class="btn btn-training-pro" id="teacherRemedBtn">
+                        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/remediation-plan" class="btn btn-training-pro">
                             <i class="bi bi-magic" aria-hidden="true"></i>
                             Plan de rattrapage
                             <span class="btn-training-pro-badge">PRO</span>
-                        </button>
+                        </a>
                         <a href="<?= APP_ENTRY ?>?url=teacher-quiz/add-quiz" class="btn btn-primary">Nouveau quiz</a>
                     </div>
                 </div>
@@ -274,70 +256,6 @@ $top = isset($quizTopStats) && is_array($quizTopStats) ? $quizTopStats : [];
   exportBtn.addEventListener('click', function () { apply(); exportCsv(); });
 
   sortRows();
-})();
-
-(function(){
-  var btn = document.getElementById('teacherRemedBtn');
-  var modal = document.getElementById('teacherRemedModal');
-  var closeBtn = document.getElementById('teacherRemedClose');
-  var refreshBtn = document.getElementById('teacherRemedRefresh');
-  var body = document.getElementById('teacherRemedBody');
-  if(!btn || !modal || !closeBtn || !refreshBtn || !body) return;
-
-  function esc(s){
-    s = (s == null ? '' : String(s));
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
-  }
-
-  function open(){ modal.style.display = 'block'; }
-  function close(){ modal.style.display = 'none'; }
-
-  function render(data){
-    if(!data || !Array.isArray(data.items) || data.items.length === 0){
-      body.innerHTML = '<div class="pro-cell-sub">Aucune donnée.</div>';
-      return;
-    }
-    var html = '';
-    data.items.forEach(function(it){
-      var recs = Array.isArray(it.recommendations) ? it.recommendations : [];
-      var recHtml = recs.length ? ('<ul style="margin: 6px 0 0; padding-left: 18px;">' + recs.map(function(r){ return '<li class="pro-cell-sub">' + esc(r) + '</li>'; }).join('') + '</ul>') : '<div class="pro-cell-sub">Aucune recommandation.</div>';
-      var badge = 'pro-badge';
-      if(it.level === 'HIGH') badge += ' pro-badge--advanced';
-      else if(it.level === 'MEDIUM') badge += ' pro-badge--intermediate';
-      else badge += ' pro-badge--beginner';
-      html += '<div style="padding: 12px; border: 1px solid rgba(148,163,184,0.14); border-radius: 12px; margin-bottom: 10px; background: rgba(2,6,23,.20);">' +
-        '<div style="display:flex; justify-content:space-between; gap: 10px; align-items:flex-start;">' +
-          '<div>' +
-            '<div style="font-weight: 900;">' + esc(it.title) + ' <span class="pro-cell-sub">#' + parseInt(it.id||0,10) + '</span></div>' +
-            '<div class="pro-cell-sub">' + esc(it.sub || '') + '</div>' +
-          '</div>' +
-          '<div style="text-align:right;">' +
-            '<span class="' + esc(badge) + '">' + esc(it.level) + '</span>' +
-            '<div class="pro-cell-sub">Impact: ' + parseInt(it.score||0,10) + '/100 · ' + parseInt(it.attempts||0,10) + ' tentatives · ' + Math.round(parseFloat(it.avg||0)) + '%</div>' +
-            '<div style="margin-top: 6px; display:flex; gap: 8px; justify-content:flex-end; flex-wrap:wrap;">' +
-              '<a class="btn btn-outline" style="padding: 6px 10px;" href="<?= APP_ENTRY ?>?url=teacher-quiz/edit-quiz/' + parseInt(it.id||0,10) + '">Éditer</a>' +
-              '<a class="btn btn-outline" style="padding: 6px 10px;" href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz-stats">Stats</a>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        recHtml +
-      '</div>';
-    });
-    body.innerHTML = html;
-  }
-
-  function load(){
-    body.innerHTML = '<div class="pro-cell-sub">Chargement…</div>';
-    fetch('<?= APP_ENTRY ?>?url=teacher-quiz/remediation-plan', { credentials: 'same-origin' })
-      .then(function(r){ return r.json(); })
-      .then(function(data){ render(data); })
-      .catch(function(){ body.innerHTML = '<div class="pro-cell-sub">Erreur de chargement.</div>'; });
-  }
-
-  btn.addEventListener('click', function(){ open(); load(); });
-  closeBtn.addEventListener('click', function(){ close(); });
-  refreshBtn.addEventListener('click', function(){ load(); });
-  modal.addEventListener('click', function(e){ if(e.target === modal) close(); });
 })();
 </script>
 
