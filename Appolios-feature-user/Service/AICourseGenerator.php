@@ -12,9 +12,13 @@ class AICourseGenerator {
     private $model;
     
     public function __construct() {
-        $this->apiKey = OPENROUTER_API_KEY;
-        $this->baseUrl = OPENROUTER_BASE_URL;
-        $this->model = OPENROUTER_MODEL;
+        $this->apiKey = defined('OPENROUTER_API_KEY') ? OPENROUTER_API_KEY : '';
+        $this->baseUrl = defined('OPENROUTER_BASE_URL') ? OPENROUTER_BASE_URL : 'https://openrouter.ai/api/v1';
+        $this->model = defined('OPENROUTER_MODEL') ? OPENROUTER_MODEL : 'meta-llama/llama-3.1-8b-instruct';
+        
+        if (empty($this->apiKey)) {
+            throw new Exception('OpenRouter API key not configured');
+        }
     }
     
     /**
@@ -63,7 +67,7 @@ class AICourseGenerator {
         return <<<PROMPT
 Generate a complete course about "$topic" for $audience.
 
-Return ONLY a valid JSON array (no other text). Each course should have:
+Return ONLY a valid JSON object (not array). The course should have:
 - "title": Course title
 - "description": Course description (2-3 sentences)
 - "chapters": Array of chapters, each with:
@@ -76,15 +80,19 @@ Return ONLY a valid JSON array (no other text). Each course should have:
 Generate 4-5 chapters with 3-5 lessons each. Content should be comprehensive educational material.
 
 Example format:
-[
-  {
-    "title": "Chapter 1: Getting Started",
-    "description": "Introduction to the fundamentals",
-    "lessons": [
-      {"title": "What is this about?", "content": "Full lesson text here..."}
-    ]
-  }
-]
+{
+  "title": "Self Development Mastery",
+  "description": "A comprehensive guide to personal growth and self-improvement for complete beginners.",
+  "chapters": [
+    {
+      "title": "Chapter 1: Getting Started",
+      "description": "Introduction to the fundamentals",
+      "lessons": [
+        {"title": "What is self development?", "content": "Full lesson text here..."}
+      ]
+    }
+  ]
+}
 PROMPT;
     }
     
@@ -139,10 +147,11 @@ PROMPT;
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
         curl_close($ch);
         
         if ($httpCode !== 200) {
-            return ['success' => false, 'error' => "API error: HTTP $httpCode"];
+            return ['success' => false, 'error' => "API error: HTTP $httpCode. Response: $response. Curl error: $error"];
         }
         
         $data = json_decode($response, true);
@@ -151,28 +160,35 @@ PROMPT;
             return ['success' => true, 'content' => $data['choices'][0]['message']['content']];
         }
         
-        return ['success' => false, 'error' => 'Invalid API response'];
+        return ['success' => false, 'error' => 'Invalid API response. Data: ' . json_encode($data)];
     }
     
     private function parseCourseResponse($content) {
-        // Try to extract JSON from response
         $content = trim($content);
         
-        // Find JSON array in response
-        if (preg_match('/\[[\s\S]*\]/', $content, $matches)) {
-            $json = json_decode($matches[0], true);
+        // Try extracting JSON from markdown code blocks
+        if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $content, $matches)) {
+            $json = json_decode(trim($matches[1]), true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
                 return ['success' => true, 'course' => $json];
             }
         }
         
-        // Try direct parse
+        // Try direct parse as object
         $json = json_decode($content, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($json)) {
-            return ['success' => true, 'course' => $json];
+        if (json_last_error() === JSON_ERROR_NONE) {
+            // If it's an array with one course object, use that
+            if (is_array($json) && isset($json[0]['title']) && isset($json[0]['chapters'])) {
+                return ['success' => true, 'course' => $json[0]];
+            }
+            // If it has title and chapters, it's a course object
+            if (is_array($json) && isset($json['title']) && isset($json['chapters'])) {
+                return ['success' => true, 'course' => [$json]];
+            }
         }
         
-        return ['success' => false, 'error' => 'Failed to parse course data'];
+        // Debug: return raw content for inspection
+        return ['success' => false, 'error' => 'Failed to parse course data. Raw response (first 500 chars): ' . substr($content, 0, 500)];
     }
     
     private function parseOutlineResponse($content) {

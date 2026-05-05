@@ -187,35 +187,6 @@ class HomeController extends BaseController {
     }
 
     /**
-     * Certificate Verification (Public)
-     */
-    public function verify() {
-        $certificate = null;
-        $error = null;
-        $searched = false;
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['certificate_code'])) {
-            $searched = true;
-            require_once __DIR__ . '/../Service/CertificateService.php';
-            $certService = new CertificateService();
-            $certificate = $certService->verifyCertificate(trim($_POST['certificate_code']));
-            
-            if (!$certificate) {
-                $error = 'Certificate not found. Please check the code and try again.';
-            }
-        }
-
-        $data = [
-            'title' => 'Verify Certificate - APPOLIOS',
-            'certificate' => $certificate,
-            'error' => $error,
-            'searched' => $searched
-        ];
-
-        $this->view('FrontOffice/home/verify', $data);
-    }
-
-    /**
      * 404 Not Found
      */
     public function notFound() {

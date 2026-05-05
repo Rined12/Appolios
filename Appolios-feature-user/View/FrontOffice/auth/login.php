@@ -89,8 +89,5 @@
                 }
             }
         </script>
-        <div style="text-align:center;margin-top:1.5rem;">
-            <a href="<?= APP_ENTRY ?>?url=home/verify" style="color:#667eea;font-size:0.85rem;text-decoration:none;">🔗 Verify Certificate</a>
-        </div>
     </div>
 </section>

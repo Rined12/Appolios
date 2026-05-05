@@ -99,11 +99,6 @@ $certificates = $certService->getUserCertificates($_SESSION['user_id'] ?? 0);
                                         <span class="cert-detail-icon">📅</span>
                                         <span><?= date('M d, Y', strtotime($cert['issued_at'])) ?></span>
                                     </div>
-                                    <a href="<?= APP_ENTRY ?>?url=home/verify" target="_blank" class="cert-detail" style="text-decoration:none;color:inherit;">
-                                        <span class="cert-detail-icon">🔗</span>
-                                        <span>Verify</span>
-                                    </a>
-                                    </div>
                                 </div>
                                 
                                 <button class="view-cert-btn" 

@@ -1084,4 +1084,20 @@ $this->view('FrontOffice/student/badges', $data);
         $progressModel = new LessonProgress();
         return $progressModel->getCompletedLessons($userId, $courseId);
     }
+
+    /**
+     * Get course rating JSON
+     */
+    public function getCourseRating() {
+        $courseId = (int)($_GET['course_id'] ?? 0);
+        if ($courseId <= 0) {
+            echo json_encode(['avg_rating' => 0, 'total' => 0]);
+            return;
+        }
+
+        require_once __DIR__ . '/../Model/Review.php';
+        $reviewModel = new Review();
+        $rating = $reviewModel->getCourseRating($courseId);
+        echo json_encode($rating);
+    }
 }

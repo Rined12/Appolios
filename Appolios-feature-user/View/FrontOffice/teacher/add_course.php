@@ -596,6 +596,39 @@ function generateWithAI() {
 }
 
 function addGeneratedChapters(courseData) {
+    // Check if AI returned full course object or just chapters array
+    let courseTitle = '';
+    let courseDesc = '';
+    
+    if (courseData[0] && courseData[0].title && courseData[0].description && !courseData[0].lessons) {
+        // Full course object with title, description - populate form fields
+        const course = courseData[0];
+        if (course.title) {
+            document.getElementById('title').value = course.title;
+            courseTitle = course.title;
+        }
+        if (course.description) {
+            document.getElementById('description').value = course.description;
+            courseDesc = course.description;
+        }
+        // Use chapters from this object
+        courseData = course.chapters || [];
+    } else if (courseData.title && courseData.description && courseData.chapters) {
+        // Single course object
+        if (courseData.title) {
+            document.getElementById('title').value = courseData.title;
+            courseTitle = courseData.title;
+        }
+        if (courseData.description) {
+            document.getElementById('description').value = courseData.description;
+            courseDesc = courseData.description;
+        }
+        courseData = courseData.chapters || [];
+    }
+    
+    // Auto-select category based on keywords
+    autoSelectCategory(courseTitle + ' ' + courseDesc);
+    
     document.getElementById('no-chapters').style.display = 'none';
     
     courseData.forEach((chapter, cIdx) => {
@@ -691,3 +724,36 @@ function escapeHtml(text) {
         <div id="resultModalContent"></div>
     </div>
 </div>
+
+<script>
+function autoSelectCategory(text) {
+    text = text.toLowerCase();
+    
+    const categoryMap = {
+        'programming': 1, 'coding': 1, 'javascript': 1, 'python': 1, 'java': 1, 'web': 1, 'development': 1,
+        'design': 2, 'graphic': 2, 'ui': 2, 'ux': 2, 'photoshop': 2, 'illustrator': 2,
+        'marketing': 3, 'digital': 3, 'seo': 3, 'social': 3, 'advertising': 3,
+        'business': 4, 'management': 4, 'entrepreneur': 4, 'startup': 4,
+        'finance': 5, 'investment': 5, 'accounting': 5, 'trading': 5, 'money': 5,
+        'language': 6, 'english': 6, 'spanish': 6, 'french': 6, 'learning': 6,
+        'health': 7, 'fitness': 7, 'yoga': 7, 'nutrition': 7, 'wellness': 7,
+        'personal': 8, 'self': 8, 'motivation': 8, 'productivity': 8, 'habits': 8,
+        'data': 9, 'science': 9, 'ai': 9, 'machine learning': 9, 'analytics': 9
+    };
+    
+    for (const [keyword, categoryId] of Object.entries(categoryMap)) {
+        if (text.includes(keyword)) {
+            document.getElementById('category_id').value = categoryId;
+            loadCourseTypes();
+            setTimeout(() => {
+                // Auto-select first type if available
+                const typeSelect = document.getElementById('course_type');
+                if (typeSelect && typeSelect.options.length > 1) {
+                    typeSelect.selectedIndex = 1;
+                }
+            }, 100);
+            return;
+        }
+    }
+}
+</script>

@@ -99,7 +99,10 @@ $studentSidebarActive = 'courses';
                         
                         <!-- Regular Courses -->
                         <?php if ($hasCourses): ?>
-                            <?php foreach ($courses as $course): $isBookmarked = isset($bookmarkedCourseIds[$course['id']]); ?>
+                            <?php $recommendedIds = array_column($recommendations ?? [], 'id'); ?>
+                            <?php foreach ($courses as $course): 
+                                if (in_array($course['id'], $recommendedIds)) continue;
+                                $isBookmarked = isset($bookmarkedCourseIds[$course['id']]); ?>
                                 <article class="<?= $isBookmarked ? 'bookmarked' : '' ?>" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05);<?= $isBookmarked ? ';border:2px solid #667eea' : '' ?>">
                                     <?php if (!empty($course['image'])): ?>
                                         <img src="<?= htmlspecialchars($course['image']) ?>" alt="<?= htmlspecialchars($course['title']) ?>" style="width: 100%; height: 140px; object-fit: cover;">

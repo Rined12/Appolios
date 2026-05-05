@@ -37,6 +37,15 @@ define('HASH_COST', 12);
 // Debug Mode (Set to false in production)
 define('DEBUG_MODE', true);
 
+// API Keys
+define('OPENROUTER_API_KEY', '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');
+define('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1');
+define('OPENROUTER_MODEL', 'meta-llama/llama-3.1-8b-instruct');
+
+// Stripe
+define('STRIPE_SECRET_KEY', 'sk_test_51TSzdc4BXwgkHYpR2tFlRqJMpyQR2YnNEQzl5MFrYqRGYOVJ0uBDM80N8j4RHfl1fMMWpJb2S5Apye7ysRZipaYs00y7Woc3Lw');
+define('STRIPE_PUBLISHABLE_KEY', 'pk_test_51TSzdc4BXwgkHYpRPmNplrXhsqEXTquOrN4gU23D033OfrXCZBv9d7OPhmnMqZYi8XeKlMAC6UXVIcBwApOqNBTa00Knh5852v');
+
 // Timezone
 date_default_timezone_set('UTC');
 
