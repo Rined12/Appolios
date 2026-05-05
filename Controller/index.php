@@ -65,10 +65,31 @@ if (!empty($segments)) {
             'authenticate' => 'authenticate',
         ][$first];
     } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home', 'book', 'admin-quiz', 'student-quiz', 'teacher-quiz'], true)) {
-        if (in_array($first, ['admin-quiz', 'student-quiz', 'teacher-quiz'], true)) {
+        if (in_array($first, ['admin-quiz', 'student-quiz'], true)) {
             $controller = 'QuizController';
             $action = $second !== '' ? toCamelCaseAction($second) : 'quiz';
             $params = array_slice($segments, 2);
+        } elseif ($first === 'teacher-quiz') {
+            $teacherQuestionActions = [
+                'questions',
+                'create-question-collection',
+                'delete-question-collection',
+                'add-question-to-collection',
+                'remove-question-from-collection',
+                'add-question',
+                'store-question',
+                'edit-question',
+                'update-question',
+            ];
+            if (in_array(strtolower($second), $teacherQuestionActions, true)) {
+                $controller = 'QuestionController';
+                $action = $second !== '' ? toCamelCaseAction($second) : 'questions';
+                $params = array_slice($segments, 2);
+            } else {
+                $controller = 'QuizController';
+                $action = $second !== '' ? toCamelCaseAction($second) : 'quiz';
+                $params = array_slice($segments, 2);
+            }
         } elseif (in_array($first, ['admin', 'teacher'], true) && in_array(strtolower($second), ['quizzes', 'quiz-history', 'quiz-stats', 'add-quiz', 'store-quiz', 'edit-quiz', 'update-quiz', 'delete-quiz', 'approve-quiz', 'reject-quiz', 'duplicate-quiz'], true)) {
             $controller = 'QuizController';
             $action = $second !== '' ? toCamelCaseAction($second) : 'index';
