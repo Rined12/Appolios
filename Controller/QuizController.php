@@ -1089,6 +1089,13 @@ class QuizController extends BaseController
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
+        $autoIds = $this->pickQuestionBankIdsForBlueprint(
+            (int) $_SESSION['user_id'],
+            $_POST['auto_bank_count'] ?? null,
+            $_POST['auto_bank_difficulty'] ?? null,
+            $_POST['auto_bank_tags'] ?? null
+        );
+        $bankIds = array_values(array_unique(array_merge($bankIds, $autoIds)));
         $questions = $this->queryAppendBankQuestionsToQuiz(
             $this->normalizeQuizQuestionsFromPost($_POST),
             $bankIds,
@@ -1175,6 +1182,13 @@ class QuizController extends BaseController
             return;
         }
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
+        $autoIds = $this->pickQuestionBankIdsForBlueprint(
+            (int) $_SESSION['user_id'],
+            $_POST['auto_bank_count'] ?? null,
+            $_POST['auto_bank_difficulty'] ?? null,
+            $_POST['auto_bank_tags'] ?? null
+        );
+        $bankIds = array_values(array_unique(array_merge($bankIds, $autoIds)));
         $questions = $this->queryAppendBankQuestionsToQuiz(
             $this->normalizeQuizQuestionsFromPost($_POST),
             $bankIds,
@@ -1292,6 +1306,13 @@ class QuizController extends BaseController
             return;
         }
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
+        $autoIds = $this->pickQuestionBankIdsForBlueprint(
+            null,
+            $_POST['auto_bank_count'] ?? null,
+            $_POST['auto_bank_difficulty'] ?? null,
+            $_POST['auto_bank_tags'] ?? null
+        );
+        $bankIds = array_values(array_unique(array_merge($bankIds, $autoIds)));
         $questions = $this->queryAppendBankQuestionsToQuiz(
             $this->normalizeQuizQuestionsFromPost($_POST),
             $bankIds,
@@ -1368,6 +1389,13 @@ class QuizController extends BaseController
             return;
         }
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
+        $autoIds = $this->pickQuestionBankIdsForBlueprint(
+            null,
+            $_POST['auto_bank_count'] ?? null,
+            $_POST['auto_bank_difficulty'] ?? null,
+            $_POST['auto_bank_tags'] ?? null
+        );
+        $bankIds = array_values(array_unique(array_merge($bankIds, $autoIds)));
         $questions = $this->queryAppendBankQuestionsToQuiz(
             $this->normalizeQuizQuestionsFromPost($_POST),
             $bankIds,
@@ -1446,6 +1474,60 @@ class QuizController extends BaseController
             'time_limit_sec' => $time,
             'errors' => $errs,
         ];
+    }
+
+    private function pickQuestionBankIdsForBlueprint(?int $restrictToUserId, $rawCount, $rawDifficulty, $rawTags): array
+    {
+        $count = is_numeric($rawCount) ? (int) $rawCount : 0;
+        $count = max(0, min(30, $count));
+        if ($count <= 0) {
+            return [];
+        }
+
+        $difficulty = is_string($rawDifficulty) ? strtolower(trim($rawDifficulty)) : '';
+        if (!in_array($difficulty, ['', 'beginner', 'intermediate', 'advanced'], true)) {
+            $difficulty = '';
+        }
+
+        $tags = is_string($rawTags) ? trim($rawTags) : '';
+        $tagList = preg_split('/[\s,;]+/', strtolower($tags), -1, PREG_SPLIT_NO_EMPTY);
+        $tagList = is_array($tagList) ? array_values(array_unique($tagList)) : [];
+
+        $db = $this->getDb();
+        $where = [];
+        $params = [];
+
+        if ($restrictToUserId !== null) {
+            $where[] = 'qb.created_by = ?';
+            $params[] = (int) $restrictToUserId;
+        }
+        if ($difficulty !== '') {
+            $where[] = 'qb.difficulty = ?';
+            $params[] = (string) $difficulty;
+        }
+        foreach ($tagList as $t) {
+            $where[] = 'LOWER(COALESCE(qb.tags, \'\')) LIKE ?';
+            $params[] = '%' . $t . '%';
+        }
+
+        $sql = 'SELECT qb.id FROM question_bank qb';
+        if (!empty($where)) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+        $sql .= ' ORDER BY RAND() LIMIT ' . (int) $count;
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+
+        $ids = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['id'] ?? 0);
+            if ($id > 0) {
+                $ids[] = $id;
+            }
+        }
+        return array_values(array_unique($ids));
     }
 
     private function validateNormalizedQuizQuestions(array $questions): array
