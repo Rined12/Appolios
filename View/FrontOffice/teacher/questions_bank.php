@@ -5,6 +5,8 @@ $top = isset($qbTopStats) && is_array($qbTopStats) ? $qbTopStats : [];
 $collections = isset($collections) && is_array($collections) ? $collections : [];
 $selectedCollectionId = (int) ($selectedCollectionId ?? 0);
 $selectedMap = isset($collectionSelectedMap) && is_array($collectionSelectedMap) ? $collectionSelectedMap : [];
+$qa = isset($questionQa) && is_array($questionQa) ? $questionQa : [];
+$charts = $charts ?? [];
 ?>
 <div class="dashboard">
     <div class="container admin-dashboard-container">
@@ -17,12 +19,78 @@ $selectedMap = isset($collectionSelectedMap) && is_array($collectionSelectedMap)
                         <p>Créez et réutilisez vos questions dans vos quiz.</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a href="<?= APP_ENTRY ?>?url=teacher/add-question" class="btn btn-primary">Nouvelle question</a>
+                        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/add-question" class="btn btn-primary">Nouvelle question</a>
                     </div>
                 </div>
                 <?php if (!empty($flash)): ?>
                     <p class="flash flash-<?= htmlspecialchars($flash['type']) ?>"><?= htmlspecialchars($flash['message']) ?></p>
                 <?php endif; ?>
+
+                <?php
+                    $diff = isset($charts['difficulty']) && is_array($charts['difficulty']) ? $charts['difficulty'] : [];
+                    $diffTotal = 0;
+                    foreach ($diff as $k => $v) { $diffTotal += (int) $v; }
+                    $diffColors = [
+                        'beginner' => 'rgba(34,197,94,0.92)',
+                        'intermediate' => 'rgba(250,204,21,0.92)',
+                        'advanced' => 'rgba(244,63,94,0.92)',
+                    ];
+                    $circ = 2 * 3.141592653589793 * 46;
+                    $acc = 0.0;
+                    $segs = [];
+                    if ($diffTotal > 0) {
+                        foreach ($diff as $key => $v) {
+                            $val = (int) $v;
+                            if ($val <= 0) continue;
+                            $pct = $val / $diffTotal;
+                            $len = $circ * $pct;
+                            $segs[] = [
+                                'key' => (string) $key,
+                                'val' => $val,
+                                'dash' => $len . ' ' . ($circ - $len),
+                                'offset' => -$acc,
+                                'color' => $diffColors[$key] ?? 'rgba(96,165,250,0.9)',
+                            ];
+                            $acc += $len;
+                        }
+                    }
+                ?>
+
+                <div class="pro-stats-grid" style="grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);">
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Répartition Difficulté</div>
+                            <div class="pro-stat-icon"><i class="bi bi-pie-chart"></i></div>
+                        </div>
+                        <div class="pro-chart-grid">
+                            <div class="pro-donut" aria-hidden="true">
+                                <svg viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(148,163,184,0.14)" stroke-width="16" />
+                                    <?php foreach ($segs as $s): ?>
+                                        <circle cx="60" cy="60" r="46" fill="none" stroke="<?= htmlspecialchars($s['color']) ?>" stroke-width="16" stroke-linecap="round" stroke-dasharray="<?= htmlspecialchars((string) $s['dash']) ?>" stroke-dashoffset="<?= htmlspecialchars((string) $s['offset']) ?>" />
+                                    <?php endforeach; ?>
+                                </svg>
+                                <div class="pro-donut-center">
+                                    <div class="pro-donut-big"><?= (int) $diffTotal ?></div>
+                                    <div class="pro-donut-sub">questions</div>
+                                </div>
+                            </div>
+                            <div class="pro-legend">
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($diffColors['beginner']) ?>;"></span> Débutant <span class="v"><?= (int) ($diff['beginner'] ?? 0) ?></span></div>
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($diffColors['intermediate']) ?>;"></span> Intermédiaire <span class="v"><?= (int) ($diff['intermediate'] ?? 0) ?></span></div>
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($diffColors['advanced']) ?>;"></span> Avancé <span class="v"><?= (int) ($diff['advanced'] ?? 0) ?></span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Qualité globale</div>
+                            <div class="pro-stat-icon"><i class="bi bi-stars"></i></div>
+                        </div>
+                        <div class="pro-stat-value"><?= (int) ($top['attempts_total'] ?? 0) ?></div>
+                        <div class="pro-stat-sub">Tentatives · Moyenne <?= htmlspecialchars(number_format((float) ($top['avg_percentage'] ?? 0), 1)) ?>%</div>
+                    </div>
+                </div>
                 <div class="pro-stats-grid">
                     <div class="pro-stat-card">
                         <div class="pro-stat-top">
@@ -76,14 +144,14 @@ $selectedMap = isset($collectionSelectedMap) && is_array($collectionSelectedMap)
 
                     <div class="pro-table-toolbar" style="margin-top: 10px;">
                         <div class="pro-table-toolbar-left" style="gap: 10px; flex-wrap: wrap;">
-                            <form method="post" action="<?= APP_ENTRY ?>?url=teacher/create-question-collection" style="display:flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            <form method="post" action="<?= APP_ENTRY ?>?url=teacher-quiz/create-question-collection" style="display:flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                                 <input type="text" name="title" class="pro-select" placeholder="Nouveau pack (ex: Révision SQL)" style="min-width: 240px;" maxlength="255" required>
                                 <button type="submit" class="btn btn-primary">Créer pack</button>
                             </form>
                         </div>
                         <div class="pro-table-toolbar-right" style="gap: 10px;">
                             <?php if ($selectedCollectionId > 0): ?>
-                                <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher/delete-question-collection/<?= (int) $selectedCollectionId ?>" onclick="return confirm('Supprimer ce pack ?');">Supprimer pack</a>
+                                <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher-quiz/delete-question-collection/<?= (int) $selectedCollectionId ?>" onclick="return confirm('Supprimer ce pack ?');">Supprimer pack</a>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -116,16 +184,10 @@ $selectedMap = isset($collectionSelectedMap) && is_array($collectionSelectedMap)
                                         $avg = is_array($u) ? (float) ($u['avg'] ?? 0) : 0;
                                         $qz = is_array($u) ? (int) ($u['quizzes'] ?? 0) : 0;
                                         $last = is_array($u) ? (string) ($u['last_attempt_at'] ?? '') : '';
-                                        $qualityLabel = 'Données insuff.';
-                                        $qualityClass = 'pro-badge';
-                                        if ($qz <= 0 || $att <= 0) {
-                                            $qualityLabel = 'Non utilisée';
-                                            $qualityClass .= '';
-                                        } elseif ($att >= 10) {
-                                            if ($avg >= 85) { $qualityLabel = 'Trop facile'; $qualityClass .= ' pro-badge--beginner'; }
-                                            elseif ($avg <= 35) { $qualityLabel = 'Trop difficile'; $qualityClass .= ' pro-badge--advanced'; }
-                                            else { $qualityLabel = 'OK'; $qualityClass .= ' pro-badge--intermediate'; }
-                                        }
+                                        $qInfo = $qa[$qid] ?? null;
+                                        $qualityLabel = is_array($qInfo) ? (string) ($qInfo['label'] ?? 'Données insuff.') : 'Données insuff.';
+                                        $qualityClass = is_array($qInfo) ? (string) ($qInfo['badge'] ?? 'pro-badge') : 'pro-badge';
+                                        $qualityScore = is_array($qInfo) ? ($qInfo['score'] ?? null) : null;
                                     ?>
                                     <tr data-id="<?= (int) $qid ?>" data-title="<?= htmlspecialchars(mb_strtolower($titleShown)) ?>" data-question="<?= htmlspecialchars(mb_strtolower($questionText)) ?>" data-difficulty="<?= htmlspecialchars($diff) ?>" data-tags="<?= htmlspecialchars(mb_strtolower($tagsTxt)) ?>">
                                         <td>
@@ -137,7 +199,10 @@ $selectedMap = isset($collectionSelectedMap) && is_array($collectionSelectedMap)
                                         <td><div class="pro-question-text"><?= htmlspecialchars($questionText) ?></div></td>
                                         <td><span class="<?= $diffClass ?>"><?= htmlspecialchars(difficulty_label_fr($diff)) ?></span></td>
                                         <td>
-                                            <span class="<?= $qualityClass ?>"><?= htmlspecialchars($qualityLabel) ?></span>
+                                            <span class="<?= htmlspecialchars($qualityClass) ?>"><?= htmlspecialchars($qualityLabel) ?></span>
+                                            <?php if ($qualityScore !== null): ?>
+                                                <span class="pro-cell-sub" style="display:inline-block; margin-left:8px; opacity:.9;">Score: <?= (int) $qualityScore ?>/100</span>
+                                            <?php endif; ?>
                                             <div class="pro-cell-sub">
                                                 <?= (int) $qz ?> quiz · <?= (int) $att ?> tentatives · <?= (int) round($avg) ?>%<?= $last !== '' ? ' · ' . htmlspecialchars(substr($last, 0, 10)) : '' ?>
                                             </div>
@@ -147,19 +212,19 @@ $selectedMap = isset($collectionSelectedMap) && is_array($collectionSelectedMap)
                                                 <?php if ($selectedCollectionId > 0): ?>
                                                     <?php $inPack = !empty($selectedMap[(int) $qid]); ?>
                                                     <?php if ($inPack): ?>
-                                                        <a href="<?= APP_ENTRY ?>?url=teacher/remove-question-from-collection/<?= (int) $selectedCollectionId ?>/<?= (int) $qid ?>" class="pro-icon-btn pro-icon-btn--danger" title="Retirer du pack" aria-label="Retirer du pack">
+                                                        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/remove-question-from-collection/<?= (int) $selectedCollectionId ?>/<?= (int) $qid ?>" class="pro-icon-btn pro-icon-btn--danger" title="Retirer du pack" aria-label="Retirer du pack">
                                                             <i class="bi bi-dash-circle"></i>
                                                         </a>
                                                     <?php else: ?>
-                                                        <a href="<?= APP_ENTRY ?>?url=teacher/add-question-to-collection/<?= (int) $selectedCollectionId ?>/<?= (int) $qid ?>" class="pro-icon-btn" title="Ajouter au pack" aria-label="Ajouter au pack">
+                                                        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/add-question-to-collection/<?= (int) $selectedCollectionId ?>/<?= (int) $qid ?>" class="pro-icon-btn" title="Ajouter au pack" aria-label="Ajouter au pack">
                                                             <i class="bi bi-plus-circle"></i>
                                                         </a>
                                                     <?php endif; ?>
                                                 <?php endif; ?>
-                                                <a href="<?= APP_ENTRY ?>?url=teacher/edit-question/<?= (int) $qid ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
+                                                <a href="<?= APP_ENTRY ?>?url=teacher-quiz/edit-question/<?= (int) $qid ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <a href="<?= APP_ENTRY ?>?url=teacher/delete-question/<?= (int) $qid ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
+                                                <a href="<?= APP_ENTRY ?>?url=teacher-quiz/delete-question/<?= (int) $qid ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
                                                     <i class="bi bi-trash"></i>
                                                 </a>
                                             </div>
@@ -266,7 +331,7 @@ $selectedMap = isset($collectionSelectedMap) && is_array($collectionSelectedMap)
   sel.addEventListener('change', apply);
   colSel.addEventListener('change', function () {
     var id = String(colSel.value || '0');
-    var url = '<?= APP_ENTRY ?>?url=teacher/questions';
+    var url = '<?= APP_ENTRY ?>?url=teacher-quiz/questions';
     if (id !== '0') url += '&collection_id=' + encodeURIComponent(id);
     window.location.href = url;
   });

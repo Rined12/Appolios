@@ -30,7 +30,7 @@ $teacherSidebarActive = $teacherSidebarActive ?? '';
             <span>Chapitres</span>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=teacher/quiz" class="admin-side-link <?= $teacherSidebarActive === 'quiz' ? 'active' : '' ?>">
+        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz" class="admin-side-link <?= $teacherSidebarActive === 'quiz' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="9"></circle>
@@ -40,7 +40,7 @@ $teacherSidebarActive = $teacherSidebarActive ?? '';
             <span>Mes Quiz</span>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=teacher/questions" class="admin-side-link <?= $teacherSidebarActive === 'questions' ? 'active' : '' ?>">
+        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/questions" class="admin-side-link <?= $teacherSidebarActive === 'questions' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 4h16v16H4z"></path>

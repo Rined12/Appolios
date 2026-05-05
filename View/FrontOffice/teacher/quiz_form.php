@@ -2,8 +2,8 @@
 $teacherSidebarActive = 'quiz';
 $isEdit = !empty($quiz);
 $action = $isEdit
-    ? APP_ENTRY . '?url=teacher/update-quiz/' . (int) $quiz['id']
-    : APP_ENTRY . '?url=teacher/store-quiz';
+    ? APP_ENTRY . '?url=teacher-quiz/update-quiz/' . (int) $quiz['id']
+    : APP_ENTRY . '?url=teacher-quiz/store-quiz';
 $questions = $isEdit && !empty($quiz['questions']) ? $quiz['questions'] : [['question' => '', 'options' => ['', ''], 'correctAnswer' => 0]];
 $questionBank = $questionBank ?? [];
 ?>
@@ -18,7 +18,7 @@ $questionBank = $questionBank ?? [];
                         <p>Créez et configurez votre quiz (questions + banque de questions).</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher/quiz">← Retour à la liste</a>
+                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz">← Retour à la liste</a>
                     </div>
                 </div>
                 <?php if (!empty($flash)): ?>
@@ -67,7 +67,32 @@ $questionBank = $questionBank ?? [];
 
                     <section class="pro-form-section">
                     <h3>Importer depuis la banque de questions</h3>
-                    <p class="pro-form-hint">Cochez des questions déjà créées dans <a href="<?= APP_ENTRY ?>?url=teacher/questions">Question</a> : elles seront ajoutées au quiz après les questions saisies ci-dessous.</p>
+                    <p class="pro-form-hint">Cochez des questions déjà créées dans <a href="<?= APP_ENTRY ?>?url=teacher-quiz/questions">Question</a> : elles seront ajoutées au quiz après les questions saisies ci-dessous.</p>
+
+                    <div class="pro-table-card" style="padding: 12px; margin: 10px 0; background: rgba(255,255,255,.03);">
+                        <div style="font-weight: 950; margin-bottom: 6px;">Génération automatique (Blueprint)</div>
+                        <div class="pro-form-grid" style="grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0;">
+                            <div class="pro-form-field">
+                                <label for="auto-count">Nombre</label>
+                                <input id="auto-count" type="text" name="auto_bank_count" class="form-control" maxlength="2" placeholder="0">
+                            </div>
+                            <div class="pro-form-field">
+                                <label for="auto-diff">Difficulté</label>
+                                <select id="auto-diff" name="auto_bank_difficulty" class="form-control">
+                                    <option value="">Auto</option>
+                                    <option value="beginner">Débutant</option>
+                                    <option value="intermediate">Intermédiaire</option>
+                                    <option value="advanced">Avancé</option>
+                                </select>
+                            </div>
+                            <div class="pro-form-field">
+                                <label for="auto-tags">Tags (optionnel)</label>
+                                <input id="auto-tags" type="text" name="auto_bank_tags" class="form-control" maxlength="200" placeholder="sql, uml">
+                            </div>
+                        </div>
+                        <div class="pro-form-hint" style="margin: 6px 0 0;">Si "Nombre" > 0, le système choisit des questions de ta banque selon les critères et les ajoute automatiquement.</div>
+                    </div>
+
                     <?php if (!empty($questionBank)): ?>
                         <div class="pro-form-bank">
                             <?php foreach ($questionBank as $bq): ?>
@@ -119,7 +144,7 @@ $questionBank = $questionBank ?? [];
                     <button type="button" class="btn btn-outline" id="add-q">+ Question</button>
                     <div class="pro-form-actions">
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
-                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher/quiz">Annuler</a>
+                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz">Annuler</a>
                     </div>
                 </form>
                 </div>

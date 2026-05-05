@@ -4,12 +4,14 @@ $kpis = $kpis ?? [
     'total_quizzes' => 0,
     'total_attempts' => 0,
     'overall_avg' => 0,
+    'approved_quizzes' => 0,
     'coverage_pct' => 0,
     'engagement_pct' => 0,
     'attempts_per_quiz' => 0,
 ];
 $rows = $rows ?? [];
 $series = $series ?? [];
+$charts = $charts ?? [];
 ?>
 <div class="dashboard">
     <div class="container admin-dashboard-container">
@@ -22,7 +24,7 @@ $series = $series ?? [];
                         <p>Vue globale + détails par quiz (tentatives, moyenne, meilleur score).</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a href="<?= APP_ENTRY ?>?url=teacher/quiz" class="btn btn-outline">Retour aux quiz</a>
+                        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz" class="btn btn-outline">Retour aux quiz</a>
                     </div>
                 </div>
 
@@ -34,9 +36,20 @@ $series = $series ?? [];
                     $totalQuizzes = (int) ($kpis['total_quizzes'] ?? 0);
                     $totalAttempts = (int) ($kpis['total_attempts'] ?? 0);
                     $overallAvg = (float) ($kpis['overall_avg'] ?? 0);
-                    $coveragePct = (float) ($kpis['coverage_pct'] ?? 0);
-                    $engagementPct = (float) ($kpis['engagement_pct'] ?? 0);
-                    $attemptsPerQuiz = (float) ($kpis['attempts_per_quiz'] ?? 0);
+                    $approvedQuizzes = (int) ($kpis['approved_quizzes'] ?? 0);
+                    $approvedPct = $totalQuizzes > 0 ? min(100, max(0, ($approvedQuizzes / $totalQuizzes) * 100)) : 0;
+
+                    $playedQuizzes = 0;
+                    foreach (($rows ?? []) as $r) {
+                        $a = isset($r['attempts_count']) ? (int) $r['attempts_count'] : 0;
+                        if ($a > 0) $playedQuizzes++;
+                    }
+                    $coveragePct = $totalQuizzes > 0 ? min(100, max(0, ($playedQuizzes / $totalQuizzes) * 100)) : 0;
+
+                    $attemptsPerQuiz = $totalQuizzes > 0 ? ($totalAttempts / $totalQuizzes) : 0;
+                    $engagementPct = 100 * (1 - exp(-($attemptsPerQuiz / 3)));
+                    if ($engagementPct < 0) $engagementPct = 0;
+                    if ($engagementPct > 100) $engagementPct = 100;
 
                     $ringC = 2 * 3.141592653589793 * 18;
                     $ringOffset = function ($pct) use ($ringC) {
@@ -53,11 +66,30 @@ $series = $series ?? [];
                             <div class="pro-kpi-main">
                                 <div class="pro-kpi-left">
                                     <div class="pro-kpi-top">
+                                        <div class="pro-kpi-label">Taux d’approbation</div>
+                                        <div class="pro-kpi-icon"><i class="bi bi-check-circle"></i></div>
+                                    </div>
+                                    <div class="pro-kpi-value"><?= htmlspecialchars((string) round($approvedPct, 1)) ?>%</div>
+                                    <div class="pro-kpi-sub"><?= (int) $approvedQuizzes ?> approuvés / <?= (int) $totalQuizzes ?> total</div>
+                                </div>
+                                <div class="pro-kpi-right" aria-hidden="true">
+                                    <svg class="pro-kpi-ring" viewBox="0 0 44 44">
+                                        <circle class="pro-kpi-ring-bg" cx="22" cy="22" r="18" fill="none" stroke="rgba(148,163,184,0.18)" stroke-width="4" />
+                                        <circle class="pro-kpi-ring-fg" cx="22" cy="22" r="18" fill="none" stroke="rgba(96,165,250,0.92)" stroke-width="4" stroke-linecap="round" stroke-dasharray="<?= htmlspecialchars((string) $ringC) ?>" stroke-dashoffset="<?= htmlspecialchars((string) $ringOffset($approvedPct)) ?>" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pro-kpi-card pro-kpi-card--radial">
+                            <div class="pro-kpi-main">
+                                <div class="pro-kpi-left">
+                                    <div class="pro-kpi-top">
                                         <div class="pro-kpi-label">Engagement</div>
                                         <div class="pro-kpi-icon"><i class="bi bi-lightning-charge"></i></div>
                                     </div>
-                                    <div class="pro-kpi-value"><?= htmlspecialchars((string) $attemptsPerQuiz) ?></div>
-                                    <div class="pro-kpi-sub">Tentatives / quiz (normalisé)</div>
+                                    <div class="pro-kpi-value"><?= htmlspecialchars((string) round($attemptsPerQuiz, 2)) ?></div>
+                                    <div class="pro-kpi-sub">Tentatives / quiz (normalisé par e^(-x/3))</div>
                                 </div>
                                 <div class="pro-kpi-right" aria-hidden="true">
                                     <svg class="pro-kpi-ring" viewBox="0 0 44 44">
@@ -95,7 +127,7 @@ $series = $series ?? [];
                                         <div class="pro-kpi-icon"><i class="bi bi-ui-checks"></i></div>
                                     </div>
                                     <div class="pro-kpi-value"><?= htmlspecialchars((string) round($coveragePct, 1)) ?>%</div>
-                                    <div class="pro-kpi-sub">Quiz joués / total</div>
+                                    <div class="pro-kpi-sub"><?= (int) $playedQuizzes ?> quiz joués / <?= (int) $totalQuizzes ?> total</div>
                                 </div>
                                 <div class="pro-kpi-right" aria-hidden="true">
                                     <svg class="pro-kpi-ring" viewBox="0 0 44 44">
@@ -105,25 +137,140 @@ $series = $series ?? [];
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="pro-kpi-card pro-kpi-card--radial">
-                            <div class="pro-kpi-main">
-                                <div class="pro-kpi-left">
-                                    <div class="pro-kpi-top">
-                                        <div class="pro-kpi-label">Tentatives</div>
-                                        <div class="pro-kpi-icon"><i class="bi bi-collection"></i></div>
-                                    </div>
-                                    <div class="pro-kpi-value"><?= (int) $totalAttempts ?></div>
-                                    <div class="pro-kpi-sub"><?= (int) $totalQuizzes ?> quiz au total</div>
-                                </div>
-                                <div class="pro-kpi-right" aria-hidden="true">
-                                    <svg class="pro-kpi-ring" viewBox="0 0 44 44">
-                                        <circle class="pro-kpi-ring-bg" cx="22" cy="22" r="18" fill="none" stroke="rgba(148,163,184,0.18)" stroke-width="4" />
-                                        <circle class="pro-kpi-ring-fg" cx="22" cy="22" r="18" fill="none" stroke="rgba(96,165,250,0.92)" stroke-width="4" stroke-linecap="round" stroke-dasharray="<?= htmlspecialchars((string) $ringC) ?>" stroke-dashoffset="<?= htmlspecialchars((string) $ringOffset($engagementPct)) ?>" />
-                                    </svg>
+                <?php
+                    $diff = isset($charts['difficulty']) && is_array($charts['difficulty']) ? $charts['difficulty'] : [];
+                    $status = isset($charts['status']) && is_array($charts['status']) ? $charts['status'] : [];
+                    $trend = isset($charts['trend']) && is_array($charts['trend']) ? $charts['trend'] : [];
+
+                    $diffTotal = 0;
+                    foreach ($diff as $k => $v) { $diffTotal += (int) $v; }
+                    $stTotal = 0;
+                    foreach ($status as $k => $v) { $stTotal += (int) $v; }
+
+                    $donutSegs = function (array $parts, array $colors) {
+                        $total = 0;
+                        foreach ($parts as $v) { $total += (int) $v; }
+                        $segs = [];
+                        if ($total <= 0) return $segs;
+                        $circ = 2 * 3.141592653589793 * 46;
+                        $acc = 0.0;
+                        foreach ($parts as $key => $v) {
+                            $val = (int) $v;
+                            if ($val <= 0) continue;
+                            $pct = $val / $total;
+                            $len = $circ * $pct;
+                            $segs[] = [
+                                'key' => (string) $key,
+                                'val' => $val,
+                                'pct' => round($pct * 100, 1),
+                                'dash' => $len . ' ' . ($circ - $len),
+                                'offset' => -$acc,
+                                'color' => $colors[$key] ?? 'rgba(96,165,250,0.9)',
+                            ];
+                            $acc += $len;
+                        }
+                        return $segs;
+                    };
+
+                    $diffColors = [
+                        'beginner' => 'rgba(34,197,94,0.92)',
+                        'intermediate' => 'rgba(250,204,21,0.92)',
+                        'advanced' => 'rgba(244,63,94,0.92)',
+                    ];
+                    $stColors = [
+                        'approved' => 'rgba(34,197,94,0.92)',
+                        'pending' => 'rgba(96,165,250,0.92)',
+                        'rejected' => 'rgba(244,63,94,0.92)',
+                    ];
+
+                    $diffSegs = $donutSegs($diff, $diffColors);
+                    $stSegs = $donutSegs($status, $stColors);
+
+                    $trendMax = 0;
+                    foreach ($trend as $t) {
+                        $trendMax = max($trendMax, (int) ($t['count'] ?? 0));
+                    }
+                ?>
+
+                <div class="pro-stats-grid">
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Répartition Difficulté</div>
+                            <div class="pro-stat-icon"><i class="bi bi-pie-chart"></i></div>
+                        </div>
+                        <div class="pro-chart-grid">
+                            <div class="pro-donut" aria-hidden="true">
+                                <svg viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(148,163,184,0.14)" stroke-width="16" />
+                                    <?php foreach ($diffSegs as $s): ?>
+                                        <circle cx="60" cy="60" r="46" fill="none" stroke="<?= htmlspecialchars($s['color']) ?>" stroke-width="16" stroke-linecap="round" stroke-dasharray="<?= htmlspecialchars((string) $s['dash']) ?>" stroke-dashoffset="<?= htmlspecialchars((string) $s['offset']) ?>" />
+                                    <?php endforeach; ?>
+                                </svg>
+                                <div class="pro-donut-center">
+                                    <div class="pro-donut-big"><?= (int) $diffTotal ?></div>
+                                    <div class="pro-donut-sub">quiz</div>
                                 </div>
                             </div>
+                            <div class="pro-legend">
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($diffColors['beginner']) ?>;"></span> Débutant <span class="v"><?= (int) ($diff['beginner'] ?? 0) ?></span></div>
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($diffColors['intermediate']) ?>;"></span> Intermédiaire <span class="v"><?= (int) ($diff['intermediate'] ?? 0) ?></span></div>
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($diffColors['advanced']) ?>;"></span> Avancé <span class="v"><?= (int) ($diff['advanced'] ?? 0) ?></span></div>
+                            </div>
                         </div>
+                    </div>
+
+                    <div class="pro-stat-card">
+                        <div class="pro-stat-top">
+                            <div class="pro-stat-title">Répartition Statut</div>
+                            <div class="pro-stat-icon"><i class="bi bi-shield-check"></i></div>
+                        </div>
+                        <div class="pro-chart-grid">
+                            <div class="pro-donut" aria-hidden="true">
+                                <svg viewBox="0 0 120 120">
+                                    <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(148,163,184,0.14)" stroke-width="16" />
+                                    <?php foreach ($stSegs as $s): ?>
+                                        <circle cx="60" cy="60" r="46" fill="none" stroke="<?= htmlspecialchars($s['color']) ?>" stroke-width="16" stroke-linecap="round" stroke-dasharray="<?= htmlspecialchars((string) $s['dash']) ?>" stroke-dashoffset="<?= htmlspecialchars((string) $s['offset']) ?>" />
+                                    <?php endforeach; ?>
+                                </svg>
+                                <div class="pro-donut-center">
+                                    <div class="pro-donut-big"><?= (int) $stTotal ?></div>
+                                    <div class="pro-donut-sub">quiz</div>
+                                </div>
+                            </div>
+                            <div class="pro-legend">
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($stColors['approved']) ?>;"></span> Approuvé <span class="v"><?= (int) ($status['approved'] ?? 0) ?></span></div>
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($stColors['pending']) ?>;"></span> En attente <span class="v"><?= (int) ($status['pending'] ?? 0) ?></span></div>
+                                <div class="pro-legend-row"><span class="dot" style="background: <?= htmlspecialchars($stColors['rejected']) ?>;"></span> Refusé <span class="v"><?= (int) ($status['rejected'] ?? 0) ?></span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pro-table-card">
+                    <div class="pro-stat-top" style="margin-bottom: 10px;">
+                        <div class="pro-stat-title">Tendance (21 jours)</div>
+                        <div class="pro-stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                    </div>
+                    <div class="pro-bars" id="teacherTrendBars">
+                        <?php if (!empty($trend)): foreach ($trend as $t): ?>
+                            <?php
+                                $c = (int) ($t['count'] ?? 0);
+                                $pct = $trendMax > 0 ? (int) round(($c / $trendMax) * 100) : 0;
+                                $lab = (string) ($t['day'] ?? '');
+                            ?>
+                            <div class="pro-bar" title="<?= htmlspecialchars($lab) ?> : <?= (int) $c ?> tentatives · <?= htmlspecialchars(number_format((float) ($t['avg'] ?? 0), 1)) ?>%">
+                                <div class="pro-bar-fill" style="height: <?= (int) max(3, $pct) ?>%;"></div>
+                            </div>
+                        <?php endforeach; else: ?>
+                            <div class="pro-empty">Aucune donnée.</div>
+                        <?php endif; ?>
+                    </div>
+                    <div class="pro-bars-meta">
+                        <span>Min</span>
+                        <span>Max</span>
                     </div>
                 </div>
 

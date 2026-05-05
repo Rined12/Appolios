@@ -15,12 +15,12 @@ $top = isset($quizTopStats) && is_array($quizTopStats) ? $quizTopStats : [];
                         <p>Créez et gérez vos quiz.</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a href="<?= APP_ENTRY ?>?url=teacher/quiz-stats" class="btn btn-stats-pro">
+                        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz-stats" class="btn btn-stats-pro">
                             <i class="bi bi-graph-up" aria-hidden="true"></i>
                             Statistiques
                             <span class="btn-stats-pro-badge">PRO</span>
                         </a>
-                        <a href="<?= APP_ENTRY ?>?url=teacher/add-quiz" class="btn btn-primary">Nouveau quiz</a>
+                        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/add-quiz" class="btn btn-primary">Nouveau quiz</a>
                     </div>
                 </div>
                 <?php if (!empty($flash)): ?>
@@ -131,13 +131,13 @@ $top = isset($quizTopStats) && is_array($quizTopStats) ? $quizTopStats : [];
                                         </td>
                                         <td>
                                             <div class="pro-actions">
-                                                <a href="<?= APP_ENTRY ?>?url=teacher/duplicate-quiz/<?= (int) $qid ?>" class="pro-icon-btn" title="Dupliquer" aria-label="Dupliquer" onclick="return confirm('Dupliquer ce quiz ?');">
+                                                <a href="<?= APP_ENTRY ?>?url=teacher-quiz/duplicate-quiz/<?= (int) $qid ?>" class="pro-icon-btn" title="Dupliquer" aria-label="Dupliquer" onclick="return confirm('Dupliquer ce quiz ?');">
                                                     <i class="bi bi-copy"></i>
                                                 </a>
-                                                <a href="<?= APP_ENTRY ?>?url=teacher/edit-quiz/<?= (int) $qid ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
+                                                <a href="<?= APP_ENTRY ?>?url=teacher-quiz/edit-quiz/<?= (int) $qid ?>" class="pro-icon-btn" title="Modifier" aria-label="Modifier">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <a href="<?= APP_ENTRY ?>?url=teacher/delete-quiz/<?= (int) $qid ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
+                                                <a href="<?= APP_ENTRY ?>?url=teacher-quiz/delete-quiz/<?= (int) $qid ?>" class="pro-icon-btn pro-icon-btn--danger" title="Supprimer" aria-label="Supprimer" onclick="return confirm('Supprimer ?');">
                                                     <i class="bi bi-trash"></i>
                                                 </a>
                                             </div>

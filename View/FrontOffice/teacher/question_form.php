@@ -2,8 +2,8 @@
 $teacherSidebarActive = 'questions';
 $isEdit = !empty($question);
 $action = $isEdit
-    ? APP_ENTRY . '?url=teacher/update-question/' . (int) $question['id']
-    : APP_ENTRY . '?url=teacher/store-question';
+    ? APP_ENTRY . '?url=teacher-quiz/update-question/' . (int) $question['id']
+    : APP_ENTRY . '?url=teacher-quiz/store-question';
 $opts = $isEdit ? ($question['options'] ?? ['', '']) : ['', ''];
 ?>
 <div class="dashboard">
@@ -17,7 +17,7 @@ $opts = $isEdit ? ($question['options'] ?? ['', '']) : ['', ''];
                         <p>Créez une question réutilisable dans vos quiz (banque de questions).</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher/questions">← Retour à la banque</a>
+                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher-quiz/questions">← Retour à la banque</a>
                     </div>
                 </div>
 
@@ -73,7 +73,7 @@ $opts = $isEdit ? ($question['options'] ?? ['', '']) : ['', ''];
 
                         <div class="pro-form-actions">
                             <button type="submit" class="btn btn-primary">Enregistrer</button>
-                            <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher/questions">Annuler</a>
+                            <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=teacher-quiz/questions">Annuler</a>
                         </div>
                     </form>
                 </div>
