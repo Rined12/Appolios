@@ -25,7 +25,13 @@ $listQueryActive = (bool) ($listQueryActive ?? false);
                                 <i class="bi bi-plus-lg" aria-hidden="true"></i> Create group
                             </a>
                             <a href="<?= APP_ENTRY ?>?url=student/discussions" class="collab-btn-ghost">
-                                <i class="bi bi-chat-square-text" aria-hidden="true"></i> Discussions
+                                <span class="collab-msg-btn-icon-wrap">
+                                    <i class="bi bi-chat-square-text" aria-hidden="true"></i>
+                                    <?php if ((int) ($unread_discussions_total ?? 0) > 0): ?>
+                                        <span class="collab-msg-unread-badge"><?= (int) $unread_discussions_total ?></span>
+                                    <?php endif; ?>
+                                </span>
+                                Discussions
                             </a>
                         </div>
                     </div>
@@ -103,7 +109,10 @@ $listQueryActive = (bool) ($listQueryActive ?? false);
                                 <div class="collab-group-card__body">
                                     <p class="collab-line-clamp-2"><?= htmlspecialchars((string) ($g['description'] ?? '')) ?></p>
                                     <div class="collab-card-actions">
-                                        <a class="collab-chip-btn collab-chip-btn--muted" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $g['id_groupe'] ?>"><i class="bi bi-door-open" aria-hidden="true"></i> Open</a>
+                                        <a class="collab-chip-btn collab-chip-btn--muted" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $g['id_groupe'] ?>">
+                                            <i class="bi bi-door-open" aria-hidden="true"></i>
+                                            Open
+                                        </a>
                                         <?php if ($isOwner): ?>
                                             <a class="collab-chip-btn collab-chip-btn--muted" target="_blank" rel="noopener" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $g['id_groupe'] ?>/activity-report"><i class="bi bi-file-earmark-bar-graph" aria-hidden="true"></i> Activity PDF</a>
                                             <a class="collab-chip-btn collab-chip-btn--muted" href="<?= APP_ENTRY ?>?url=<?= htmlspecialchars($foPrefix, ENT_QUOTES, 'UTF-8') ?>/groupes/<?= (int) $g['id_groupe'] ?>/edit"><i class="bi bi-sliders" aria-hidden="true"></i> Manage</a>

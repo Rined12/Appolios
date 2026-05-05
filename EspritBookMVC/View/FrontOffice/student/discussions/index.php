@@ -127,7 +127,13 @@ $searchSuggestions = $search_suggestions ?? [];
                                 <p class="collab-disc-card__excerpt collab-line-clamp-3"><?= htmlspecialchars((string) ($card['content'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
                                 <div class="collab-card-actions">
                                     <a class="collab-chip-btn collab-chip-btn--live" href="<?= htmlspecialchars((string) ($card['url_chat'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>">
-                                        <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i> Live chat
+                                        <span class="collab-msg-btn-icon-wrap">
+                                            <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+                                            <?php if ((int) ($card['unread_count'] ?? 0) > 0): ?>
+                                                <span class="collab-msg-unread-badge"><?= (int) $card['unread_count'] ?></span>
+                                            <?php endif; ?>
+                                        </span>
+                                        Live chat
                                     </a>
                                     <?php if (!empty($card['is_author'])): ?>
                                         <a class="collab-chip-btn collab-chip-btn--muted" href="<?= htmlspecialchars((string) ($card['url_edit'] ?? '#'), ENT_QUOTES, 'UTF-8') ?>">

@@ -291,6 +291,40 @@ CREATE TABLE IF NOT EXISTS groupe_post_share (
     INDEX idx_discussion (id_discussion)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Live chat (also created by realtime-node); PHP reads media history from here.
+CREATE TABLE IF NOT EXISTS discussion_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    discussion_id INT NOT NULL,
+    room VARCHAR(120) NOT NULL,
+    user_id INT NOT NULL,
+    user_name VARCHAR(120) NOT NULL,
+    message TEXT NOT NULL,
+    message_type VARCHAR(20) NOT NULL DEFAULT 'text',
+    file_url VARCHAR(500) NULL,
+    file_name VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_discussion_created (discussion_id, created_at),
+    INDEX idx_room_created (room, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Shared room appearance for live chat (students/teachers and admins can update).
+CREATE TABLE IF NOT EXISTS discussion_chat_theme (
+    id_discussion INT NOT NULL PRIMARY KEY,
+    theme_json TEXT NOT NULL,
+    updated_by INT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Per-user read marker for discussion live chat (used for unread counters/badges).
+CREATE TABLE IF NOT EXISTS discussion_chat_read_state (
+    discussion_id INT NOT NULL,
+    user_id INT NOT NULL,
+    last_read_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (discussion_id, user_id),
+    INDEX idx_user (user_id),
+    INDEX idx_last_read (last_read_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================
 -- END OF DATABASE SCHEMA
 -- ============================================

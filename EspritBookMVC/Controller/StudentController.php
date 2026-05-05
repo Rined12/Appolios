@@ -91,6 +91,21 @@ class StudentController extends BaseController {
             $this->studentDiscussionsUploadAttachment($discussionRepository, $groupeRepository, $id);
             return;
         }
+        if ($id > 0 && $second === 'chat-theme') {
+            $this->studentDiscussionsChatThemeApi($discussionRepository, $groupeRepository, $id);
+            return;
+        }
+        if ($id > 0 && $second === 'chat-media') {
+            if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+                $this->jsonResponse(['ok' => false, 'error' => 'Method not allowed.'], 405);
+            }
+            $this->studentDiscussionsChatMediaApi($discussionRepository, $groupeRepository, $id);
+            return;
+        }
+        if ($id > 0 && $second === 'chat-summarize' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->studentDiscussionsChatSummarizeApi($discussionRepository, $groupeRepository, $id);
+            return;
+        }
         if ($id > 0 && $second === 'delete') {
             $ok = $this->studentDiscussionDeleteAuthorized($discussionRepository, $groupeRepository, $id);
             $this->sessionService()->flashPersist($ok ? 'success' : 'error', $ok ? 'Discussion supprimee.' : 'Suppression impossible (non autorisee).');
@@ -101,9 +116,9 @@ class StudentController extends BaseController {
         $listFilter = $this->parseStudentListQuery(200);
         $q = $listFilter['q'];
         $sort = $this->normalizeDiscussionListSort($listFilter['sort'] !== '' ? $listFilter['sort'] : 'newest');
-        $discussions = $discussionRepository->fetchVisibleForUser((int) $_SESSION['user_id']);
+        $allVisibleDiscussions = $discussionRepository->fetchVisibleForUser((int) $_SESSION['user_id']);
         $discussions = array_values(array_filter(
-            $discussions,
+            $allVisibleDiscussions,
             function (array $d) use ($q): bool {
                 return $this->discussionRowMatchesQuery($d, $q);
             }
@@ -112,11 +127,42 @@ class StudentController extends BaseController {
 
         $prefix = $this->frontOfficeRoutePrefix();
         $uid = (int) $_SESSION['user_id'];
-        $discussionCards = DiscussionPresenter::studentIndexCards($discussions, $uid, $prefix, APP_ENTRY);
+        $allVisibleDiscussionIds = [];
+        $allVisibleGroupIds = [];
+        foreach ($allVisibleDiscussions as $row) {
+            $did = (int) ($row['id_discussion'] ?? $row['id'] ?? 0);
+            if ($did > 0) {
+                $allVisibleDiscussionIds[] = $did;
+            }
+            $gid = (int) ($row['id_groupe'] ?? $row['group_id'] ?? 0);
+            if ($gid > 0) {
+                $allVisibleGroupIds[] = $gid;
+            }
+        }
+        $unreadByDiscussionAll = $discussionRepository->fetchUnreadChatCountsForUserByDiscussion($uid, $allVisibleDiscussionIds);
+        $unreadByGroupAll = [];
+        foreach ($allVisibleDiscussions as $row) {
+            $did = (int) ($row['id_discussion'] ?? $row['id'] ?? 0);
+            $gid = (int) ($row['id_groupe'] ?? $row['group_id'] ?? 0);
+            if ($did > 0 && $gid > 0) {
+                $unreadByGroupAll[$gid] = (int) ($unreadByGroupAll[$gid] ?? 0) + (int) ($unreadByDiscussionAll[$did] ?? 0);
+            }
+        }
+        $discussionIds = [];
+        foreach ($discussions as $row) {
+            $did = (int) ($row['id_discussion'] ?? $row['id'] ?? 0);
+            if ($did > 0) {
+                $discussionIds[] = $did;
+            }
+        }
+        $unreadByDiscussion = $discussionRepository->fetchUnreadChatCountsForUserByDiscussion($uid, $discussionIds);
+        $discussionCards = DiscussionPresenter::studentIndexCards($discussions, $uid, $prefix, APP_ENTRY, $unreadByDiscussion);
         $data = $this->withFoContext([
             'title' => 'Discussions - APPOLIOS',
             'studentSidebarActive' => 'discussions',
             'discussion_cards' => $discussionCards,
+            'unread_discussions_total' => array_sum($unreadByDiscussionAll),
+            'unread_groups_total' => array_sum($unreadByGroupAll),
             'search_suggestions' => DiscussionPresenter::discussionSearchSuggestionsFromCards($discussionCards),
             'listQ' => $q,
             'listSort' => $sort,
@@ -647,6 +693,29 @@ class StudentController extends BaseController {
         ));
         $mesGroupesEnApprobation = GroupPresenter::decorateListingRows($mesGroupesEnApprobation, $groupeRepository, $uid, false);
         $groupes = GroupPresenter::decorateListingRows($groupes, $groupeRepository, $uid, true);
+        $discussionRepository = $this->model('DiscussionRepository');
+        $discussionsVisible = $discussionRepository->fetchVisibleForUser($uid);
+        $discussionIdsVisible = [];
+        foreach ($discussionsVisible as $row) {
+            $did = (int) ($row['id_discussion'] ?? $row['id'] ?? 0);
+            if ($did > 0) {
+                $discussionIdsVisible[] = $did;
+            }
+        }
+        $unreadByDiscussion = $discussionRepository->fetchUnreadChatCountsForUserByDiscussion($uid, $discussionIdsVisible);
+        $unreadByGroup = [];
+        foreach ($discussionsVisible as $row) {
+            $did = (int) ($row['id_discussion'] ?? $row['id'] ?? 0);
+            $gid = (int) ($row['id_groupe'] ?? $row['group_id'] ?? 0);
+            if ($did > 0 && $gid > 0) {
+                $unreadByGroup[$gid] = (int) ($unreadByGroup[$gid] ?? 0) + (int) ($unreadByDiscussion[$did] ?? 0);
+            }
+        }
+        foreach ($groupes as &$g) {
+            $gid = (int) ($g['id_groupe'] ?? 0);
+            $g['unread_count'] = max(0, (int) ($unreadByGroup[$gid] ?? 0));
+        }
+        unset($g);
         $this->sortGroupRows($mesGroupesEnApprobation, $sort);
         $this->sortGroupRows($groupes, $sort);
 
@@ -654,6 +723,8 @@ class StudentController extends BaseController {
             'title' => 'Groupes - APPOLIOS',
             'groupes' => $groupes,
             'mesGroupesEnApprobation' => $mesGroupesEnApprobation,
+            'unread_groups_total' => array_sum($unreadByGroup),
+            'unread_discussions_total' => array_sum($unreadByDiscussion),
             'listQ' => $q,
             'listSort' => $sort,
             'listQueryActive' => $q !== '',
@@ -772,6 +843,24 @@ class StudentController extends BaseController {
         $sharesByPost = $postEngagementRepository->fetchSharesGroupedByPost($postIds);
 
         $discussionRowsInGroup = $discussionRepository->fetchByGroup($id);
+        $visibleDiscussionRows = $discussionRepository->fetchVisibleForUser($uid);
+        $visibleDiscussionIds = [];
+        foreach ($visibleDiscussionRows as $vd) {
+            $vdid = (int) ($vd['id_discussion'] ?? $vd['id'] ?? 0);
+            if ($vdid > 0) {
+                $visibleDiscussionIds[] = $vdid;
+            }
+        }
+        $unreadByDiscussionGlobal = $discussionRepository->fetchUnreadChatCountsForUserByDiscussion($uid, $visibleDiscussionIds);
+        $discussionIdsInGroup = [];
+        foreach ($discussionRowsInGroup as $dr) {
+            $did = (int) ($dr['id_discussion'] ?? $dr['id'] ?? 0);
+            if ($did > 0) {
+                $discussionIdsInGroup[] = $did;
+            }
+        }
+        $unreadByDiscussionInGroup = $discussionRepository->fetchUnreadChatCountsForUserByDiscussion($uid, $discussionIdsInGroup);
+        $unreadByGroup = $discussionRepository->fetchUnreadChatCountsForUserByGroup($uid, [$id]);
         $discussions_for_share = [];
         foreach ($discussionRowsInGroup as $dr) {
             $did = (int) ($dr['id_discussion'] ?? $dr['id'] ?? 0);
@@ -781,6 +870,7 @@ class StudentController extends BaseController {
             $discussions_for_share[] = [
                 'id' => $did,
                 'titre' => (string) ($dr['titre'] ?? $dr['title'] ?? 'Discussion'),
+                'unread_count' => max(0, (int) ($unreadByDiscussionInGroup[$did] ?? 0)),
             ];
         }
 
@@ -842,6 +932,9 @@ class StudentController extends BaseController {
             'group_post_cards' => $group_post_cards,
             'group_post_old' => $postComposerSession['old'],
             'group_post_error_messages' => $groupPostErrors,
+            'group_unread_count' => max(0, (int) ($unreadByGroup[$id] ?? 0)),
+            'unread_groups_total' => array_sum($unreadByGroup),
+            'unread_discussions_total' => array_sum($unreadByDiscussionGlobal),
             'wall_composer_name' => trim((string) ($_SESSION['user_name'] ?? 'Member')),
             'wall_composer_initial' => strtoupper(substr(trim((string) ($_SESSION['user_name'] ?? 'M')), 0, 1)),
             'flash' => $this->sessionService()->flashConsumeForView(),
@@ -1491,34 +1584,52 @@ class StudentController extends BaseController {
         $this->foRedirect('discussions');
     }
 
-    private function studentDiscussionsChat($discussionRepository, $groupeRepository, int $discussionId): void
+    /**
+     * @return array{discussion: array, group: array}|null
+     */
+    private function discussionLiveChatParticipantBundle(DiscussionRepository $discussionRepository, GroupeRepository $groupeRepository, int $discussionId): ?array
     {
         $discussion = $discussionRepository->fetchRowByPk($discussionId);
         if (!$discussion) {
-            $this->sessionService()->flashPersist('error', 'Discussion not found.');
-            $this->foRedirect('discussions');
-            return;
+            return null;
         }
-
         $uid = (int) ($_SESSION['user_id'] ?? 0);
-
         $groupId = (int) ($discussion['id_groupe'] ?? $discussion['group_id'] ?? 0);
         $group = $groupeRepository->findById($groupId);
         if (!$group) {
-            $this->sessionService()->flashPersist('error', 'Parent group not found.');
-            $this->foRedirect('discussions');
-            return;
+            return null;
         }
-
         $isOwner = (int) ($group['id_createur'] ?? $group['created_by'] ?? 0) === $uid;
         $isMember = $groupeRepository->estMembre($groupId, $uid);
         $discAuthorId = (int) ($discussion['id_auteur'] ?? $discussion['created_by'] ?? 0);
         $isDiscussionAuthor = $discAuthorId === $uid && $discAuthorId > 0;
         if (!$isOwner && !$isMember && !$isDiscussionAuthor) {
+            return null;
+        }
+
+        return ['discussion' => $discussion, 'group' => $group];
+    }
+
+    private function studentDiscussionsChat($discussionRepository, $groupeRepository, int $discussionId): void
+    {
+        $bundle = $this->discussionLiveChatParticipantBundle($discussionRepository, $groupeRepository, $discussionId);
+        if ($bundle === null) {
+            $discussion = $discussionRepository->fetchRowByPk($discussionId);
+            if (!$discussion) {
+                $this->sessionService()->flashPersist('error', 'Discussion not found.');
+                $this->foRedirect('discussions');
+                return;
+            }
+            $gid = (int) ($discussion['id_groupe'] ?? $discussion['group_id'] ?? 0);
             $this->sessionService()->flashPersist('error', 'You must join the group to access live chat.');
-            $this->foRedirect('groupes/' . $groupId);
+            $this->foRedirect($gid > 0 ? 'groupes/' . $gid : 'discussions');
             return;
         }
+        $discussion = $bundle['discussion'];
+        $group = $bundle['group'];
+
+        $uid = (int) ($_SESSION['user_id'] ?? 0);
+        $discussionRepository->markDiscussionChatAsRead($discussionId, $uid);
 
         $prefix = $this->frontOfficeRoutePrefix();
         $chatUrls = DiscussionPresenter::chatUrls($discussion, $prefix, APP_ENTRY);
@@ -1533,6 +1644,9 @@ class StudentController extends BaseController {
                 'group_name' => (string) ($group['nom_groupe'] ?? 'N/A'),
                 'back_url' => $chatUrls['back_url'],
                 'upload_url' => $chatUrls['upload_url'],
+                'theme_url' => $chatUrls['theme_url'],
+                'media_history_url' => $chatUrls['media_history_url'],
+                'summarize_url' => $chatUrls['summarize_url'],
             ],
             'socketUrl' => SOCKET_IO_URL,
             'chatRoom' => 'discussion_' . $discussionId,
@@ -1543,27 +1657,76 @@ class StudentController extends BaseController {
         $this->view('FrontOffice/student/discussions/chat', $data);
     }
 
+    private function studentDiscussionsChatThemeApi(DiscussionRepository $discussionRepository, GroupeRepository $groupeRepository, int $discussionId): void
+    {
+        $bundle = $this->discussionLiveChatParticipantBundle($discussionRepository, $groupeRepository, $discussionId);
+        if ($bundle === null) {
+            $this->jsonResponse(['ok' => false, 'error' => 'Access denied.'], 403);
+        }
+        $defaults = [
+            'bgColor' => '',
+            'bgImageUrl' => '',
+            'dotGrid' => true,
+            'bubbleOtherBg' => '',
+            'bubbleOtherBorder' => '',
+            'bubbleSelfBg' => '',
+            'bubbleSelfBorder' => '',
+            'textColor' => '',
+        ];
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+            $json = $discussionRepository->fetchChatThemeJson($discussionId);
+            $decoded = $json !== null ? json_decode($json, true) : null;
+            if (!is_array($decoded)) {
+                $decoded = [];
+            }
+            $this->jsonResponse(['ok' => true, 'theme' => array_merge($defaults, $decoded)]);
+        }
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $raw = json_decode((string) file_get_contents('php://input'), true);
+            $san = $this->sanitizeDiscussionChatThemePayload($raw);
+            if ($san === null) {
+                $this->jsonResponse(['ok' => false, 'error' => 'Invalid theme payload.'], 422);
+            }
+            $uid = (int) ($_SESSION['user_id'] ?? 0);
+            $encoded = json_encode($san, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $ok = $discussionRepository->upsertChatTheme($discussionId, (string) $encoded, $uid);
+            $this->jsonResponse($ok ? ['ok' => true, 'theme' => $san] : ['ok' => false, 'error' => 'Could not save theme.'], $ok ? 200 : 500);
+        }
+        $this->jsonResponse(['ok' => false, 'error' => 'Method not allowed.'], 405);
+    }
+
+    private function studentDiscussionsChatMediaApi(DiscussionRepository $discussionRepository, GroupeRepository $groupeRepository, int $discussionId): void
+    {
+        $bundle = $this->discussionLiveChatParticipantBundle($discussionRepository, $groupeRepository, $discussionId);
+        if ($bundle === null) {
+            $this->jsonResponse(['ok' => false, 'error' => 'Access denied.'], 403);
+        }
+        $items = $discussionRepository->fetchChatMediaHistory($discussionId);
+        $this->jsonResponse(['ok' => true, 'items' => $items]);
+    }
+
+    private function studentDiscussionsChatSummarizeApi(DiscussionRepository $discussionRepository, GroupeRepository $groupeRepository, int $discussionId): void
+    {
+        $bundle = $this->discussionLiveChatParticipantBundle($discussionRepository, $groupeRepository, $discussionId);
+        if ($bundle === null) {
+            $this->jsonResponse(['ok' => false, 'error' => 'Access denied.'], 403);
+        }
+        $raw = json_decode((string) file_get_contents('php://input'), true);
+        $san = $this->sanitizeDiscussionChatSummarizePayload($raw);
+        if ($san === null) {
+            $this->jsonResponse(['ok' => false, 'error' => 'Invalid summarize payload.'], 422);
+        }
+        $summary = $this->summarizeDiscussionChatMessages($san['texts'], $san['sender_label']);
+        if ($summary === '') {
+            $this->jsonResponse(['ok' => false, 'error' => 'Nothing to summarize.'], 422);
+        }
+        $this->jsonResponse(['ok' => true, 'summary' => $summary]);
+    }
+
     private function studentDiscussionsUploadAttachment($discussionRepository, $groupeRepository, int $discussionId): void
     {
-        $discussion = $discussionRepository->fetchRowByPk($discussionId);
-        if (!$discussion) {
-            $this->jsonResponse(['ok' => false, 'error' => 'Discussion not found.'], 404);
-        }
-
-        $uid = (int) ($_SESSION['user_id'] ?? 0);
-
-        $groupId = (int) ($discussion['id_groupe'] ?? $discussion['group_id'] ?? 0);
-        $group = $groupeRepository->findById($groupId);
-        if (!$group) {
-            $this->jsonResponse(['ok' => false, 'error' => 'Parent group not found.'], 404);
-        }
-
-        $isOwner = (int) ($group['id_createur'] ?? $group['created_by'] ?? 0) === $uid;
-        $isMember = $groupeRepository->estMembre($groupId, $uid);
-        $discAuthorId = (int) ($discussion['id_auteur'] ?? $discussion['created_by'] ?? 0);
-        $isDiscussionAuthor = $discAuthorId === $uid && $discAuthorId > 0;
-        if (!$isOwner && !$isMember && !$isDiscussionAuthor) {
-            $this->jsonResponse(['ok' => false, 'error' => 'You must join the group first.'], 403);
+        if ($this->discussionLiveChatParticipantBundle($discussionRepository, $groupeRepository, $discussionId) === null) {
+            $this->jsonResponse(['ok' => false, 'error' => 'Discussion not found or access denied.'], 403);
         }
 
         $upload = $this->handleChatAttachmentUpload('attachment');

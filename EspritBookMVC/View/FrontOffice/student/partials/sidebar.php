@@ -4,6 +4,7 @@
  */
 
 $studentSidebarActive = $studentSidebarActive ?? '';
+$unreadDiscussionsTotal = max(0, (int) ($unread_discussions_total ?? 0));
 ?>
 
 <div class="aside admin-sidebar student-space-sidebar">
@@ -66,6 +67,9 @@ $studentSidebarActive = $studentSidebarActive ?? '';
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                     </svg>
+                    <?php if ($unreadDiscussionsTotal > 0): ?>
+                        <span class="student-unread-dot"><?= (int) $unreadDiscussionsTotal ?></span>
+                    <?php endif; ?>
                 </span>
                 <span>Discussions</span>
             </a>

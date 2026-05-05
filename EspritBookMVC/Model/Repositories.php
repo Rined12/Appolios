@@ -752,6 +752,202 @@ class DiscussionRepository extends BaseRepository
             return false;
         }
     }
+
+    public function ensureDiscussionChatThemeTable(): void
+    {
+        try {
+            $this->openConnection()->exec(
+                'CREATE TABLE IF NOT EXISTS discussion_chat_theme (
+                    id_discussion INT NOT NULL PRIMARY KEY,
+                    theme_json TEXT NOT NULL,
+                    updated_by INT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        } catch (Throwable $e) {
+        }
+    }
+
+    public function fetchChatThemeJson(int $discussionId): ?string
+    {
+        $this->ensureDiscussionChatThemeTable();
+        try {
+            $stmt = $this->openConnection()->prepare('SELECT theme_json FROM discussion_chat_theme WHERE id_discussion = ? LIMIT 1');
+            $stmt->execute([$discussionId]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                return null;
+            }
+            $j = trim((string) ($row['theme_json'] ?? ''));
+            return $j !== '' ? $j : null;
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    public function upsertChatTheme(int $discussionId, string $json, int $userId): bool
+    {
+        $this->ensureDiscussionChatThemeTable();
+        try {
+            $stmt = $this->openConnection()->prepare(
+                'INSERT INTO discussion_chat_theme (id_discussion, theme_json, updated_by) VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE theme_json = VALUES(theme_json), updated_by = VALUES(updated_by)'
+            );
+            return $stmt->execute([$discussionId, $json, $userId]);
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    public function ensureDiscussionChatReadStateTable(): void
+    {
+        try {
+            $this->openConnection()->exec(
+                'CREATE TABLE IF NOT EXISTS discussion_chat_read_state (
+                    discussion_id INT NOT NULL,
+                    user_id INT NOT NULL,
+                    last_read_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (discussion_id, user_id),
+                    INDEX idx_user (user_id),
+                    INDEX idx_last_read (last_read_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+            );
+        } catch (Throwable $e) {
+        }
+    }
+
+    public function markDiscussionChatAsRead(int $discussionId, int $userId): bool
+    {
+        if ($discussionId <= 0 || $userId <= 0) {
+            return false;
+        }
+        $this->ensureDiscussionChatReadStateTable();
+        try {
+            $stmt = $this->openConnection()->prepare(
+                'INSERT INTO discussion_chat_read_state (discussion_id, user_id, last_read_at)
+                 VALUES (?, ?, NOW())
+                 ON DUPLICATE KEY UPDATE last_read_at = VALUES(last_read_at)'
+            );
+
+            return $stmt->execute([$discussionId, $userId]);
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * @param array<int, int> $discussionIds
+     * @return array<int, int> discussion_id => unread_count
+     */
+    public function fetchUnreadChatCountsForUserByDiscussion(int $userId, array $discussionIds): array
+    {
+        $discussionIds = array_values(array_unique(array_filter(array_map('intval', $discussionIds), static function (int $v): bool {
+            return $v > 0;
+        })));
+        if ($userId <= 0 || $discussionIds === []) {
+            return [];
+        }
+        $this->ensureDiscussionChatReadStateTable();
+        $placeholders = implode(',', array_fill(0, count($discussionIds), '?'));
+        $sql = "SELECT dm.discussion_id, COUNT(*) AS unread_count
+                FROM discussion_messages dm
+                LEFT JOIN discussion_chat_read_state rs
+                  ON rs.discussion_id = dm.discussion_id
+                 AND rs.user_id = ?
+                WHERE dm.discussion_id IN ($placeholders)
+                  AND dm.user_id <> ?
+                  AND dm.created_at > COALESCE(rs.last_read_at, '1970-01-01 00:00:00')
+                GROUP BY dm.discussion_id";
+        try {
+            $params = array_merge([$userId], $discussionIds, [$userId]);
+            $stmt = $this->openConnection()->prepare($sql);
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll();
+            $out = [];
+            foreach ($rows as $row) {
+                $did = (int) ($row['discussion_id'] ?? 0);
+                if ($did > 0) {
+                    $out[$did] = max(0, (int) ($row['unread_count'] ?? 0));
+                }
+            }
+
+            return $out;
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * @param array<int, int> $groupIds
+     * @return array<int, int> group_id => unread_count
+     */
+    public function fetchUnreadChatCountsForUserByGroup(int $userId, array $groupIds): array
+    {
+        $groupIds = array_values(array_unique(array_filter(array_map('intval', $groupIds), static function (int $v): bool {
+            return $v > 0;
+        })));
+        if ($userId <= 0 || $groupIds === []) {
+            return [];
+        }
+        $this->ensureDiscussionChatReadStateTable();
+        $idCol = $this->idCol();
+        $groupCol = $this->groupCol();
+        $placeholders = implode(',', array_fill(0, count($groupIds), '?'));
+        $sql = "SELECT d.{$groupCol} AS group_id, COUNT(*) AS unread_count
+                FROM discussion_messages dm
+                INNER JOIN {$this->tableName()} d ON d.{$idCol} = dm.discussion_id
+                LEFT JOIN discussion_chat_read_state rs
+                  ON rs.discussion_id = dm.discussion_id
+                 AND rs.user_id = ?
+                WHERE d.{$groupCol} IN ($placeholders)
+                  AND dm.user_id <> ?
+                  AND dm.created_at > COALESCE(rs.last_read_at, '1970-01-01 00:00:00')
+                GROUP BY d.{$groupCol}";
+        try {
+            $params = array_merge([$userId], $groupIds, [$userId]);
+            $stmt = $this->openConnection()->prepare($sql);
+            $stmt->execute($params);
+            $rows = $stmt->fetchAll();
+            $out = [];
+            foreach ($rows as $row) {
+                $gid = (int) ($row['group_id'] ?? 0);
+                if ($gid > 0) {
+                    $out[$gid] = max(0, (int) ($row['unread_count'] ?? 0));
+                }
+            }
+
+            return $out;
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchChatMediaHistory(int $discussionId, int $limit = 150): array
+    {
+        $limit = max(1, min(300, $limit));
+        try {
+            $stmt = $this->openConnection()->prepare(
+                'SELECT message_type AS messageType, file_url AS fileUrl, file_name AS fileName,
+                        user_name AS userName, created_at AS createdAt
+                 FROM discussion_messages
+                 WHERE discussion_id = ?
+                   AND message_type IN (\'image\',\'video\',\'audio\',\'file\')
+                   AND file_url IS NOT NULL AND TRIM(file_url) <> \'\'
+                 ORDER BY created_at DESC
+                 LIMIT ?'
+            );
+            $stmt->bindValue(1, $discussionId, PDO::PARAM_INT);
+            $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            $rows = $stmt->fetchAll();
+            return is_array($rows) ? $rows : [];
+        } catch (Throwable $e) {
+            return [];
+        }
+    }
 }
 
 /**

@@ -98,7 +98,7 @@ final class DiscussionPresenter
      * @param array<int, array<string, mixed>> $rows
      * @return array<int, array<string, mixed>>
      */
-    public static function studentIndexCards(array $rows, int $currentUserId, string $foPrefix, string $appEntry): array
+    public static function studentIndexCards(array $rows, int $currentUserId, string $foPrefix, string $appEntry, array $unreadByDiscussion = []): array
     {
         $cards = [];
         foreach ($rows as $d) {
@@ -107,9 +107,12 @@ final class DiscussionPresenter
             $id = (int) ($d['id_discussion'] ?? 0);
             $base = $appEntry . '?url=' . rawurlencode($foPrefix . '/discussions/' . $id);
             $cards[] = [
+                'id_discussion' => $id,
+                'id_groupe' => (int) ($d['id_groupe'] ?? $d['group_id'] ?? 0),
                 'title' => (string) ($d['titre'] ?? 'Discussion'),
                 'content' => (string) ($d['contenu'] ?? ''),
                 'group_name' => (string) ($d['nom_groupe'] ?? 'N/A'),
+                'unread_count' => max(0, (int) ($unreadByDiscussion[$id] ?? 0)),
                 'is_author' => $isAuthor,
                 'url_chat' => $base . '/chat',
                 'url_edit' => $base . '/edit',
@@ -174,6 +177,9 @@ final class DiscussionPresenter
         return [
             'back_url' => $appEntry . '?url=' . rawurlencode($foPrefix . '/discussions'),
             'upload_url' => $appEntry . '?url=' . rawurlencode($foPrefix . '/discussions/' . $id . '/upload'),
+            'theme_url' => $appEntry . '?url=' . rawurlencode($foPrefix . '/discussions/' . $id . '/chat-theme'),
+            'media_history_url' => $appEntry . '?url=' . rawurlencode($foPrefix . '/discussions/' . $id . '/chat-media'),
+            'summarize_url' => $appEntry . '?url=' . rawurlencode($foPrefix . '/discussions/' . $id . '/chat-summarize'),
         ];
     }
 
