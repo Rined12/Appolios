@@ -594,14 +594,76 @@ class QuestionController extends BaseController
             $top['avg_percentage'] = round($wSum / (float) $top['attempts_total'], 1);
         }
 
+        $diffDist = [
+            'beginner' => 0,
+            'intermediate' => 0,
+            'advanced' => 0,
+        ];
+        foreach ($questions as $q) {
+            $d = (string) ($q['difficulty'] ?? 'beginner');
+            if (!isset($diffDist[$d])) {
+                $diffDist[$d] = 0;
+            }
+            $diffDist[$d]++;
+        }
+
+        $qaMap = [];
+        foreach ($questions as $q) {
+            $qid = (int) ($q['id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            $u = $usage[$qid] ?? null;
+            $att = is_array($u) ? (int) ($u['attempts'] ?? 0) : 0;
+            $avg = is_array($u) ? (float) ($u['avg'] ?? 0) : 0.0;
+            $qz = is_array($u) ? (int) ($u['quizzes'] ?? 0) : 0;
+            $qaMap[$qid] = $this->questionQaFromUsage($qz, $att, $avg);
+        }
+
         $this->view('BackOffice/admin/questions_bank', [
             'title' => 'Banque de questions (admin) - ' . APP_NAME,
             'questions' => $questions,
             'qbTopStats' => $top,
-            'questionQa' => [],
-            'charts' => [],
+            'questionQa' => $qaMap,
+            'charts' => [
+                'difficulty' => $diffDist,
+            ],
             'flash' => $this->getFlash(),
         ]);
+    }
+
+    private function questionQaFromUsage(int $quizzesCount, int $attempts, float $avgPercentage): array
+    {
+        if ($quizzesCount <= 0 || $attempts <= 0) {
+            return ['label' => 'Non utilisée', 'badge' => 'pro-badge', 'score' => null];
+        }
+        if ($attempts < 10) {
+            return ['label' => 'Données insuff.', 'badge' => 'pro-badge', 'score' => null];
+        }
+
+        $avg = max(0.0, min(100.0, $avgPercentage));
+        if ($avg >= 85.0) {
+            return ['label' => 'Trop facile', 'badge' => 'pro-badge pro-badge--beginner', 'score' => (int) round(100 - (($avg - 85.0) * 2.0))];
+        }
+        if ($avg <= 35.0) {
+            return ['label' => 'Trop difficile', 'badge' => 'pro-badge pro-badge--advanced', 'score' => (int) round(100 - ((35.0 - $avg) * 2.0))];
+        }
+
+        $target = 60.0;
+        $difficultyScore = 100.0 - (abs($avg - $target) * 1.5);
+        if ($difficultyScore < 0) $difficultyScore = 0;
+        if ($difficultyScore > 100) $difficultyScore = 100;
+
+        $attemptsNorm = log((float) ($attempts + 1), 10) / log(51.0, 10);
+        if ($attemptsNorm < 0) $attemptsNorm = 0;
+        if ($attemptsNorm > 1) $attemptsNorm = 1;
+        $reliability = $attemptsNorm * 100.0;
+
+        $score = (int) round(($difficultyScore * 0.7) + ($reliability * 0.3));
+        if ($score < 0) $score = 0;
+        if ($score > 100) $score = 100;
+
+        return ['label' => 'OK', 'badge' => 'pro-badge pro-badge--intermediate', 'score' => $score];
     }
 
     private function adminAddQuestion(): void
