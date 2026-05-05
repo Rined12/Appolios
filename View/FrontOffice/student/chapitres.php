@@ -49,7 +49,7 @@ $quizzesByChapter = $quizzesByChapter ?? [];
                                                     <ul class="pro-quiz-links">
                                                         <?php foreach ($qlist as $qz): ?>
                                                             <li>
-                                                                <a href="<?= APP_ENTRY ?>?url=student/quiz/<?= (int) $qz['id'] ?>"><?= htmlspecialchars($qz['title'] ?? 'Quiz') ?></a>
+                                                                <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz/<?= (int) $qz['id'] ?>"><?= htmlspecialchars($qz['title'] ?? 'Quiz') ?></a>
                                                                 <span class="pro-quiz-meta">
                                                                     <?= (int) ($qz['question_count'] ?? 0) ?> q.
                                                                     · <?= htmlspecialchars(difficulty_label_fr((string) ($qz['difficulty'] ?? 'beginner'))) ?>

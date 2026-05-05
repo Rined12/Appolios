@@ -78,20 +78,20 @@ ksort($courses, SORT_NUMERIC);
                                 <?php endif; ?>
                             </div>
                         <?php endif; ?>
-                        <a href="<?= APP_ENTRY ?>?url=student/coach&return=student/quiz" class="btn btn-coach-pro">
+                        <a href="<?= APP_ENTRY ?>?url=student/coach&return=student-quiz/quiz" class="btn btn-coach-pro">
                             <i class="bi bi-stars" aria-hidden="true"></i>
                             Coach
                             <span class="btn-coach-pro-badge">PRO</span>
                         </a>
-                        <a href="<?= APP_ENTRY ?>?url=student/quiz-history" class="btn btn-outline">Historique</a>
+                        <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz-history" class="btn btn-outline">Historique</a>
                         <a href="<?= APP_ENTRY ?>?url=student/chapitres" class="btn btn-outline">Chapitres</a>
                     </div>
                 </div>
 
                 <div style="margin-top: 10px; display:flex; gap: 10px; flex-wrap: wrap;">
-                    <a class="btn <?= $filter === '' ? 'btn-primary' : 'btn-outline' ?>" href="<?= APP_ENTRY ?>?url=student/quiz" style="padding:8px 12px;">Tous</a>
-                    <a class="btn <?= $filter === 'favorites' ? 'btn-primary' : 'btn-outline' ?>" href="<?= APP_ENTRY ?>?url=student/quiz&filter=favorites" style="padding:8px 12px;">Favoris</a>
-                    <a class="btn <?= $filter === 'redo' ? 'btn-primary' : 'btn-outline' ?>" href="<?= APP_ENTRY ?>?url=student/quiz&filter=redo" style="padding:8px 12px;">À refaire</a>
+                    <a class="btn <?= $filter === '' ? 'btn-primary' : 'btn-outline' ?>" href="<?= APP_ENTRY ?>?url=student-quiz/quiz" style="padding:8px 12px;">Tous</a>
+                    <a class="btn <?= $filter === 'favorites' ? 'btn-primary' : 'btn-outline' ?>" href="<?= APP_ENTRY ?>?url=student-quiz/quiz&filter=favorites" style="padding:8px 12px;">Favoris</a>
+                    <a class="btn <?= $filter === 'redo' ? 'btn-primary' : 'btn-outline' ?>" href="<?= APP_ENTRY ?>?url=student-quiz/quiz&filter=redo" style="padding:8px 12px;">À refaire</a>
                 </div>
 
                 <?php if (!empty($flash)): ?>
@@ -178,13 +178,13 @@ ksort($courses, SORT_NUMERIC);
                                         </td>
                                         <td>
                                             <div style="display:flex; align-items:center; gap:10px; justify-content:flex-end;">
-                                                <a class="pro-icon-btn" href="<?= APP_ENTRY ?>?url=student/toggle-favorite-quiz/<?= (int) $qid ?>" title="Favori" aria-label="Favori" style="<?= $isFav ? 'color:#fbbf24;' : '' ?>">
+                                                <a class="pro-icon-btn" href="<?= APP_ENTRY ?>?url=student-quiz/toggle-favorite-quiz/<?= (int) $qid ?>" title="Favori" aria-label="Favori" style="<?= $isFav ? 'color:#fbbf24;' : '' ?>">
                                                     <i class="bi <?= $isFav ? 'bi-star-fill' : 'bi-star' ?>"></i>
                                                 </a>
-                                                <a class="pro-icon-btn" href="<?= APP_ENTRY ?>?url=student/toggle-redo-quiz/<?= (int) $qid ?>" title="À refaire" aria-label="À refaire" style="<?= $isRedo ? 'color:#60a5fa;' : '' ?>">
+                                                <a class="pro-icon-btn" href="<?= APP_ENTRY ?>?url=student-quiz/toggle-redo-quiz/<?= (int) $qid ?>" title="À refaire" aria-label="À refaire" style="<?= $isRedo ? 'color:#60a5fa;' : '' ?>">
                                                     <i class="bi <?= $isRedo ? 'bi-arrow-repeat' : 'bi-arrow-repeat' ?>"></i>
                                                 </a>
-                                                <a class="btn btn-primary" style="white-space:nowrap;" href="<?= APP_ENTRY ?>?url=student/quiz/<?= (int) $qid ?>">Commencer</a>
+                                                <a class="btn btn-primary" style="white-space:nowrap;" href="<?= APP_ENTRY ?>?url=student-quiz/quiz/<?= (int) $qid ?>">Commencer</a>
                                             </div>
                                         </td>
                                     </tr>

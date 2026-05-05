@@ -43,7 +43,7 @@ foreach ($questions as $q) {
                     </div>
                     <div class="pro-table-actions">
                         <a href="<?= APP_ENTRY ?>?url=student/questions-bank" class="btn btn-outline">Retour</a>
-                        <a href="<?= APP_ENTRY ?>?url=student/quiz" class="btn btn-outline">Quiz</a>
+                        <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz" class="btn btn-outline">Quiz</a>
                     </div>
                 </div>
 

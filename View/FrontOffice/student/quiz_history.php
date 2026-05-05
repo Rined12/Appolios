@@ -12,7 +12,7 @@ $studentSidebarActive = 'quiz';
                         <p>Toutes vos tentatives enregistrées.</p>
                     </div>
                     <div class="pro-table-actions">
-                        <a href="<?= APP_ENTRY ?>?url=student/quiz" class="btn btn-outline">← Liste des quiz</a>
+                        <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz" class="btn btn-outline">← Liste des quiz</a>
                     </div>
                 </div>
                 <?php if (!empty($flash)): ?>

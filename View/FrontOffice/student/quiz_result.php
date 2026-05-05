@@ -32,7 +32,14 @@ $weakChapters = isset($weakChapters) && is_array($weakChapters) ? $weakChapters 
                                 <span class="btn-stats-pro-badge">PRO</span>
                             </button>
                         <?php endif; ?>
-                        <a href="<?= APP_ENTRY ?>?url=student/quiz" class="btn btn-outline">Liste des quiz</a>
+                        <?php if ($pct < 60): ?>
+                            <a href="<?= APP_ENTRY ?>?url=student-quiz/remedial/<?= (int) ($quiz['id'] ?? 0) ?>" class="btn btn-training-pro">
+                                <i class="bi bi-lightning-charge" aria-hidden="true"></i>
+                                Rattrapage
+                                <span class="btn-training-pro-badge">GO</span>
+                            </a>
+                        <?php endif; ?>
+                        <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz" class="btn btn-outline">Liste des quiz</a>
                     </div>
                 </div>
 
@@ -201,11 +208,11 @@ $weakChapters = isset($weakChapters) && is_array($weakChapters) ? $weakChapters 
                                                 <div style="font-weight:900;">Revoir chapitres</div>
                                                 <div style="margin-top:4px; font-weight:700; opacity:.9; font-size:.9rem;">Lis le cours puis retente un quiz après 24h.</div>
                                             </a>
-                                            <a href="<?= APP_ENTRY ?>?url=student/quiz&filter=redo" class="btn btn-outline" style="text-decoration:none; text-align:left; white-space:normal;">
+                                            <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz&filter=redo" class="btn btn-outline" style="text-decoration:none; text-align:left; white-space:normal;">
                                                 <div style="font-weight:900;">À refaire</div>
                                                 <div style="margin-top:4px; font-weight:700; opacity:.9; font-size:.9rem;">Refais tes quiz marqués “à refaire”.</div>
                                             </a>
-                                            <a href="<?= APP_ENTRY ?>?url=student/quiz" class="btn btn-primary" style="text-decoration:none; text-align:left; white-space:normal;">
+                                            <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz" class="btn btn-primary" style="text-decoration:none; text-align:left; white-space:normal;">
                                                 <div style="font-weight:900;">Rejouer maintenant</div>
                                                 <div style="margin-top:4px; font-weight:800; opacity:.9; font-size:.9rem;">Choisis un quiz de consolidation ou un challenge.</div>
                                             </a>
@@ -216,8 +223,8 @@ $weakChapters = isset($weakChapters) && is_array($weakChapters) ? $weakChapters 
                         <?php endif; ?>
 
                         <div class="student-result-actions">
-                            <a href="<?= APP_ENTRY ?>?url=student/quiz" class="btn btn-primary">Autres quiz</a>
-                            <a href="<?= APP_ENTRY ?>?url=student/quiz-history" class="btn btn-outline">Historique</a>
+                            <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz" class="btn btn-primary">Autres quiz</a>
+                            <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz-history" class="btn btn-outline">Historique</a>
                             <a href="<?= APP_ENTRY ?>?url=student/chapitres" class="btn btn-outline">Revoir les chapitres</a>
                         </div>
                     </div>
@@ -409,7 +416,7 @@ $weakChapters = isset($weakChapters) && is_array($weakChapters) ? $weakChapters 
                                                 <?php endforeach; ?>
                                             </div>
                                         </div>
-                                        <a class="btn btn-primary" href="<?= APP_ENTRY ?>?url=student/quiz/<?= (int) $qid ?>" style="white-space:nowrap;">Commencer</a>
+                                        <a class="btn btn-primary" href="<?= APP_ENTRY ?>?url=student-quiz/quiz/<?= (int) $qid ?>" style="white-space:nowrap;">Commencer</a>
                                     </div>
                                     <?php if ($reason !== ''): ?>
                                         <div style="margin-top:10px; opacity:.92; font-size:.92rem;">

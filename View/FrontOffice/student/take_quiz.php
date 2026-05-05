@@ -18,7 +18,7 @@ $tl = isset($quiz['time_limit_sec']) && (int) $quiz['time_limit_sec'] > 0 ? (int
                         </p>
                     </div>
                     <div class="pro-table-actions">
-                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=student/quiz">Annuler</a>
+                        <a class="btn btn-outline" href="<?= APP_ENTRY ?>?url=student-quiz/quiz">Annuler</a>
                     </div>
                 </div>
 
@@ -41,7 +41,7 @@ $tl = isset($quiz['time_limit_sec']) && (int) $quiz['time_limit_sec'] > 0 ? (int
                         <?php endif; ?>
                     </div>
 
-                    <form method="post" action="<?= APP_ENTRY ?>?url=student/submit-quiz/<?= $quizId ?>" class="sq-form" onsubmit="return appValidateTakeQuiz(this, <?= (int) $nq ?>);">
+                    <form method="post" action="<?= APP_ENTRY ?>?url=student-quiz/submit-quiz/<?= $quizId ?>" class="sq-form" onsubmit="return appValidateTakeQuiz(this, <?= (int) $nq ?>);">
                         <input type="hidden" name="timed_out" value="0" id="sqTimedOut">
                         <?php foreach (($quiz['questions'] ?? []) as $i => $q): ?>
                             <fieldset class="sq-question student-quiz-question" data-q="<?= (int) $i ?>">
@@ -61,7 +61,7 @@ $tl = isset($quiz['time_limit_sec']) && (int) $quiz['time_limit_sec'] > 0 ? (int
                         <?php endforeach; ?>
                         <div class="sq-actions">
                             <button type="submit" class="btn btn-primary">Soumettre mes réponses</button>
-                            <a href="<?= APP_ENTRY ?>?url=student/quiz" class="btn btn-outline">Annuler</a>
+                            <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz" class="btn btn-outline">Annuler</a>
                         </div>
                     </form>
                 </div>

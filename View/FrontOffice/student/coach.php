@@ -1,13 +1,13 @@
 <?php
 $studentSidebarActive = '';
 
-$ret = isset($_GET['return']) ? (string) $_GET['return'] : 'student/quiz';
+$ret = isset($_GET['return']) ? (string) $_GET['return'] : 'student-quiz/quiz';
 $ret = trim($ret);
 if ($ret === '' || strpos($ret, '://') !== false || strpos($ret, 'javascript:') !== false || strpos($ret, '\\') !== false) {
-    $ret = 'student/quiz';
+    $ret = 'student-quiz/quiz';
 }
 if (strpos($ret, '..') !== false || strpos($ret, '<') !== false || strpos($ret, '"') !== false || strpos($ret, "'") !== false) {
-    $ret = 'student/quiz';
+    $ret = 'student-quiz/quiz';
 }
 
 $returnUrl = APP_ENTRY . '?url=' . rawurlencode($ret);
@@ -34,7 +34,7 @@ $actions = isset($actions) && is_array($actions) ? $actions : [];
                     </div>
                     <div class="pro-table-actions">
                         <a href="<?= htmlspecialchars($returnUrl) ?>" class="btn btn-outline">Retour</a>
-                        <a href="<?= APP_ENTRY ?>?url=student/quiz" class="btn btn-outline">Liste des quiz</a>
+                        <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz" class="btn btn-outline">Liste des quiz</a>
                     </div>
                 </div>
 
@@ -138,11 +138,12 @@ $actions = isset($actions) && is_array($actions) ? $actions : [];
                                     <div style="opacity:.9; font-weight:700;">Aucune recommandation pour le moment.</div>
                                 <?php else: ?>
                                     <?php foreach ($recommendedQuizzes as $rq): ?>
-                                        <a class="btn btn-primary" href="<?= APP_ENTRY ?>?url=student/quiz/<?= (int) ($rq['quiz_id'] ?? 0) ?>" style="text-decoration:none; display:flex; justify-content:space-between; align-items:center; gap:10px; white-space: normal;">
+                                        <a class="btn btn-primary" href="<?= APP_ENTRY ?>?url=student-quiz/quiz/<?= (int) ($rq['quiz_id'] ?? 0) ?>" style="text-decoration:none; display:flex; justify-content:space-between; align-items:center; gap:10px; white-space: normal;">
                                             <span style="font-weight:900; text-align:left;">
                                                 <?= htmlspecialchars((string) ($rq['title'] ?? 'Quiz')) ?>
                                                 <span style="display:block; font-weight:800; opacity:.85; font-size:.82rem;">
-                                                    <?= htmlspecialchars((string) ($rq['chapter_title'] ?? '')) ?> · <?= htmlspecialchars(difficulty_label_fr((string) ($rq['difficulty'] ?? 'beginner'))) ?>
+                                                    <?= htmlspecialchars((string) ($rq['course_title'] ?? '')) ?>
+                                                    <?= !empty($rq['chapter_title']) ? ' · ' . htmlspecialchars((string) $rq['chapter_title']) : '' ?>
                                                 </span>
                                                 <?php if (!empty($rq['reason'])): ?>
                                                     <span style="display:block; font-weight:800; opacity:.78; font-size:.82rem;">

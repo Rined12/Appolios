@@ -26,10 +26,10 @@ $rankSpark = isset($rankSpark) && is_array($rankSpark) ? $rankSpark : [];
                         <p>Welcome <?= htmlspecialchars($userName ?? ($_SESSION['user_name'] ?? 'Student')) ?>, discover event details and resources.</p>
 
                         <div style="margin-top: 12px; display:flex; gap:10px; flex-wrap: wrap;">
-                            <a class="student-events-header-chip" href="<?= APP_ENTRY ?>?url=student/quiz&filter=favorites" style="text-decoration:none;">
+                            <a class="student-events-header-chip" href="<?= APP_ENTRY ?>?url=student-quiz/quiz&filter=favorites" style="text-decoration:none;">
                                 Favoris quiz: <?= (int) count($favoriteQuizIds) ?>
                             </a>
-                            <a class="student-events-header-chip" href="<?= APP_ENTRY ?>?url=student/quiz&filter=redo" style="text-decoration:none;">
+                            <a class="student-events-header-chip" href="<?= APP_ENTRY ?>?url=student-quiz/quiz&filter=redo" style="text-decoration:none;">
                                 À refaire: <?= (int) count($redoQuizIds) ?>
                             </a>
                         </div>

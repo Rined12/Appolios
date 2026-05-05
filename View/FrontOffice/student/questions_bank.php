@@ -18,7 +18,7 @@ $questions = $questions ?? [];
                             Training Lab
                             <span class="btn-training-pro-badge">LIVE</span>
                         </a>
-                        <a href="<?= APP_ENTRY ?>?url=student/quiz" class="btn btn-primary">Aller aux quiz</a>
+                        <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz" class="btn btn-primary">Aller aux quiz</a>
                     </div>
                 </div>
 

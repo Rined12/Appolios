@@ -105,7 +105,7 @@ $textActiveStyle = 'color:#ffffff !important;font-weight:800;opacity:1;';
                 <span style="<?= $studentSidebarActive === 'chapitres' ? $textActiveStyle : $textBaseStyle ?>">Chapitres</span>
             </a>
 
-            <a href="<?= APP_ENTRY ?>?url=student/quiz" class="admin-side-link <?= $studentSidebarActive === 'quiz' ? 'active' : '' ?>" style="<?= $studentSidebarActive === 'quiz' ? $sidebarActiveLinkStyle : $sidebarBaseLinkStyle ?>">
+            <a href="<?= APP_ENTRY ?>?url=student-quiz/quiz" class="admin-side-link <?= $studentSidebarActive === 'quiz' ? 'active' : '' ?>" style="<?= $studentSidebarActive === 'quiz' ? $sidebarActiveLinkStyle : $sidebarBaseLinkStyle ?>">
                 <span class="admin-side-icon" aria-hidden="true" style="<?= $studentSidebarActive === 'quiz' ? $iconActiveStyle : $iconBaseStyle ?>">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="9"></circle>
