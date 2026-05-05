@@ -246,6 +246,7 @@ $studentSidebarActive = 'profile';
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 function uploadAvatar() {
@@ -256,13 +257,13 @@ function uploadAvatar() {
 
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
+        Swal.fire('Error', 'File size must be less than 10MB', 'error');
         return;
     }
 
     // Check file type
     if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        Swal.fire('Error', 'Please select an image file', 'error');
         return;
     }
 
@@ -278,12 +279,12 @@ function uploadAvatar() {
         if (data.success) {
             location.reload();
         } else {
-            alert(data.error || 'Failed to upload avatar');
+            Swal.fire('Error', data.error || 'Failed to upload avatar', 'error');
         }
     })
     .catch(err => {
         console.error(err);
-        alert('Failed to upload avatar');
+        Swal.fire('Error', 'Failed to upload avatar', 'error');
     });
 }
 
@@ -428,7 +429,11 @@ async function captureFaceId() {
                         distance = Math.sqrt(distance);
 
                         if (distance < THRESHOLD) {
-                            alert('This face is already registered to another account (' + user.email + '). Each face can only be associated with one account.');
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Face Already Registered',
+                                text: 'This face is already registered to another account (' + user.email + '). Each face can only be associated with one account.'
+                            });
                             document.getElementById('faceid-status').textContent = 'Face already registered - use a different face';
                             document.getElementById('faceid-capture-btn').disabled = false;
                             return;
@@ -451,38 +456,50 @@ async function captureFaceId() {
 
         const data = await response.json();
         if (data.success) {
-            alert('Face ID saved successfully!');
+            Swal.fire('Success', 'Face ID saved successfully!', 'success').then(() => {
+                location.reload();
+            });
             closeFaceIdModal();
-            location.reload();
         } else {
-            alert('Error: ' + (data.error || 'Failed to save Face ID'));
+            Swal.fire('Error', data.error || 'Failed to save Face ID', 'error');
             document.getElementById('faceid-status').textContent = 'Error saving Face ID';
         }
     } catch (e) {
-        alert('Error saving Face ID: ' + e.message);
+        Swal.fire('Error', 'Error saving Face ID: ' + e.message, 'error');
         document.getElementById('faceid-status').textContent = 'Error: ' + e.message;
     }
 }
 
 async function removeFaceId() {
-    if (!confirm('Are you sure you want to remove your Face ID?')) return;
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "Are you sure you want to remove your Face ID?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, remove it!'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('<?= APP_ENTRY ?>?url=student/remove-face-id', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
 
-    try {
-        const response = await fetch('<?= APP_ENTRY ?>?url=student/remove-face-id', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await response.json();
-        if (data.success) {
-            alert('Face ID removed successfully!');
-            location.reload();
-        } else {
-            alert('Error: ' + (data.error || 'Failed to remove Face ID'));
+                const data = await response.json();
+                if (data.success) {
+                    Swal.fire('Deleted!', 'Face ID removed successfully!', 'success').then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'Failed to remove Face ID', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', 'Error removing Face ID: ' + e.message, 'error');
+            }
         }
-    } catch (e) {
-        alert('Error removing Face ID: ' + e.message);
-    }
+    });
 }
 
 // Avatar Generator Functions
@@ -708,6 +725,7 @@ function generateAvatar() {
         statusEl.textContent = 'Error: ' + error.message;
         statusEl.style.background = '#ffebee';
         resultContainer.innerHTML = '<span style="color: #dc3545;">Generation failed</span>';
+        Swal.fire('Error', error.message, 'error');
         btn.disabled = false;
     });
 }

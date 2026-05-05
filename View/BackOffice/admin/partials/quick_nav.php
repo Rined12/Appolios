@@ -67,7 +67,9 @@ $currentPage = $_GET['url'] ?? '';
             <i class="bi bi-arrow-clockwise"></i>
         </button>
 
-        <button class="theme-toggle"><i class="bi bi-sun"></i></button>
+        <button class="theme-toggle" id="theme-mode-toggle" title="Changer de thème">
+            <i class="bi bi-sun" id="theme-icon"></i>
+        </button>
         
         <a href="<?= APP_ENTRY ?>?url=logout" class="quick-logout">
             <i class="bi bi-box-arrow-right"></i> Logout
@@ -97,6 +99,27 @@ $currentPage = $_GET['url'] ?? '';
             e.stopPropagation();
         });
     }
+
+    const themeBtn = document.getElementById('theme-mode-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    const root = document.documentElement;
+
+    // Toggle logic
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            root.classList.toggle('dark-theme');
+            document.body.classList.toggle('dark-theme');
+            
+            let theme = 'light';
+            if (root.classList.contains('dark-theme')) {
+                theme = 'dark';
+                themeIcon.classList.replace('bi-sun', 'bi-moon-fill');
+            } else {
+                themeIcon.classList.replace('bi-moon-fill', 'bi-sun');
+            }
+            localStorage.setItem('theme', theme);
+        });
+    }
 })();
 </script>
 
@@ -105,19 +128,19 @@ $currentPage = $_GET['url'] ?? '';
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: white;
+    background: var(--admin-card-bg);
     padding: 0.8rem 2rem;
     border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    box-shadow: var(--admin-card-shadow);
     margin-bottom: 2.5rem;
-    border: 1px solid #f1f5f9;
+    border: 1px solid var(--admin-border);
 }
 .nav-logo {
     display: flex;
     align-items: center;
     gap: 10px;
     text-decoration: none;
-    color: #1e293b;
+    color: var(--admin-text);
     font-weight: 800;
     font-size: 1.1rem;
     letter-spacing: 0.5px;
@@ -133,14 +156,14 @@ $currentPage = $_GET['url'] ?? '';
 }
 .quick-link {
     text-decoration: none;
-    color: #64748b;
+    color: var(--admin-text-muted);
     font-weight: 600;
     font-size: 0.9rem;
     transition: all 0.2s;
     position: relative;
     padding: 5px 0;
 }
-.quick-link:hover { color: #1e293b; }
+.quick-link:hover { color: var(--admin-text); }
 .quick-link.active { color: #E19864; }
 .quick-link.active::after {
     content: '';
@@ -173,10 +196,10 @@ $currentPage = $_GET['url'] ?? '';
     top: calc(100% + 15px);
     right: 0;
     width: 280px;
-    background: white;
+    background: var(--admin-card-bg);
     border-radius: 15px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-    border: 1px solid #f1f5f9;
+    border: 1px solid var(--admin-border);
     opacity: 0;
     transform: translateY(10px);
     pointer-events: none;
@@ -191,8 +214,8 @@ $currentPage = $_GET['url'] ?? '';
 .notif-header {
     padding: 1rem 1.2rem;
     font-weight: 700;
-    border-bottom: 1px solid #f1f5f9;
-    color: #1e293b;
+    border-bottom: 1px solid var(--admin-border);
+    color: var(--admin-text);
 }
 .notif-body {
     max-height: 400px;
@@ -218,34 +241,34 @@ $currentPage = $_GET['url'] ?? '';
     flex-shrink: 0;
     font-size: 0.9rem;
 }
-.notif-content p { margin: 0; font-size: 0.8rem; color: #1e293b; }
-.notif-content small { color: #64748b; font-size: 0.7rem; }
+.notif-content p { margin: 0; font-size: 0.8rem; color: var(--admin-text); }
+.notif-content small { color: var(--admin-text-muted); font-size: 0.7rem; }
 
 .theme-toggle {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--admin-bg);
+    border: 1px solid var(--admin-border);
     width: 38px;
     height: 38px;
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #64748b;
+    color: var(--admin-text-muted);
     cursor: pointer;
     transition: all 0.2s;
 }
-.theme-toggle:hover { background: #f1f5f9; color: #1e293b; border-color: #cbd5e1; }
+.theme-toggle:hover { background: var(--admin-border); color: var(--admin-text); border-color: var(--admin-text-muted); }
 
 .quick-logout {
     display: flex;
     align-items: center;
     gap: 8px;
     text-decoration: none;
-    background: white;
-    border: 1px solid #e2e8f0;
+    background: var(--admin-card-bg);
+    border: 1px solid var(--admin-border);
     padding: 8px 18px;
     border-radius: 10px;
-    color: #475569;
+    color: var(--admin-text-muted);
     font-weight: 600;
     font-size: 0.9rem;
     transition: all 0.2s;

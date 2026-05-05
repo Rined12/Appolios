@@ -139,25 +139,27 @@ $teacherSidebarActive = 'profile';
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
 function uploadAvatar() {
     const fileInput = document.getElementById('avatarInput');
     const file = fileInput.files[0];
 
     if (!file) {
-        alert('No file selected');
+        Swal.fire('Error', 'No file selected', 'error');
         return;
     }
 
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
+        Swal.fire('Error', 'File size must be less than 10MB', 'error');
         return;
     }
 
     // Check file type
     if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        Swal.fire('Error', 'Please select an image file', 'error');
         return;
     }
 
@@ -173,17 +175,17 @@ function uploadAvatar() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Update avatar image without reload
             const avatarImg = document.getElementById('avatar-img');
             const baseUrl = '<?= APP_URL ?>';
             avatarImg.src = baseUrl + '/uploads/avatars/' + data.avatar + '?' + Date.now();
+            Swal.fire('Success', 'Avatar updated successfully!', 'success');
         } else {
-            alert('Error: ' + (data.error || 'Failed to upload avatar'));
+            Swal.fire('Error', data.error || 'Failed to upload avatar', 'error');
         }
     })
     .catch(err => {
         console.error('Error:', err);
-        alert('Failed to upload avatar');
+        Swal.fire('Error', 'Failed to upload avatar', 'error');
     });
 }
 </script>

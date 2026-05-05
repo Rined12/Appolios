@@ -14,7 +14,22 @@ $userName = $_SESSION['user_name'] ?? 'Administrator';
     <title>Admin Pro | <?= htmlspecialchars($title ?? 'Dashboard') ?></title>
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/vendor/font-awesome/css/all.min.css">
-    <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/admin-neo.css">
+    <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/admin-neo.css?v=<?= time() ?>">
+    <script>
+        // Pre-load theme to prevent flash
+        (function() {
+            const theme = localStorage.getItem('theme') || 'light';
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+                // Also add to body once it's ready
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.body.classList.add('dark-theme');
+                    const icon = document.getElementById('theme-icon');
+                    if (icon) icon.classList.replace('bi-sun', 'bi-moon-fill');
+                });
+            }
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">

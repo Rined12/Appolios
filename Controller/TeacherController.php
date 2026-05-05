@@ -9,6 +9,7 @@ require_once __DIR__ . '/../Model/User.php';
 require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
+require_once __DIR__ . '/../Controller/AvatarGenerator.php';
 
 class TeacherController extends BaseController {
 
@@ -291,7 +292,25 @@ class TeacherController extends BaseController {
 
         $data = [
             'title' => 'My Profile - APPOLIOS',
-            'user' => $user
+            'user' => $user,
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('FrontOffice/teacher/profile', $data);
+    }
+
+    /**
+     * Edit profile page
+     */
+    public function editProfile() {
+        $this->requireTeacher();
+
+        $user = $this->findUserById($_SESSION['user_id']);
+
+        $data = [
+            'title' => 'Edit Profile - APPOLIOS',
+            'user' => $user,
+            'flash' => $this->getFlash()
         ];
 
         $this->view('FrontOffice/teacher/edit_profile', $data);
@@ -1028,5 +1047,50 @@ class TeacherController extends BaseController {
         });
         
         echo json_encode(['success' => true, 'users' => array_values($otherUsers)]);
+    }
+
+    /**
+     * Generate avatar from face photo
+     */
+    public function generateAvatar() {
+        header('Content-Type: application/json');
+
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            return;
+        }
+
+        if (!isset($_FILES['faceImage']) || $_FILES['faceImage']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No image uploaded or upload error']);
+            return;
+        }
+
+        $file = $_FILES['faceImage'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+        if (!in_array($file['type'], $allowedTypes)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, and WEBP are allowed.']);
+            return;
+        }
+
+        if ($file['size'] > 10 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'error' => 'File size must be less than 10MB']);
+            return;
+        }
+
+        $faceData = json_decode($_POST['faceData'] ?? '{}', true);
+
+        try {
+            $generator = new AvatarGenerator();
+            $result = $generator->generateAvatar($faceData, $_SESSION['user_id']);
+            echo json_encode($result);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
     }
 }

@@ -10,20 +10,37 @@
     --admin-primary-light: #548CA8;
     --admin-secondary: #E19864;
     --admin-bg: #f8fafc;
+    --admin-card-bg: #ffffff;
     --admin-card-shadow: 0 4px 20px rgba(43, 72, 101, 0.08);
     --admin-sidebar-gradient: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
     --admin-active-gradient: linear-gradient(135deg, #548CA8 0%, #2B4865 100%);
+    --admin-text: #334155;
+    --admin-text-muted: #64748b;
+    --admin-border: #f1f5f9;
+    --admin-card-bg-glass: rgba(255, 255, 255, 0.7);
+}
+
+.dark-theme, html.dark-theme, body.dark-theme {
+    --admin-bg: #0b0f19 !important;
+    --admin-card-bg: #161e2d !important;
+    --admin-card-shadow: 0 4px 25px rgba(0, 0, 0, 0.4) !important;
+    --admin-text: #f1f5f9 !important;
+    --admin-text-muted: #94a3b8 !important;
+    --admin-border: #1e293b !important;
+    --admin-sidebar-gradient: linear-gradient(180deg, #020617 0%, #0b0f19 100%) !important;
+    --admin-card-bg-glass: rgba(22, 30, 45, 0.7) !important;
 }
 
 .admin-body {
     background-color: var(--admin-bg);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    color: #334155;
+    color: var(--admin-text);
     margin: 0;
     display: flex;
     min-height: 100vh;
-    padding: 0 1rem 1rem 1rem; /* Removed top padding */
+    padding: 0 1rem 1rem 1rem;
     gap: 1rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ── Sidebar ────────────────────────────────────────────────── */
@@ -267,13 +284,13 @@
 .admin-body .table-header {
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--admin-border);
 }
 
 .admin-body .table-header h3 {
     font-size: 1.1rem;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--admin-text);
 }
 
 .admin-body .btn-primary {
@@ -296,11 +313,11 @@
 }
 
 .stat-card-pro {
-    background: white;
+    background: var(--admin-card-bg);
     padding: 1.5rem;
     border-radius: 20px;
     box-shadow: var(--admin-card-shadow);
-    border: 1px solid #f1f5f9;
+    border: 1px solid var(--admin-border);
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -318,13 +335,13 @@
 .stat-value {
     font-size: 1.8rem;
     font-weight: 900;
-    color: #1e293b;
+    color: var(--admin-text);
 }
 
 .stat-label {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #64748b;
+    color: var(--admin-text-muted);
 }
 
 /* ── Tables ─────────────────────────────────────────────────── */
@@ -335,21 +352,21 @@
 }
 
 .admin-table-pro th {
-    background: #f8fafc;
+    background: var(--admin-bg);
     padding: 1rem 1.5rem;
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #64748b;
-    border-bottom: 1px solid #e2e8f0;
+    color: var(--admin-text-muted);
+    border-bottom: 1px solid var(--admin-border);
 }
 
 .admin-table-pro td {
     padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--admin-border);
     font-size: 0.95rem;
-    color: #334155;
+    color: var(--admin-text);
     vertical-align: middle;
 }
 
@@ -358,7 +375,7 @@
 }
 
 .admin-table-pro tr:hover td {
-    background: #fdfdfd;
+    background: var(--admin-bg);
 }
 
 /* ── Badges ─────────────────────────────────────────────────── */
@@ -400,9 +417,9 @@
 }
 
 .admin-glass {
-    background: rgba(255, 255, 255, 0.7);
+    background: var(--admin-card-bg-glass);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid var(--admin-border);
 }
 
 

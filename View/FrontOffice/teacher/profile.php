@@ -6,27 +6,30 @@
 $teacherSidebarActive = 'profile';
 ?>
 
-<div class="dashboard">
+<?php if (!isset($adminSidebarActive)): ?>
+<div class="dashboard teacher-profile-page">
     <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
             <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
-        <div class="dashboard-header">
-            <h1>My Profile</h1>
-            <p>Manage your account information</p>
-        </div>
+<?php endif; ?>
 
-        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+                <div class="dashboard-header" style="<?= isset($adminSidebarActive) ? 'margin-bottom: 2rem;' : '' ?>">
+                    <h1 style="<?= isset($adminSidebarActive) ? 'font-size: 1.8rem; font-weight: 800; color: #1e293b; margin: 0 0 0.5rem 0;' : '' ?>">Mon Profil</h1>
+                    <p style="<?= isset($adminSidebarActive) ? 'color: #64748b; margin: 0;' : '' ?>">Gérez vos informations personnelles et votre sécurité.</p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
             <!-- Profile Card -->
             <div class="table-container">
                 <div style="padding: 40px; text-align: center;">
                     <div style="position: relative; width: 120px; height: 120px; margin: 0 auto 20px;">
                         <?php if (!empty($user['avatar'])): ?>
-                            <img src="<?= APP_URL ?>/uploads/avatars/<?= htmlspecialchars($user['avatar']) ?>"
+                            <img id="profile-avatar-img" src="<?= APP_URL ?>/uploads/avatars/<?= htmlspecialchars($user['avatar']) ?>"
                                  alt="<?= htmlspecialchars($user['name']) ?>"
-                                 style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid var(--yellow);">
+                                 style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary-color);">
                         <?php else: ?>
-                            <div style="width: 120px; height: 120px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 4px solid var(--yellow);">
+                            <div id="profile-avatar-img" style="width: 120px; height: 120px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 4px solid var(--primary-color);">
                                 <svg viewBox="0 0 24 24" width="60" height="60" fill="white">
                                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                                 </svg>
@@ -36,7 +39,7 @@ $teacherSidebarActive = 'profile';
                         <!-- Upload Button -->
                         <form id="avatarUploadForm" style="position: absolute; bottom: 0; right: 0;" enctype="multipart/form-data">
                             <input type="file" id="avatarInput" name="avatar" accept="image/*" style="display: none;" onchange="uploadAvatar()">
-                            <label for="avatarInput" style="cursor: pointer; background: var(--yellow); color: var(--primary-color); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" title="Change profile picture">
+                            <label for="avatarInput" style="cursor: pointer; background: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" title="Change profile picture">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                                     <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
                                 </svg>
@@ -46,11 +49,20 @@ $teacherSidebarActive = 'profile';
                     <h2 style="font-size: 1.5rem;"><?= htmlspecialchars($user['name']) ?></h2>
                     <p style="color: var(--gray-dark); font-size: 0.9rem;"><?= htmlspecialchars($user['email']) ?></p>
                     <p style="margin-top: 15px;">
-                        <span style="padding: 6px 16px; background: var(--yellow); color: var(--primary-color); border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
-                            TEACHER
+                        <span style="padding: 6px 16px; background: #e0e7ff; color: #4338ca; border-radius: 20px; font-size: 0.85rem; font-weight: 700;">
+                            <?= ucfirst(htmlspecialchars($user['role'])) ?>
                         </span>
                     </p>
 
+                    <!-- Generate Avatar Button -->
+                    <div style="margin-top: 20px;">
+                        <button type="button" class="btn btn-primary" onclick="openAvatarGenerator()" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            Generate Avatar from Photo
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -77,7 +89,7 @@ $teacherSidebarActive = 'profile';
                     <div style="margin-bottom: 25px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--primary-color);">Account Type</label>
                         <div style="padding: 12px 16px; background: var(--gray-light); border-radius: var(--border-radius-sm);">
-                            Teacher (Courses can be created by you)
+                            <?= ucfirst(htmlspecialchars($user['role'])) ?>
                         </div>
                     </div>
 
@@ -141,14 +153,12 @@ $teacherSidebarActive = 'profile';
                         <?php endif; ?>
                     </div>
                 </div>
-            </div>
-        </div>
-
-    </div>
+<?php if (!isset($adminSidebarActive)): ?>
             </div>
         </div>
     </div>
 </div>
+<?php endif; ?>
 
 <!-- Face ID Modal -->
 <div id="faceid-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center;">
@@ -179,7 +189,64 @@ $teacherSidebarActive = 'profile';
     </div>
 </div>
 
+<!-- Avatar Generator Modal -->
+<div id="avatar-generator-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9998; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: var(--border-radius-lg); padding: 30px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+        <h3 style="margin: 0 0 10px 0;">Generate Your Avatar</h3>
+        <p style="margin-bottom: 20px; color: var(--gray-dark); font-size: 0.9rem;">Upload a photo of your face and we'll create a cartoon avatar for you.</p>
+
+        <!-- Step 1: Upload -->
+        <div id="avatar-step-upload">
+            <div style="border: 2px dashed var(--primary-color); border-radius: var(--border-radius-lg); padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s;"
+                 ondragover="event.preventDefault(); this.style.background='#f0f0f0'"
+                 ondragleave="this.style.background='transparent'"
+                 ondrop="event.preventDefault(); this.style.background='transparent'; handleAvatarDrop(event)">
+                <input type="file" id="avatar-gen-input" accept="image/*" style="display: none;" onchange="handleAvatarSelect()">
+                <label for="avatar-gen-input" style="cursor: pointer; display: block;">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="var(--primary-color)" style="margin: 0 auto 15px;">
+                        <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>
+                    </svg>
+                    <strong>Click to upload</strong> or drag and drop
+                    <div style="font-size: 0.85rem; color: var(--gray-dark); margin-top: 8px;">JPG, PNG or WEBP (max 10MB)</div>
+                </label>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+                <button type="button" class="btn btn-outline" onclick="closeAvatarGenerator()">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Preview & Generate -->
+        <div id="avatar-step-preview" style="display: none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.95rem;">Your Photo</h4>
+                    <img id="avatar-gen-preview" src="" alt="Your photo" style="width: 100%; border-radius: var(--border-radius-lg); border: 2px solid var(--gray);">
+                </div>
+                <div>
+                    <h4 style="margin: 0 0 10px 0; font-size: 0.95rem;">Generated Avatar</h4>
+                    <div id="avatar-gen-result" style="width: 100%; aspect-ratio: 1; background: #f5f5f5; border-radius: var(--border-radius-lg); display: flex; align-items: center; justify-content: center;">
+                        <span style="color: var(--gray-dark); font-size: 0.85rem;">Avatar will appear here</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="avatar-gen-status" style="padding: 10px; border-radius: var(--border-radius-sm); background: var(--gray-light); text-align: center; margin-bottom: 15px;">
+                Analyzing your photo...
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button type="button" class="btn btn-primary" id="avatar-generate-btn" onclick="generateAvatar()">
+                    Generate Avatar
+                </button>
+                <button type="button" class="btn btn-outline" onclick="resetAvatarGenerator()">Try Another Photo</button>
+                <button type="button" class="btn btn-outline" onclick="closeAvatarGenerator()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 function uploadAvatar() {
@@ -190,13 +257,13 @@ function uploadAvatar() {
 
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
+        Swal.fire('Error', 'File size must be less than 10MB', 'error');
         return;
     }
 
     // Check file type
     if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        Swal.fire('Error', 'Please select an image file', 'error');
         return;
     }
 
@@ -212,7 +279,7 @@ function uploadAvatar() {
         if (data.success) {
             location.reload();
         } else {
-            alert(data.error || 'Failed to upload avatar');
+            Swal.fire('Error', data.error || 'Failed to upload avatar', 'error');
         }
     })
     .catch(err => {
@@ -233,11 +300,8 @@ async function openFaceIdModal() {
     try {
         console.log('Loading models from:', MODELS);
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODELS);
-        console.log('TinyFaceDetector loaded');
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODELS);
-        console.log('FaceLandmark68Net loaded');
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODELS);
-        console.log('FaceRecognitionNet loaded');
         loaded = true;
         document.getElementById('faceid-status').textContent = 'Starting camera...';
 
@@ -247,7 +311,6 @@ async function openFaceIdModal() {
 
         v.onloadedmetadata = () => {
             v.play();
-            console.log('Camera started, starting detection loop');
             setTimeout(detectLoop, 500);
         };
     } catch (e) {
@@ -284,11 +347,6 @@ async function detectLoop() {
             return;
         }
 
-        if (v.videoWidth === 0 || v.videoHeight === 0) {
-            requestAnimationFrame(frame);
-            return;
-        }
-
         try {
             const r = await faceapi.detectSingleFace(v, opts).withFaceLandmarks().withFaceDescriptor();
             if (!r) {
@@ -299,8 +357,7 @@ async function detectLoop() {
             } else {
                 const dims = faceapi.matchDimensions(c, { width: v.videoWidth, height: v.videoHeight }, true);
                 faceapi.draw.drawDetections(c, faceapi.resizeResults(r, dims));
-                faceapi.draw.drawFaceLandmarks(c, faceapi.resizeResults(r, dims));
-
+                
                 const box = r.detection.box;
                 const cx = box.x + box.width / 2;
                 const cy = box.y + box.height / 2;
@@ -320,9 +377,7 @@ async function detectLoop() {
                     document.getElementById('faceid-capture-btn').disabled = true;
                 }
             }
-        } catch (e) {
-            console.error('Detection error:', e);
-        }
+        } catch (e) { console.error(e); }
         requestAnimationFrame(frame);
     }
     frame();
@@ -335,7 +390,6 @@ async function captureFaceId() {
     document.getElementById('faceid-capture-btn').disabled = true;
 
     try {
-        // Check if face is already registered to another user
         const checkResponse = await fetch('<?= APP_ENTRY ?>?url=teacher/check-face-unique', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
@@ -343,9 +397,8 @@ async function captureFaceId() {
         const checkData = await checkResponse.json();
 
         if (checkData.success && checkData.users.length > 0) {
-            // Compare with existing faces
             const currentFace = new Float32Array(currentDescriptor);
-            const THRESHOLD = 0.6; // Euclidean distance threshold for face matching
+            const THRESHOLD = 0.6;
 
             for (const user of checkData.users) {
                 if (user.face_descriptor) {
@@ -353,7 +406,6 @@ async function captureFaceId() {
                         const existingDescriptor = JSON.parse(user.face_descriptor);
                         const existingFace = new Float32Array(existingDescriptor);
                         
-                        // Calculate Euclidean distance
                         let distance = 0;
                         for (let i = 0; i < currentFace.length; i++) {
                             const diff = currentFace[i] - existingFace[i];
@@ -362,19 +414,16 @@ async function captureFaceId() {
                         distance = Math.sqrt(distance);
 
                         if (distance < THRESHOLD) {
-                            alert('This face is already registered to another account (' + user.email + '). Each face can only be associated with one account.');
-                            document.getElementById('faceid-status').textContent = 'Face already registered - use a different face';
+                            Swal.fire('Error', 'This face is already registered to another account.', 'error');
+                            document.getElementById('faceid-status').textContent = 'Face already registered';
                             document.getElementById('faceid-capture-btn').disabled = false;
                             return;
                         }
-                    } catch (e) {
-                        console.error('Error comparing face with user', user.id, e);
-                    }
+                    } catch (e) { console.error(e); }
                 }
             }
         }
 
-        // Face is unique, proceed to save
         document.getElementById('faceid-status').textContent = 'Saving Face ID...';
 
         const response = await fetch('<?= APP_ENTRY ?>?url=teacher/update-face-id', {
@@ -385,37 +434,181 @@ async function captureFaceId() {
 
         const data = await response.json();
         if (data.success) {
-            alert('Face ID saved successfully!');
+            Swal.fire('Success', 'Face ID saved successfully!', 'success').then(() => {
+                location.reload();
+            });
             closeFaceIdModal();
-            location.reload();
         } else {
-            alert('Error: ' + (data.error || 'Failed to save Face ID'));
-            document.getElementById('faceid-status').textContent = 'Error saving Face ID';
+            Swal.fire('Error', data.error || 'Failed to save Face ID', 'error');
         }
     } catch (e) {
-        alert('Error saving Face ID: ' + e.message);
-        document.getElementById('faceid-status').textContent = 'Error: ' + e.message;
+        Swal.fire('Error', e.message, 'error');
     }
 }
 
 async function removeFaceId() {
-    if (!confirm('Are you sure you want to remove your Face ID?')) return;
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "Are you sure you want to remove your Face ID?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, remove it!'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch('<?= APP_ENTRY ?>?url=teacher/remove-face-id', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    Swal.fire('Deleted!', 'Face ID removed successfully!', 'success').then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'Failed to remove Face ID', 'error');
+                }
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
+            }
+        }
+    });
+}
+
+// Avatar Generator Functions
+let uploadedFile = null;
+let detectedFaceData = null;
+let currentImageUrl = null;
+
+function openAvatarGenerator() {
+    document.getElementById('avatar-generator-modal').style.display = 'flex';
+    resetAvatarGenerator();
+}
+
+function closeAvatarGenerator() {
+    document.getElementById('avatar-generator-modal').style.display = 'none';
+}
+
+function resetAvatarGenerator() {
+    document.getElementById('avatar-step-upload').style.display = 'block';
+    document.getElementById('avatar-step-preview').style.display = 'none';
+    document.getElementById('avatar-gen-input').value = '';
+    document.getElementById('avatar-generate-btn').disabled = true;
+    document.getElementById('avatar-gen-result').innerHTML = '<span style="color: var(--gray-dark); font-size: 0.85rem;">Avatar will appear here</span>';
+    uploadedFile = null;
+    detectedFaceData = null;
+}
+
+function handleAvatarDrop(e) {
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+        processAvatarFile(file);
+    }
+}
+
+function handleAvatarSelect() {
+    const fileInput = document.getElementById('avatar-gen-input');
+    if (fileInput.files.length > 0) {
+        processAvatarFile(fileInput.files[0]);
+    }
+}
+
+function processAvatarFile(file) {
+    uploadedFile = file;
+    currentImageUrl = URL.createObjectURL(file);
+    document.getElementById('avatar-step-upload').style.display = 'none';
+    document.getElementById('avatar-step-preview').style.display = 'block';
+    document.getElementById('avatar-gen-preview').src = currentImageUrl;
+    analyzeFace(currentImageUrl);
+}
+
+async function analyzeFace(imageUrl) {
+    const statusEl = document.getElementById('avatar-gen-status');
+    statusEl.textContent = 'Analyzing photo...';
 
     try {
-        const response = await fetch('<?= APP_ENTRY ?>?url=teacher/remove-face-id', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        const MODELS_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URL);
+        await faceapi.nets.ageGenderNet.loadFromUri(MODELS_URL);
 
-        const data = await response.json();
-        if (data.success) {
-            alert('Face ID removed successfully!');
-            location.reload();
-        } else {
-            alert('Error: ' + (data.error || 'Failed to remove Face ID'));
+        const img = new Image();
+        img.src = imageUrl;
+        await new Promise(r => img.onload = r);
+
+        const detection = await faceapi.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withAgeAndGender();
+
+        if (!detection) {
+            statusEl.textContent = 'No face detected.';
+            return;
         }
+
+        const landmarks = detection.landmarks;
+        const jawline = landmarks.getJawOutline();
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width; canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        const cheekX = Math.floor(jawline[2].x + 10);
+        const cheekY = Math.floor(jawline[2].y - 10);
+        const p = ctx.getImageData(cheekX, cheekY, 1, 1).data;
+        const skinTone = '#' + [p[0], p[1], p[2]].map(x => x.toString(16).padStart(2, '0')).join('');
+
+        detectedFaceData = {
+            skinTone: skinTone,
+            gender: detection.gender || 'male',
+            faceShape: 'oval'
+        };
+
+        statusEl.textContent = 'Analysis complete!';
+        document.getElementById('avatar-generate-btn').disabled = false;
+
     } catch (e) {
-        alert('Error removing Face ID: ' + e.message);
+        console.error(e);
+        statusEl.textContent = 'Analysis failed, but you can still generate.';
+        document.getElementById('avatar-generate-btn').disabled = false;
+        detectedFaceData = {};
     }
+}
+
+function generateAvatar() {
+    const statusEl = document.getElementById('avatar-gen-status');
+    const resultContainer = document.getElementById('avatar-gen-result');
+    const btn = document.getElementById('avatar-generate-btn');
+    
+    btn.disabled = true;
+    statusEl.textContent = 'Generating...';
+    resultContainer.innerHTML = 'Wait...';
+
+    const formData = new FormData();
+    formData.append('faceImage', uploadedFile);
+    if (detectedFaceData) formData.append('faceData', JSON.stringify(detectedFaceData));
+
+    fetch('<?= APP_ENTRY ?>?url=teacher/generate-avatar', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            statusEl.textContent = 'Generated!';
+            resultContainer.innerHTML = `<img src="${data.url}" style="width: 100%; border-radius: 12px;">`;
+            document.getElementById('profile-avatar-img').src = data.url;
+            Swal.fire('Success', 'Avatar generated successfully!', 'success').then(() => {
+                closeAvatarGenerator();
+            });
+        } else {
+            Swal.fire('Error', data.error, 'error');
+            btn.disabled = false;
+        }
+    })
+    .catch(e => {
+        console.error(e);
+        btn.disabled = false;
+    });
 }
 </script>
