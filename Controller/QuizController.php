@@ -1133,7 +1133,7 @@ class QuizController extends BaseController
         }
 
         $this->setFlash('success', 'Quiz enregistré.');
-        $this->redirect('teacher/quiz');
+        $this->redirect('teacher-quiz/quiz');
     }
 
     private function teacherEditQuiz($id): void
@@ -1142,7 +1142,7 @@ class QuizController extends BaseController
         $quiz = $this->queryFindQuizWithChapterCourse((int) $id);
         if (!$quiz || (int) ($quiz['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
-            $this->redirect('teacher/quiz');
+            $this->redirect('teacher-quiz/quiz');
             return;
         }
         $teacherId = (int) $_SESSION['user_id'];
@@ -1160,25 +1160,25 @@ class QuizController extends BaseController
     {
         $this->requireTeacher();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('teacher/quiz');
+            $this->redirect('teacher-quiz/quiz');
             return;
         }
         $existing = $this->queryFindQuizWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
-            $this->redirect('teacher/quiz');
+            $this->redirect('teacher-quiz/quiz');
             return;
         }
         $chapterId = (int) ($_POST['chapter_id'] ?? 0);
         if (!$this->queryTeacherChapterOwnedByUser($chapterId, (int) $_SESSION['user_id'])) {
             $this->setFlash('error', 'Chapitre invalide.');
-            $this->redirect('teacher/edit-quiz/' . (int) $id);
+            $this->redirect('teacher-quiz/edit-quiz/' . (int) $id);
             return;
         }
         $meta = $this->validateQuizMetaFromPost($_POST);
         if (!empty($meta['errors'])) {
             $this->setFlash('error', $meta['errors'][0]);
-            $this->redirect('teacher/edit-quiz/' . (int) $id);
+            $this->redirect('teacher-quiz/edit-quiz/' . (int) $id);
             return;
         }
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
@@ -1196,13 +1196,13 @@ class QuizController extends BaseController
         );
         if (count($questions) < 1) {
             $this->setFlash('error', 'Au moins une question requise (saisie ou banque).');
-            $this->redirect('teacher/edit-quiz/' . (int) $id);
+            $this->redirect('teacher-quiz/edit-quiz/' . (int) $id);
             return;
         }
         $qErr = $this->validateNormalizedQuizQuestions($questions);
         if (!empty($qErr)) {
             $this->setFlash('error', $qErr[0]);
-            $this->redirect('teacher/edit-quiz/' . (int) $id);
+            $this->redirect('teacher-quiz/edit-quiz/' . (int) $id);
             return;
         }
         $updated = $this->queryUpdateTeacherQuiz(
@@ -1217,11 +1217,11 @@ class QuizController extends BaseController
         );
         if ($updated === false) {
             $this->setFlash('error', 'Impossible de mettre à jour le quiz (vérifiez la base de données).');
-            $this->redirect('teacher/edit-quiz/' . (int) $id);
+            $this->redirect('teacher-quiz/edit-quiz/' . (int) $id);
             return;
         }
         $this->setFlash('success', 'Quiz mis à jour.');
-        $this->redirect('teacher/quiz');
+        $this->redirect('teacher-quiz/quiz');
     }
 
     private function teacherDeleteQuiz($id): void
@@ -1230,12 +1230,12 @@ class QuizController extends BaseController
         $existing = $this->queryFindQuizWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
-            $this->redirect('teacher/quiz');
+            $this->redirect('teacher-quiz/quiz');
             return;
         }
         $this->queryDeleteTeacherQuiz((int) $id, (int) $_SESSION['user_id']);
         $this->setFlash('success', 'Quiz supprimé.');
-        $this->redirect('teacher/quiz');
+        $this->redirect('teacher-quiz/quiz');
     }
 
     private function teacherDuplicateQuiz($id): void
@@ -1244,7 +1244,7 @@ class QuizController extends BaseController
         $existing = $this->queryFindQuizWithChapterCourse((int) $id);
         if (!$existing || (int) ($existing['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
             $this->setFlash('error', 'Quiz introuvable.');
-            $this->redirect('teacher/quiz');
+            $this->redirect('teacher-quiz/quiz');
             return;
         }
         $cloneQuestions = $existing['questions'] ?? [];
@@ -1264,7 +1264,7 @@ class QuizController extends BaseController
         } else {
             $this->setFlash('success', 'Quiz dupliqué.');
         }
-        $this->redirect('teacher/quiz');
+        $this->redirect('teacher-quiz/quiz');
     }
 
     private function adminAddQuiz(): void
