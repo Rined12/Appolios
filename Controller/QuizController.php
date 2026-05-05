@@ -13,6 +13,43 @@ class QuizController extends BaseController
         return $pdo;
     }
 
+    public function riskQueue()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $filters = [
+            'type' => isset($_GET['type']) ? strtolower(trim((string) $_GET['type'])) : '',
+            'level' => isset($_GET['level']) ? strtoupper(trim((string) $_GET['level'])) : '',
+        ];
+
+        $items = $this->queryAdminRiskQueueItems();
+
+        if ($filters['type'] !== '' && in_array($filters['type'], ['quiz', 'question'], true)) {
+            $items = array_values(array_filter($items, static function ($it) use ($filters) {
+                return isset($it['type']) && strtolower((string) $it['type']) === $filters['type'];
+            }));
+        }
+        if ($filters['level'] !== '' && in_array($filters['level'], ['HIGH', 'MEDIUM', 'LOW'], true)) {
+            $items = array_values(array_filter($items, static function ($it) use ($filters) {
+                return isset($it['risk_level']) && strtoupper((string) $it['risk_level']) === $filters['level'];
+            }));
+        }
+
+        usort($items, static function ($a, $b) {
+            return (int) ($b['risk_score'] ?? 0) <=> (int) ($a['risk_score'] ?? 0);
+        });
+
+        $this->view('BackOffice/admin/risk_queue', [
+            'title' => 'Risk Queue - ' . APP_NAME,
+            'items' => $items,
+            'filters' => $filters,
+            'flash' => $this->getFlash(),
+        ]);
+    }
+
     private function requireTeacher(): void
     {
         if (!$this->isLoggedIn() || (($_SESSION['role'] ?? '') !== 'teacher')) {
@@ -634,6 +671,147 @@ class QuizController extends BaseController
             'attempts' => $this->queryAttemptsByUserWithQuizTitles((int) $_SESSION['user_id']),
             'flash' => $this->getFlash(),
         ]);
+    }
+
+    private function queryAdminRiskQueueItems(int $limit = 120): array
+    {
+        $limit = max(20, min(400, $limit));
+
+        $quizRows = $this->queryAdminRiskyQuizzes($limit);
+        $questionRows = $this->queryAdminRiskyQuestions($limit);
+
+        $out = [];
+        foreach ($quizRows as $r) {
+            $score = (int) ($r['risk_score'] ?? 0);
+            $out[] = [
+                'type' => 'quiz',
+                'id' => (int) ($r['id'] ?? 0),
+                'title' => (string) ($r['title'] ?? ''),
+                'sub' => trim(((string) ($r['course_title'] ?? '')) . ' — ' . ((string) ($r['chapter_title'] ?? ''))),
+                'risk_score' => $score,
+                'risk_level' => $this->riskLevelForScore($score),
+                'reasons' => $this->riskReasonsForRow($r, 'quiz'),
+            ];
+        }
+        foreach ($questionRows as $r) {
+            $score = (int) ($r['risk_score'] ?? 0);
+            $out[] = [
+                'type' => 'question',
+                'id' => (int) ($r['id'] ?? 0),
+                'title' => (string) ($r['title'] ?? ''),
+                'sub' => (string) ($r['author_name'] ?? ''),
+                'risk_score' => $score,
+                'risk_level' => $this->riskLevelForScore($score),
+                'reasons' => $this->riskReasonsForRow($r, 'question'),
+            ];
+        }
+        return $out;
+    }
+
+    private function queryAdminRiskyQuizzes(int $limit): array
+    {
+        $db = $this->getDb();
+        $sql = "SELECT q.id, q.title, q.difficulty, q.status,
+                       ch.title AS chapter_title,
+                       c.title AS course_title,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage
+                FROM quizzes q
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                LEFT JOIN quiz_attempts a ON a.quiz_id = q.id
+                GROUP BY q.id
+                ORDER BY q.created_at DESC
+                LIMIT " . (int) $limit;
+        $stmt = $db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll() : [];
+
+        foreach ($rows as &$r) {
+            $att = (int) ($r['attempts_count'] ?? 0);
+            $avg = (float) ($r['avg_percentage'] ?? 0);
+            $risk = 0;
+            $risk += (int) round(max(0, min(1, (10 - $att) / 10)) * 40);
+            $risk += (int) round(max(0, min(1, (55 - $avg) / 55)) * 60);
+            $r['risk_score'] = max(0, min(100, $risk));
+        }
+        unset($r);
+
+        usort($rows, static function ($a, $b) {
+            return (int) ($b['risk_score'] ?? 0) <=> (int) ($a['risk_score'] ?? 0);
+        });
+
+        return array_slice($rows, 0, min($limit, count($rows)));
+    }
+
+    private function queryAdminRiskyQuestions(int $limit): array
+    {
+        $db = $this->getDb();
+        $sql = "SELECT qb.id, COALESCE(NULLIF(qb.title,''), CONCAT('Question #', qb.id)) AS title,
+                       u.name AS author_name,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage
+                FROM question_bank qb
+                JOIN users u ON u.id = qb.created_by
+                LEFT JOIN quiz_question_bank qqb ON qqb.question_bank_id = qb.id
+                LEFT JOIN quiz_attempts a ON a.quiz_id = qqb.quiz_id
+                GROUP BY qb.id
+                ORDER BY qb.created_at DESC
+                LIMIT " . (int) $limit;
+        $stmt = $db->query($sql);
+        $rows = $stmt ? $stmt->fetchAll() : [];
+
+        foreach ($rows as &$r) {
+            $att = (int) ($r['attempts_count'] ?? 0);
+            $avg = (float) ($r['avg_percentage'] ?? 0);
+            $risk = 0;
+            $risk += (int) round(max(0, min(1, (10 - $att) / 10)) * 45);
+            $risk += (int) round(max(0, min(1, (55 - $avg) / 55)) * 55);
+            $r['risk_score'] = max(0, min(100, $risk));
+        }
+        unset($r);
+
+        usort($rows, static function ($a, $b) {
+            return (int) ($b['risk_score'] ?? 0) <=> (int) ($a['risk_score'] ?? 0);
+        });
+
+        return array_slice($rows, 0, min($limit, count($rows)));
+    }
+
+    private function riskLevelForScore(int $score): string
+    {
+        if ($score >= 70) {
+            return 'HIGH';
+        }
+        if ($score >= 40) {
+            return 'MEDIUM';
+        }
+        return 'LOW';
+    }
+
+    private function riskReasonsForRow(array $row, string $type): array
+    {
+        $reasons = [];
+        $att = (int) ($row['attempts_count'] ?? 0);
+        $avg = (float) ($row['avg_percentage'] ?? 0);
+
+        if ($att <= 0) {
+            $reasons[] = 'Aucune tentative';
+        } elseif ($att < 3) {
+            $reasons[] = 'Peu de tentatives';
+        }
+
+        if ($avg > 0 && $avg < 45) {
+            $reasons[] = 'Moyenne faible';
+        }
+
+        if ($type === 'quiz') {
+            $st = (string) ($row['status'] ?? '');
+            if ($st === 'pending') {
+                $reasons[] = 'En attente';
+            }
+        }
+
+        return $reasons;
     }
 
     private function validateStudentQuizAnswers($answers, array $questions): ?string

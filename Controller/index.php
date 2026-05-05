@@ -66,9 +66,22 @@ if (!empty($segments)) {
         ][$first];
     } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home', 'book', 'admin-quiz', 'student-quiz', 'teacher-quiz'], true)) {
         if (in_array($first, ['admin-quiz', 'student-quiz'], true)) {
-            $controller = 'QuizController';
-            $action = $second !== '' ? toCamelCaseAction($second) : 'quiz';
-            $params = array_slice($segments, 2);
+            $adminQuizQuestionActions = [
+                'questions',
+                'add-question',
+                'store-question',
+                'edit-question',
+                'update-question',
+            ];
+            if ($first === 'admin-quiz' && in_array(strtolower($second), $adminQuizQuestionActions, true)) {
+                $controller = 'QuestionController';
+                $action = $second !== '' ? toCamelCaseAction($second) : 'questions';
+                $params = array_slice($segments, 2);
+            } else {
+                $controller = 'QuizController';
+                $action = $second !== '' ? toCamelCaseAction($second) : 'quiz';
+                $params = array_slice($segments, 2);
+            }
         } elseif ($first === 'teacher-quiz') {
             $teacherQuestionActions = [
                 'questions',
