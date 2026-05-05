@@ -51,6 +51,14 @@ $flash = $flash ?? null;
                                         <div class="pro-cell-sub">
                                             Impact: <?= (int) ($it['score'] ?? 0) ?>/100 · <?= (int) ($it['attempts'] ?? 0) ?> tentatives · <?= (int) round((float) ($it['avg'] ?? 0)) ?>%
                                         </div>
+                                        <div class="pro-cell-sub" style="margin-top: 6px; display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; text-align:left;">
+                                            <div style="opacity:.95;">Réussite: <strong><?= htmlspecialchars((string) ($it['pass_rate'] ?? '0')) ?>%</strong></div>
+                                            <div style="opacity:.95;">Échec: <strong><?= htmlspecialchars((string) ($it['fail_rate'] ?? '0')) ?>%</strong></div>
+                                            <div style="opacity:.95;">Best/Worst: <strong><?= (int) ($it['best'] ?? 0) ?>%</strong> / <strong><?= (int) ($it['worst'] ?? 0) ?>%</strong></div>
+                                            <div style="opacity:.95;">Stabilité (σ): <strong><?= htmlspecialchars((string) ($it['std'] ?? '0')) ?></strong></div>
+                                            <div style="opacity:.95;">Moy 7j: <strong><?= htmlspecialchars((string) ($it['trend_7d'] ?? '0')) ?>%</strong></div>
+                                            <div style="opacity:.95;">Δ 7j: <strong><?= htmlspecialchars((string) ($it['trend_delta'] ?? '0')) ?></strong></div>
+                                        </div>
                                         <div style="margin-top: 6px; display:flex; gap: 8px; justify-content:flex-end; flex-wrap:wrap;">
                                             <a class="btn btn-outline" style="padding: 6px 10px;" href="<?= APP_ENTRY ?>?url=teacher-quiz/edit-quiz/<?= (int) ($it['id'] ?? 0) ?>">Éditer</a>
                                             <a class="btn btn-outline" style="padding: 6px 10px;" href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz-stats">Stats</a>

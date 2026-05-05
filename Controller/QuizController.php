@@ -30,14 +30,28 @@ class QuizController extends BaseController
             $attempts = (int) ($r['attempts_count'] ?? 0);
             $avg = (float) ($r['avg_percentage'] ?? 0);
             $status = (string) ($r['status'] ?? '');
+            $failRate = (float) ($r['fail_rate'] ?? 0);
+            $passRate = (float) ($r['pass_rate'] ?? 0);
+            $std = (float) ($r['std_percentage'] ?? 0);
+            $best = (int) ($r['best_percentage'] ?? 0);
+            $worst = (int) ($r['worst_percentage'] ?? 0);
+            $trend7 = (float) ($r['trend_7d'] ?? 0);
+            $trendDelta = (float) ($r['trend_delta'] ?? 0);
 
             $attemptsNorm = log((float) ($attempts + 1), 10) / log(51.0, 10);
             if ($attemptsNorm < 0) $attemptsNorm = 0;
             if ($attemptsNorm > 1) $attemptsNorm = 1;
 
             $avgNorm = 1.0 - max(0.0, min(1.0, $avg / 100.0));
+            $failNorm = max(0.0, min(1.0, $failRate));
+            $instabilityNorm = max(0.0, min(1.0, $std / 30.0));
 
-            $score = (int) round((($attemptsNorm * 0.55) + ($avgNorm * 0.45)) * 100.0);
+            $trendPenalty = 0.0;
+            if ($trendDelta < -5.0) {
+                $trendPenalty = 0.20;
+            }
+
+            $score = (int) round((($attemptsNorm * 0.40) + ($avgNorm * 0.30) + ($failNorm * 0.20) + ($instabilityNorm * 0.10) + $trendPenalty) * 100.0);
             if ($status === 'pending') {
                 $score = min(100, $score + 10);
             }
@@ -53,11 +67,22 @@ class QuizController extends BaseController
                 $recs[] = 'Manque de données : encourage les étudiants à tenter ce quiz (partage / annonce / devoir).';
             }
             if ($attempts >= 10 && $avg <= 45) {
-                $recs[] = 'Quiz difficile : vérifie les questions les plus piégeuses et ajoute 1–2 questions plus progressives.';
-            } elseif ($attempts >= 10 && $avg >= 85) {
-                $recs[] = 'Quiz trop facile : augmente la difficulté ou ajoute des questions avancées.';
-            } else {
-                $recs[] = 'Quiz équilibré : tu peux améliorer la couverture en ajoutant une question ciblée sur les notions clés.';
+                $recs[] = 'Difficulté trop élevée : simplifie 1–2 questions ou ajoute une progression (beginner -> intermediate).';
+            }
+            if ($attempts >= 10 && $avg >= 85) {
+                $recs[] = 'Trop facile : augmente la difficulté ou ajoute des questions avancées et distracteurs plus proches.';
+            }
+            if ($attempts >= 10 && $failRate >= 0.50) {
+                $recs[] = 'Taux d’échec élevé : vérifie l’énoncé et la correction (risque de piège ou ambiguïté).';
+            }
+            if ($attempts >= 10 && $std >= 22) {
+                $recs[] = 'Quiz instable : résultats très dispersés. Ajoute une question “tampon” plus basique pour stabiliser.';
+            }
+            if ($attempts >= 10 && $trendDelta < -5.0) {
+                $recs[] = 'Tendance 7 jours en baisse : vérifie si le chapitre vient d’être vu (besoin de rappel) ou si la difficulté est montée.';
+            }
+            if (empty($recs)) {
+                $recs[] = 'Quiz OK : continue à itérer en ajoutant 1 question ciblée sur les notions qui posent problème.';
             }
             if ($status === 'pending') {
                 $recs[] = 'Statut en attente : pense à soumettre/valider le quiz pour le rendre visible.';
@@ -69,6 +94,13 @@ class QuizController extends BaseController
                 'sub' => trim(((string) ($r['course_title'] ?? '')) . ' — ' . ((string) ($r['chapter_title'] ?? ''))),
                 'attempts' => $attempts,
                 'avg' => round($avg, 1),
+                'pass_rate' => round($passRate * 100.0, 1),
+                'fail_rate' => round($failRate * 100.0, 1),
+                'std' => round($std, 1),
+                'best' => $best,
+                'worst' => $worst,
+                'trend_7d' => round($trend7, 1),
+                'trend_delta' => round($trendDelta, 1),
                 'score' => $score,
                 'level' => $level,
                 'recommendations' => $recs,
@@ -138,7 +170,17 @@ class QuizController extends BaseController
                        ch.title AS chapter_title,
                        c.title AS course_title,
                        COUNT(a.id) AS attempts_count,
-                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       COALESCE(ROUND(STDDEV_POP(a.percentage), 1), 0) AS std_percentage,
+                       COALESCE(MAX(a.percentage), 0) AS best_percentage,
+                       COALESCE(MIN(a.percentage), 0) AS worst_percentage,
+                       COALESCE(AVG(CASE WHEN a.percentage >= 50 THEN 1 ELSE 0 END), 0) AS pass_rate,
+                       COALESCE(AVG(CASE WHEN a.percentage < 50 THEN 1 ELSE 0 END), 0) AS fail_rate,
+                       COALESCE(ROUND(AVG(CASE WHEN a.submitted_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN a.percentage END), 1), 0) AS trend_7d,
+                       COALESCE(ROUND(
+                           AVG(CASE WHEN a.submitted_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN a.percentage END)
+                           - AVG(CASE WHEN a.submitted_at >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND a.submitted_at < DATE_SUB(NOW(), INTERVAL 7 DAY) THEN a.percentage END)
+                       , 1), 0) AS trend_delta
                 FROM quizzes q
                 JOIN chapters ch ON ch.id = q.chapter_id
                 JOIN courses c ON c.id = ch.course_id
