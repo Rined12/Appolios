@@ -9,9 +9,10 @@ require_once __DIR__ . '/../Model/User.php';
 require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
-require_once __DIR__ . '/../Controller/AvatarGenerator.php';
+require_once __DIR__ . '/../Controller/ActivityLogger.php';
 
 class TeacherController extends BaseController {
+    use ActivityLogger;
 
     /**
      * Route alias for /teacher/courses
@@ -28,10 +29,10 @@ class TeacherController extends BaseController {
     }
 
     /**
-     * Check if user is teacher
+     * Check if user is teacher or admin
      */
     protected function isTeacher() {
-        return $this->isLoggedIn() && $_SESSION['role'] === 'teacher';
+        return $this->isLoggedIn() && ($_SESSION['role'] === 'teacher' || $_SESSION['role'] === 'admin');
     }
 
     /**
@@ -955,6 +956,9 @@ class TeacherController extends BaseController {
 
     public function updateUser($id, $data)
     {
+        // Get old data for audit trail
+        $oldUser = $this->findUserById($id);
+
         $fields = [];
         $values = [];
         foreach ($data as $key => $value) {
@@ -964,7 +968,14 @@ class TeacherController extends BaseController {
         $values[] = $id;
         $sql = "UPDATE users SET " . implode(', ', $fields) . " WHERE id = ?";
         $stmt = $this->getDb()->prepare($sql);
-        return $stmt->execute($values);
+        
+        $result = $stmt->execute($values);
+        
+        if ($result && $oldUser) {
+            $this->logDiff('update_user', $oldUser, $data, "User updated profile:");
+        }
+
+        return $result;
     }
 
     public function getUsersWithFaceDescriptors()

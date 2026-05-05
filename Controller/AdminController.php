@@ -4,15 +4,11 @@
  * Handles admin dashboard and management
  */
 
-require_once __DIR__ . '/../Controller/BaseController.php';
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../Model/Course.php';
-require_once __DIR__ . '/../Model/Enrollment.php';
-require_once __DIR__ . '/../Model/Evenement.php';
-require_once __DIR__ . '/../Model/EvenementRessource.php';
+require_once __DIR__ . '/../Controller/ActivityLogger.php';
 
 class AdminController extends BaseController
 {
+    use ActivityLogger;
 
     /**
      * Admin dashboard
@@ -247,14 +243,12 @@ class AdminController extends BaseController
         $sql = "UPDATE users SET is_blocked = 1, ban_until = NULL WHERE id = ?";
         $stmt = $this->getDb()->prepare($sql);
         if ($stmt->execute([$id])) {
-            // Log activity
-            $this->logActivity(
+            // Log Diff
+            $this->logDiff(
                 'block_user',
-                "Admin blocked user: {$user['name']} ({$user['email']})",
-                $_SESSION['user_id'],
-                $_SESSION['user_name'],
-                $_SESSION['user_email'],
-                'admin'
+                ['is_blocked' => $user['is_blocked'], 'ban_until' => $user['ban_until']],
+                ['is_blocked' => 1, 'ban_until' => null],
+                "Admin blocked user: {$user['name']} ({$user['email']})"
             );
 
             $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been blocked permanently.');
@@ -323,14 +317,12 @@ class AdminController extends BaseController
         $stmt = $this->getDb()->prepare($sql);
 
         if ($stmt->execute(['ban_until' => $banUntil, 'id' => $id])) {
-            // Log activity
-            $this->logActivity(
+            // Log Diff
+            $this->logDiff(
                 'ban_user',
-                "Admin " . $banMessage . ": {$user['name']} ({$user['email']})",
-                $_SESSION['user_id'],
-                $_SESSION['user_name'],
-                $_SESSION['user_email'],
-                'admin'
+                ['is_blocked' => $user['is_blocked'], 'ban_until' => $user['ban_until']],
+                ['is_blocked' => 1, 'ban_until' => $banUntil],
+                "Admin " . $banMessage . ": {$user['name']}"
             );
 
             $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been ' . $banMessage . '.');
@@ -363,14 +355,12 @@ class AdminController extends BaseController
         $sql = "UPDATE users SET is_blocked = 0, ban_until = NULL WHERE id = ?";
         $stmt = $this->getDb()->prepare($sql);
         if ($stmt->execute([$id])) {
-            // Log activity
-            $this->logActivity(
+            // Log Diff
+            $this->logDiff(
                 'unblock_user',
-                "Admin unblocked user: {$user['name']} ({$user['email']})",
-                $_SESSION['user_id'],
-                $_SESSION['user_name'],
-                $_SESSION['user_email'],
-                'admin'
+                ['is_blocked' => $user['is_blocked'], 'ban_until' => $user['ban_until']],
+                ['is_blocked' => 0, 'ban_until' => null],
+                "Admin unblocked user: {$user['name']}"
             );
 
             $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been unblocked successfully.');

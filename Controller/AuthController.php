@@ -47,7 +47,7 @@ class AuthController extends BaseController
         $password = $_POST['password'] ?? '';
         $isAdminLogin = isset($_POST['admin_login']) && $_POST['admin_login'] === '1';
 
-// Validate reCAPTCHA v2
+        // Validate reCAPTCHA v2
         $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
         if (empty($recaptchaResponse)) {
             $this->setFlash('error', 'Please complete the reCAPTCHA verification.');
@@ -118,6 +118,129 @@ class AuthController extends BaseController
                 $this->redirect('login');
             }
         }
+    }
+
+    /**
+     * Redirect to Google OAuth
+     */
+    public function googleLogin()
+    {
+        $params = [
+            'client_id' => GOOGLE_CLIENT_ID,
+            'redirect_uri' => GOOGLE_REDIRECT_URL,
+            'response_type' => 'code',
+            'scope' => 'email profile',
+            'access_type' => 'online',
+            'prompt' => 'select_account'
+        ];
+
+        $url = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query($params);
+        header('Location: ' . $url);
+        exit();
+    }
+
+    /**
+     * Handle Google OAuth Callback
+     */
+    public function googleCallback()
+    {
+        if (!isset($_GET['code'])) {
+            $this->setFlash('error', 'Google authentication failed.');
+            $this->redirect('login');
+            return;
+        }
+
+        $code = $_GET['code'];
+
+        // Exchange code for access token
+        $params = [
+            'client_id' => GOOGLE_CLIENT_ID,
+            'client_secret' => GOOGLE_CLIENT_SECRET,
+            'redirect_uri' => GOOGLE_REDIRECT_URL,
+            'grant_type' => 'authorization_code',
+            'code' => $code
+        ];
+
+        $ch = curl_init('https://oauth2.googleapis.com/token');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Necessary for some local XAMPP setups
+        $response = curl_exec($ch);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($response === false) {
+            $this->setFlash('error', 'CURL Error: ' . $curlError);
+            $this->redirect('login');
+            return;
+        }
+
+        $data = json_decode($response, true);
+
+        if (!isset($data['access_token'])) {
+            $errorDetail = $data['error_description'] ?? ($data['error'] ?? 'Unknown error');
+            $this->setFlash('error', 'Google Token Error: ' . $errorDetail);
+            $this->redirect('login');
+            return;
+        }
+
+        $accessToken = $data['access_token'];
+
+        // Get user info from Google
+        $ch = curl_init('https://www.googleapis.com/oauth2/v3/userinfo');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Bearer ' . $accessToken]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Necessary for some local XAMPP setups
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        $googleUser = json_decode($response, true);
+
+        if (!isset($googleUser['email'])) {
+            $this->setFlash('error', 'Failed to retrieve user info from Google.');
+            $this->redirect('login');
+            return;
+        }
+
+        $email = $googleUser['email'];
+        $name = $googleUser['name'] ?? 'Google User';
+        $googleId = $googleUser['sub'];
+
+        // Check if user exists in database
+        $user = $this->findUserByEmail($email);
+
+        if ($user) {
+            // Check if user is blocked
+            if ($this->isUserBlocked($user['id'])) {
+                $this->setFlash('error', 'Your account has been blocked.');
+                $this->redirect('login');
+                return;
+            }
+        } else {
+            // Auto-register new user as student
+            $userId = $this->createUser([
+                'name' => $name,
+                'email' => $email,
+                'password' => bin2hex(random_bytes(16)), // Random password
+                'role' => 'student'
+            ]);
+            $user = $this->findUserById($userId);
+        }
+
+        // Log the user in
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_name'] = $user['name'];
+        $_SESSION['user_email'] = $user['email'];
+        $_SESSION['role'] = $user['role'];
+        $_SESSION['logged_in'] = true;
+        $_SESSION['login_time'] = time();
+
+        $this->logActivity('login_google', "User logged in via Google: {$user['email']}");
+        $this->setFlash('success', 'Welcome back, ' . $user['name'] . ' (via Google)!');
+        
+        $this->redirectByRole($user['role']);
     }
 
     /**

@@ -39,12 +39,17 @@ define('SESSION_NAME', 'APPOLIOS_SESSION');
 // Security
 define('HASH_COST', 12);
 
-// Google reCAPTCHA v2 Configuration
-// Get your keys at: https://www.google.com/recaptcha/admin
-define('RECAPTCHA_SITE_KEY', '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI');
-define('RECAPTCHA_SECRET_KEY', '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe');
+// API Credentials (Loaded from a separate file ignored by Git)
+if (file_exists(__DIR__ . '/credentials.php')) {
+    require_once __DIR__ . '/credentials.php';
+}
+
+// Google reCAPTCHA Configuration
 define('RECAPTCHA_VERIFY_URL', 'https://www.google.com/recaptcha/api/siteverify');
 define('RECAPTCHA_MIN_SCORE', 0.5); // Minimum score threshold (0.1 - 0.9)
+
+// Google OAuth Configuration
+define('GOOGLE_REDIRECT_URL', APP_ENTRY . '?url=auth/google-callback');
 
 // Debug Mode (Set to false in production)
 define('DEBUG_MODE', true);

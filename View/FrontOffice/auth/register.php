@@ -44,7 +44,8 @@ unset($_SESSION['errors']);
 
 
 
-            <form action="<?= APP_ENTRY ?>?url=signup" method="POST" enctype="multipart/form-data" onsubmit="return validateRecaptcha()">
+            <form action="<?= APP_ENTRY ?>?url=signup" method="POST" enctype="multipart/form-data"
+                onsubmit="return validateRecaptcha()">
                 <div class="neo-field">
                     <label for="name">Full Name</label>
                     <input type="text" id="name" name="name" placeholder="Your full name"
@@ -69,7 +70,8 @@ unset($_SESSION['errors']);
                             onmouseout="this.style.transform='translateY(-50%)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)';"
                             title="Generate strong password">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: inline; margin-right: 4px;">
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                                style="display: inline; margin-right: 4px;">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                             </svg>
@@ -95,25 +97,41 @@ unset($_SESSION['errors']);
                     </div>
 
                     <!-- Password Strength Checker UI -->
-                    <div class="password-strength-checker" style="margin-top: 12px; padding: 12px; background: rgba(15, 23, 42, 0.2); border-radius: 12px; border: 1px solid rgba(84, 140, 168, 0.2);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <span style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Strength</span>
-                            <span id="strength-text" style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Too Weak</span>
+                    <div class="password-strength-checker"
+                        style="margin-top: 12px; padding: 12px; background: rgba(15, 23, 42, 0.2); border-radius: 12px; border: 1px solid rgba(84, 140, 168, 0.2);">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span
+                                style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Strength</span>
+                            <span id="strength-text" style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Too
+                                Weak</span>
                         </div>
-                        <div style="height: 6px; background: rgba(226, 232, 240, 0.1); border-radius: 10px; overflow: hidden; margin-bottom: 12px;">
-                            <div id="strength-bar" style="height: 100%; width: 0%; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: #ef4444;"></div>
+                        <div
+                            style="height: 6px; background: rgba(226, 232, 240, 0.1); border-radius: 10px; overflow: hidden; margin-bottom: 12px;">
+                            <div id="strength-bar"
+                                style="height: 100%; width: 0%; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: #ef4444;">
+                            </div>
                         </div>
                         <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: 6px;">
-                            <li id="req-length" style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
-                                <div class="req-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></div>
+                            <li id="req-length"
+                                style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                                <div class="req-dot"
+                                    style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;">
+                                </div>
                                 At least 8 characters
                             </li>
-                            <li id="req-number" style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
-                                <div class="req-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></div>
+                            <li id="req-number"
+                                style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                                <div class="req-dot"
+                                    style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;">
+                                </div>
                                 Contains a number
                             </li>
-                            <li id="req-special" style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
-                                <div class="req-dot" style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></div>
+                            <li id="req-special"
+                                style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
+                                <div class="req-dot"
+                                    style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;">
+                                </div>
                                 Contains a special character
                             </li>
                         </ul>
@@ -391,7 +409,7 @@ unset($_SESSION['errors']);
 
             <script>
                 // Password Strength Logic
-                (function() {
+                (function () {
                     const pwd = document.getElementById('password');
                     const bar = document.getElementById('strength-bar');
                     const text = document.getElementById('strength-text');
@@ -402,7 +420,7 @@ unset($_SESSION['errors']);
                     pwd.addEventListener('input', () => {
                         const val = pwd.value;
                         let strength = 0;
-                        
+
                         const hasLen = val.length >= 8;
                         const hasNum = /\d/.test(val);
                         const hasSpec = /[!@#$%^&*(),.?":{}|<>]/.test(val);
@@ -412,7 +430,7 @@ unset($_SESSION['errors']);
                         if (hasSpec) strength += 33.34;
 
                         bar.style.width = strength + '%';
-                        
+
                         // Update UI colors and text
                         updateReq(reqLen, hasLen);
                         updateReq(reqNum, hasNum);
@@ -455,7 +473,7 @@ unset($_SESSION['errors']);
                     href="<?= APP_ENTRY ?>?url=login" style="color: #93c5fd;">Sign in</a></p>
 
             <hr style="border: 0; border-top: 1px dashed rgba(255,255,255,0.1); margin: 2rem 0;">
-            
+
             <!-- OCR Tool for Registration (Optional) -->
             <!-- OCR Tool moved to sidebar -->
         </div>
@@ -482,7 +500,8 @@ unset($_SESSION['errors']);
         </div>
         <h3 style="margin:0 0 4px;color:#1e293b;font-size:1.2rem;font-weight:800;">Register Your Face ID</h3>
         <p style="margin:0 0 16px;color:#64748b;font-size:.85rem;">Position your face in the ring then click
-            <strong>Capture</strong>. Each face can only be linked to one account.</p>
+            <strong>Capture</strong>. Each face can only be linked to one account.
+        </p>
 
         <p id="rf-status" style="margin:0 0 12px;color:#64748b;font-size:.85rem;">Loading models…</p>
 
@@ -521,8 +540,13 @@ unset($_SESSION['errors']);
 
 <style>
     @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     @keyframes rfSlideUp {
@@ -600,10 +624,10 @@ unset($_SESSION['errors']);
                 const v = el('rf-video'); v.srcObject = stream; await v.play();
                 setStatus('Position your face in the ring…', 40);
                 startPreviewLoop();
-            } catch (e) { 
-                setStatus('Error', 0); 
+            } catch (e) {
+                setStatus('Error', 0);
                 const msg = !navigator.onLine ? 'Network error: Check your internet connection.' : 'Camera error: ' + e.message;
-                showErr(msg); 
+                showErr(msg);
             }
         };
 

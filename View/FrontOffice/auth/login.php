@@ -41,7 +41,8 @@
             <p class="neo-muted" style="margin-top: 0.45rem;">Use your APPOLIOS account credentials.</p>
 
 
-            <form id="loginForm" action="<?= APP_ENTRY ?>?url=authenticate" method="POST" onsubmit="return validateRecaptcha()">
+            <form id="loginForm" action="<?= APP_ENTRY ?>?url=authenticate" method="POST"
+                onsubmit="return validateRecaptcha()">
                 <div class="neo-field">
                     <label for="email">Email Address</label>
                     <input type="email" id="email" name="email" placeholder="you@example.com" required>
@@ -81,10 +82,12 @@
                     In</button>
             </form>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.85rem; font-size: 0.9rem;">
-                <p class="neo-muted" style="margin: 0;">Don't have an account? <a
-                        href="<?= APP_ENTRY ?>?url=register" style="color: #93c5fd;">Create one</a></p>
-                <a href="#" onclick="openForgotModal(); return false;" style="color: #93c5fd; font-weight: 600;">Forgot Password?</a>
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.85rem; font-size: 0.9rem;">
+                <p class="neo-muted" style="margin: 0;">Don't have an account? <a href="<?= APP_ENTRY ?>?url=register"
+                        style="color: #93c5fd;">Create one</a></p>
+                <a href="#" onclick="openForgotModal(); return false;" style="color: #93c5fd; font-weight: 600;">Forgot
+                    Password?</a>
             </div>
 
             <!-- Face ID Divider -->
@@ -106,6 +109,21 @@
                 </svg>
                 Login with Face ID
             </button>
+
+            <!-- Google Login Button -->
+            <a href="<?= APP_ENTRY ?>?url=auth/google-login"
+                style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 20px;border:1px solid #e2e8f0;border-radius:10px;background:white;color:#1e293b;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .25s;text-decoration:none;margin-top:12px;box-shadow: 0 1px 3px rgba(0,0,0,0.1);"
+                onmouseover="this.style.background='#f8fafc';this.style.borderColor='#cbd5e1';"
+                onmouseout="this.style.background='white';this.style.borderColor='#e2e8f0';">
+                <svg width="18" height="18" viewBox="0 0 48 48">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                    <path fill="none" d="M0 0h48v48H0z"/>
+                </svg>
+                Sign in with Google
+            </a>
         </div>
 
         <script>
@@ -161,7 +179,8 @@
             </svg>
         </div>
         <h3 style="margin:0 0 6px;color:#1e293b;font-size:1.25rem;font-weight:800;">Forgot Password?</h3>
-        <p style="margin:0 0 18px;color:#64748b;font-size:.88rem;">Enter your email and we'll send you a verification code.</p>
+        <p style="margin:0 0 18px;color:#64748b;font-size:.88rem;">Enter your email and we'll send you a verification
+            code.</p>
 
         <?php if (isset($flash)): ?>
             <div class="neo-alert <?= $flash['type'] === 'error' ? 'error' : 'success' ?>" style="margin-bottom: 1rem;">
@@ -171,7 +190,8 @@
 
         <form action="<?= APP_ENTRY ?>?url=request-password-reset" method="POST" style="text-align: left;">
             <div class="neo-field" style="margin-bottom: 1.25rem;">
-                <label for="forgot-email" style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b;">Email Address</label>
+                <label for="forgot-email"
+                    style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b;">Email Address</label>
                 <input type="email" id="forgot-email" name="email" placeholder="you@example.com" required
                     style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem;">
             </div>
@@ -179,7 +199,8 @@
         </form>
 
         <p style="margin: 16px 0 0; color: #64748b; font-size: 0.85rem;">
-            Remember your password? <a href="#" onclick="closeForgotModal(); return false;" style="color: #548CA8; font-weight: 600;">Sign In</a>
+            Remember your password? <a href="#" onclick="closeForgotModal(); return false;"
+                style="color: #548CA8; font-weight: 600;">Sign In</a>
         </p>
     </div>
 </div>
@@ -204,23 +225,34 @@
 
         <form action="<?= APP_ENTRY ?>?url=verify-reset-code" method="POST" style="text-align: left;">
             <div class="neo-field" style="margin-bottom: 1.25rem;">
-                <label for="verify-code" style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b;">Verification Code</label>
-                <input type="text" id="verify-code" name="code" placeholder="1234" maxlength="4" pattern="[0-9]{4}" required
+                <label for="verify-code"
+                    style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b;">Verification
+                    Code</label>
+                <input type="text" id="verify-code" name="code" placeholder="1234" maxlength="4" pattern="[0-9]{4}"
+                    required
                     style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 1.5rem; text-align: center; letter-spacing: 8px; font-weight: 700;">
             </div>
             <button type="submit" class="neo-btn neo-btn-primary" style="width: 100%;">Verify Code</button>
         </form>
 
         <p style="margin: 16px 0 0; color: #64748b; font-size: 0.85rem;">
-            Didn't receive the code? <a href="#" onclick="closeVerifyCodeModal(); openForgotModal(); return false;" style="color: #548CA8; font-weight: 600;">Request new code</a>
+            Didn't receive the code? <a href="#" onclick="closeVerifyCodeModal(); openForgotModal(); return false;"
+                style="color: #548CA8; font-weight: 600;">Request new code</a>
         </p>
     </div>
 </div>
 
 <style>
     @keyframes vcSlideUp {
-        from { opacity: 0; transform: translateY(28px) scale(.97) }
-        to { opacity: 1; transform: translateY(0) scale(1) }
+        from {
+            opacity: 0;
+            transform: translateY(28px) scale(.97)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1)
+        }
     }
 </style>
 
@@ -234,7 +266,7 @@
     }
 
     // Close modal when clicking outside
-    window.onclick = function(event) {
+    window.onclick = function (event) {
         if (event.target.id === 'verify-code-modal') {
             closeVerifyCodeModal();
         }
@@ -243,8 +275,15 @@
 
 <style>
     @keyframes fpSlideUp {
-        from { opacity: 0; transform: translateY(28px) scale(.97) }
-        to { opacity: 1; transform: translateY(0) scale(1) }
+        from {
+            opacity: 0;
+            transform: translateY(28px) scale(.97)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1)
+        }
     }
 </style>
 
@@ -258,7 +297,7 @@
     }
 
     // Close modal when clicking outside
-    window.onclick = function(event) {
+    window.onclick = function (event) {
         if (event.target.id === 'forgot-modal') {
             closeForgotModal();
         }
@@ -335,70 +374,70 @@
 
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script>
-    (function () {
-        const MODELS = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
-        const LOGIN_URL = '<?= APP_ENTRY ?>?url=auth/face-login-admin';
-        let stream = null, loop = null, loaded = false, detecting = false;
+        (function () {
+            const MODELS = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+            const LOGIN_URL = '<?= APP_ENTRY ?>?url=auth/face-login-admin';
+            let stream = null, loop = null, loaded = false, detecting = false;
 
-        function el(id) { return document.getElementById(id); }
-        function setStatus(t, p) { el('lf-status').textContent = t; if (p !== undefined) el('lf-prog').style.width = p + '%'; }
-        function showErr(m) { el('lf-error').style.display = 'block'; el('lf-error').textContent = m; }
-        function hideErr() { el('lf-error').style.display = 'none'; }
+            function el(id) { return document.getElementById(id); }
+            function setStatus(t, p) { el('lf-status').textContent = t; if (p !== undefined) el('lf-prog').style.width = p + '%'; }
+            function showErr(m) { el('lf-error').style.display = 'block'; el('lf-error').textContent = m; }
+            function hideErr() { el('lf-error').style.display = 'none'; }
 
-        async function loadModels() {
-            if (loaded) return;
-            await Promise.all([
-                faceapi.nets.tinyFaceDetector.loadFromUri(MODELS),
-                faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODELS),
-                faceapi.nets.faceRecognitionNet.loadFromUri(MODELS)
-            ]);
-            loaded = true;
-        }
+            async function loadModels() {
+                if (loaded) return;
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODELS),
+                    faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODELS),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODELS)
+                ]);
+                loaded = true;
+            }
 
-        window.openLoginFaceModal = async function () {
-            el('login-face-modal').style.display = 'flex';
-            hideErr();
-            setStatus('Loading face recognition models…', 5);
-            try {
-                await loadModels();
-                setStatus('Starting camera…', 20);
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 360, height: 270 } });
-                const v = el('lf-video'); v.srcObject = stream; await v.play();
-                setStatus('Position your face in the ring and hold still…', 40);
-                startLoop();
-            } catch (e) { setStatus('Error', 0); showErr('Error: ' + e.message); }
-        };
-
-        function startLoop() {
-            detecting = false;
-            const v = el('lf-video'), c = el('lf-canvas'), ctx = c.getContext('2d');
-            let hits = 0;
-            const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: .5 });
-            loop = setInterval(async () => {
-                if (detecting || v.readyState < 2) return;
-                detecting = true;
-                ctx.clearRect(0, 0, c.width, c.height);
+            window.openLoginFaceModal = async function () {
+                el('login-face-modal').style.display = 'flex';
+                hideErr();
+                setStatus('Loading face recognition models…', 5);
                 try {
-                    const r = await faceapi.detectSingleFace(v, opts).withFaceLandmarks(true).withFaceDescriptor();
-                    if (!r) { hits = 0; setStatus('No face detected — look at the camera…', 50); el('lf-ring').style.borderColor = 'rgba(84,140,168,.5)'; }
-                    else {
-                        const dims = faceapi.matchDimensions(c, v, true);
-                        faceapi.draw.drawDetections(c, faceapi.resizeResults(r, dims));
-                        el('lf-ring').style.borderColor = 'rgba(34,197,94,.8)';
-                        hits++;
-                        setStatus('Face detected! Verifying identity…', Math.min(45 + hits * 18, 90));
-                        if (hits >= 3) { clearInterval(loop); loop = null; setStatus('Authenticating…', 95); await doLogin(Array.from(r.descriptor)); }
-                    }
-                } catch (e) { }
-                detecting = false;
-            }, 700);
-        }
+                    await loadModels();
+                    setStatus('Starting camera…', 20);
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 360, height: 270 } });
+                    const v = el('lf-video'); v.srcObject = stream; await v.play();
+                    setStatus('Position your face in the ring and hold still…', 40);
+                    startLoop();
+                } catch (e) { setStatus('Error', 0); showErr('Error: ' + e.message); }
+            };
 
-        async function doLogin(descriptor) {
-            hideErr();
-            try {
-                const res = await fetch(LOGIN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ descriptor }) });
-                const d = await res.json();
+            function startLoop() {
+                detecting = false;
+                const v = el('lf-video'), c = el('lf-canvas'), ctx = c.getContext('2d');
+                let hits = 0;
+                const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: .5 });
+                loop = setInterval(async () => {
+                    if (detecting || v.readyState < 2) return;
+                    detecting = true;
+                    ctx.clearRect(0, 0, c.width, c.height);
+                    try {
+                        const r = await faceapi.detectSingleFace(v, opts).withFaceLandmarks(true).withFaceDescriptor();
+                        if (!r) { hits = 0; setStatus('No face detected — look at the camera…', 50); el('lf-ring').style.borderColor = 'rgba(84,140,168,.5)'; }
+                        else {
+                            const dims = faceapi.matchDimensions(c, v, true);
+                            faceapi.draw.drawDetections(c, faceapi.resizeResults(r, dims));
+                            el('lf-ring').style.borderColor = 'rgba(34,197,94,.8)';
+                            hits++;
+                            setStatus('Face detected! Verifying identity…', Math.min(45 + hits * 18, 90));
+                            if (hits >= 3) { clearInterval(loop); loop = null; setStatus('Authenticating…', 95); await doLogin(Array.from(r.descriptor)); }
+                        }
+                    } catch (e) { }
+                    detecting = false;
+                }, 700);
+            }
+
+            async function doLogin(descriptor) {
+                hideErr();
+                try {
+                    const res = await fetch(LOGIN_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ descriptor }) });
+                    const d = await res.json();
                     if (d.success) {
                         setStatus('✓ Identity confirmed! Redirecting…', 100);
                         el('lf-ring').style.borderColor = 'rgba(34,197,94,1)';
@@ -410,28 +449,28 @@
                         el('lf-ring').style.borderColor = 'rgba(239,68,68,.7)';
                         setTimeout(() => { hideErr(); setStatus('Try again — position your face…', 40); el('lf-ring').style.borderColor = 'rgba(84,140,168,.5)'; startLoop(); }, 2500);
                     }
-            } catch (e) { showErr('Network error: ' + e.message); }
-        }
+                } catch (e) { showErr('Network error: ' + e.message); }
+            }
 
-        function stopCam() {
-            if (loop) { clearInterval(loop); loop = null; }
-            if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-            const v = el('lf-video'); if (v) v.srcObject = null;
-            detecting = false;
-        }
+            function stopCam() {
+                if (loop) { clearInterval(loop); loop = null; }
+                if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+                const v = el('lf-video'); if (v) v.srcObject = null;
+                detecting = false;
+            }
 
-        window.closeLoginFaceModal = function () {
-            stopCam();
-            el('login-face-modal').style.display = 'none';
-            hideErr();
-            setStatus('Loading face recognition models…', 0);
-            el('lf-prog').style.width = '0%';
-            el('lf-ring').style.borderColor = 'rgba(84,140,168,.5)';
-        };
-    })();
+            window.closeLoginFaceModal = function () {
+                stopCam();
+                el('login-face-modal').style.display = 'none';
+                hideErr();
+                setStatus('Loading face recognition models…', 0);
+                el('lf-prog').style.width = '0%';
+                el('lf-ring').style.borderColor = 'rgba(84,140,168,.5)';
+            };
+        })();
 
     // Check if we need to show verify code modal or reset password modal
-    window.addEventListener('DOMContentLoaded', function() {
+    window.addEventListener('DOMContentLoaded', function () {
         const urlParams = new URLSearchParams(window.location.search);
         const showVerifyCode = urlParams.get('verify');
         const showReset = urlParams.get('reset');
@@ -465,14 +504,19 @@
 
         <form action="<?= APP_ENTRY ?>?url=process-reset-password" method="POST" style="text-align: left;">
             <div class="neo-field" style="margin-bottom: 1rem;">
-                <label for="reset-password" style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b;">New Password</label>
-                <input type="password" id="reset-password" name="password" placeholder="Enter new password" required minlength="6"
+                <label for="reset-password"
+                    style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b;">New Password</label>
+                <input type="password" id="reset-password" name="password" placeholder="Enter new password" required
+                    minlength="6"
                     style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem;">
             </div>
 
             <div class="neo-field" style="margin-bottom: 1.25rem;">
-                <label for="reset-confirm-password" style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b;">Confirm Password</label>
-                <input type="password" id="reset-confirm-password" name="confirm_password" placeholder="Confirm new password" required minlength="6"
+                <label for="reset-confirm-password"
+                    style="display: block; margin-bottom: 6px; font-weight: 600; color: #1e293b;">Confirm
+                    Password</label>
+                <input type="password" id="reset-confirm-password" name="confirm_password"
+                    placeholder="Confirm new password" required minlength="6"
                     style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.95rem;">
             </div>
 
@@ -480,15 +524,23 @@
         </form>
 
         <p style="margin: 16px 0 0; color: #64748b; font-size: 0.85rem;">
-            Remember your password? <a href="<?= APP_ENTRY ?>?url=login" style="color: #548CA8; font-weight: 600;">Sign In</a>
+            Remember your password? <a href="<?= APP_ENTRY ?>?url=login" style="color: #548CA8; font-weight: 600;">Sign
+                In</a>
         </p>
     </div>
 </div>
 
 <style>
     @keyframes rpSlideUp {
-        from { opacity: 0; transform: translateY(28px) scale(.97) }
-        to { opacity: 1; transform: translateY(0) scale(1) }
+        from {
+            opacity: 0;
+            transform: translateY(28px) scale(.97)
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1)
+        }
     }
 </style>
 
@@ -502,7 +554,7 @@
     }
 
     // Close reset modal when clicking outside
-    window.onclick = function(event) {
+    window.onclick = function (event) {
         if (event.target.id === 'reset-modal') {
             closeResetModal();
         }

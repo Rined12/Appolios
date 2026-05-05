@@ -92,6 +92,7 @@
                     <th>Événement</th>
                     <th>Détails</th>
                     <th>Adresse IP</th>
+                    <th>Localisation</th>
                     <th>Date & Heure</th>
                 </tr>
             </thead>
@@ -130,8 +131,14 @@
                                     <?= htmlspecialchars(ucfirst(str_replace('_', ' ', $activity['activity_type']))) ?>
                                 </span>
                             </td>
-                            <td style="font-size: 0.85rem; color: #64748b; max-width: 250px;"><?= htmlspecialchars($activity['activity_description']) ?></td>
+                            <td style="font-size: 0.85rem; color: #64748b; max-width: 250px;"><?= $activity['activity_description'] ?></td>
                             <td><code style="font-size: 0.8rem; background: #f8fafc; padding: 4px 8px; border-radius: 6px; color: #475569; border: 1px solid #e2e8f0;"><?= htmlspecialchars($activity['ip_address']) ?></code></td>
+                            <td>
+                                <div style="font-size: 0.85rem; color: #475569; display: flex; align-items: center; gap: 6px;">
+                                    <i class="bi bi-geo-alt" style="color: #94a3b8;"></i>
+                                    <?= htmlspecialchars($activity['location'] ?? 'Local / Unknown') ?>
+                                </div>
+                            </td>
                             <td>
                                 <div style="font-weight: 700; color: #1e293b;"><?= date('d M, Y', strtotime($activity['created_at'])) ?></div>
                                 <div style="font-size: 0.75rem; color: #94a3b8;"><?= date('H:i:s', strtotime($activity['created_at'])) ?></div>
@@ -139,7 +146,7 @@
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan="5" style="text-align:center; padding: 4rem; color: #94a3b8;">
+                    <tr><td colspan="6" style="text-align:center; padding: 4rem; color: #94a3b8;">
                         <i class="bi bi-slash-circle" style="font-size: 2rem; display: block; margin-bottom: 1rem;"></i>
                         Aucune activité enregistrée.
                     </td></tr>

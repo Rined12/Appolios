@@ -99,6 +99,19 @@ $userName = $_SESSION['user_name'] ?? 'Administrator';
             </a>
 
             <hr style="border:0; border-top:1px solid rgba(255,255,255,0.05); margin:1rem 0;">
+            <p style="padding: 0 1.5rem; font-size: 0.65rem; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">Aperçu Espaces</p>
+
+            <a href="<?= APP_ENTRY ?>?url=student/dashboard" class="nav-item">
+                <i class="bi bi-mortarboard"></i>
+                <span>Espace Étudiant</span>
+            </a>
+
+            <a href="<?= APP_ENTRY ?>?url=teacher/dashboard" class="nav-item">
+                <i class="bi bi-person-video3"></i>
+                <span>Espace Teacher</span>
+            </a>
+
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.05); margin:1rem 0;">
 
             <a href="<?= APP_ENTRY ?>?url=student/profile" class="nav-item <?= $adminSidebarActive === 'profile' ? 'active' : '' ?>">
                 <i class="bi bi-person-circle"></i>

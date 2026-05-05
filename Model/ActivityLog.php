@@ -18,9 +18,10 @@ class ActivityLog
     private ?string $activity_type = null;
     private ?string $activity_description = null;
     private ?string $ip_address = null;
+    private ?string $location = null;
     private ?string $user_agent = null;
     private ?string $created_at = null;
-
+ 
     // ==========================================
     // CONSTRUCTOR
     // ==========================================
@@ -33,6 +34,7 @@ class ActivityLog
         ?string $activity_type = null,
         ?string $activity_description = null,
         ?string $ip_address = null,
+        ?string $location = null,
         ?string $user_agent = null,
         ?string $created_at = null
     ) {
@@ -44,6 +46,7 @@ class ActivityLog
         $this->activity_type = $activity_type;
         $this->activity_description = $activity_description;
         $this->ip_address = $ip_address;
+        $this->location = $location;
         $this->user_agent = $user_agent;
         $this->created_at = $created_at;
     }

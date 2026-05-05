@@ -143,5 +143,29 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             <span>Statistique</span>
         </a>
 
+        <div class="sidebar-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 15px 20px;"></div>
+        <p style="padding-left: 20px; font-size: 0.7rem; color: rgba(255,255,255,0.5); text-transform: uppercase; margin-bottom: 5px;">Aperçu des Espaces</p>
+
+        <a href="<?= APP_ENTRY ?>?url=student/dashboard" class="admin-side-link">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"></path>
+                    <path d="M12 14c-4.42 0-8 2.24-8 5v2h16v-2c0-2.76-3.58-5-8-5z"></path>
+                    <polyline points="12 4 4 8 12 12 20 8 12 4"></polyline>
+                </svg>
+            </span>
+            <span>Etudiant</span>
+        </a>
+
+        <a href="<?= APP_ENTRY ?>?url=teacher/dashboard" class="admin-side-link">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+            </span>
+            <span>Teacher</span>
+        </a>
+
     </nav>
 </aside>

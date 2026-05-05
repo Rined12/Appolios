@@ -1,0 +1,15 @@
+# APPOLIOS - Git Ignore
+/config/credentials.php
+
+# IDEs
+.vscode/
+.idea/
+
+# OS Files
+Thumbs.db
+.DS_Store
+
+# Temporary files
+/tmp/
+/View/assets/uploads/tmp/*
+!/View/assets/uploads/tmp/.gitkeep

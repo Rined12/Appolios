@@ -9,9 +9,10 @@ require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Enrollment.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
-require_once __DIR__ . '/../Controller/AvatarGenerator.php';
+require_once __DIR__ . '/../Controller/ActivityLogger.php';
 
 class StudentController extends BaseController {
+    use ActivityLogger;
 
     /**
      * Route alias for /student/evenement/{id}
@@ -127,8 +128,8 @@ class StudentController extends BaseController {
             return;
         }
 
-        // Only students can access this page
-        if ($_SESSION['role'] !== 'student') {
+        // Only students or admins can access this page
+        if ($_SESSION['role'] !== 'student' && !$this->isAdmin()) {
             $this->setFlash('error', 'Access denied.');
             $this->redirect('login');
             return;
@@ -467,6 +468,9 @@ class StudentController extends BaseController {
 
     public function updateUser($id, $data)
     {
+        // Get old data for audit trail
+        $oldUser = $this->findUserById($id);
+
         $fields = [];
         $values = [];
         foreach ($data as $key => $value) {
@@ -476,7 +480,14 @@ class StudentController extends BaseController {
         $values[] = $id;
         $sql = "UPDATE users SET " . implode(', ', $fields) . " WHERE id = ?";
         $stmt = $this->getDb()->prepare($sql);
-        return $stmt->execute($values);
+        
+        $result = $stmt->execute($values);
+        
+        if ($result && $oldUser) {
+            $this->logDiff('update_user', $oldUser, $data, "User updated profile:");
+        }
+
+        return $result;
     }
 
     /**

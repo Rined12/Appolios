@@ -564,20 +564,47 @@
       let filledCount = 0;
       const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
 
-      // 1. Detect Email with OCR Repair (0 vs @)
-      // First, try to repair common OCR errors in potential email lines
-      let repairedText = text;
-      // If we find something like "word0gmail.com" or "wordOgmail.com", fix it
-      repairedText = repairedText.replace(/([a-zA-Z0-9._%+-]+)[0oO8]([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi, '$1@$2');
-
-      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i;
-      const emailMatch = repairedText.match(emailRegex);
+      // 1. Detect Email
       const emailInput = document.getElementById('email');
-      
-      if (emailMatch && emailInput) {
-        emailInput.value = emailMatch[0].trim();
-        emailInput.dispatchEvent(new Event('input', { bubbles: true }));
-        filledCount++;
+      if (emailInput) {
+        let detectedEmail = "";
+        
+        // Strategy A: Look for "email" label (most reliable for forms)
+        const emailLabelRegex = /^(?:email|mail|courriel|address)\s*[:\-;]?\s*(.*)/i;
+        for (const line of lines) {
+          const match = line.match(emailLabelRegex);
+          if (match && match[1]) {
+            // Clean the extracted part: remove all spaces, fix common OCR errors
+            let cleaned = match[1].trim().replace(/\s+/g, '');
+            // Fix common '@' errors if not present
+            if (!cleaned.includes('@')) {
+              cleaned = cleaned.replace(/[0oO8](?=[a-z0-9.-]+\.[a-z]{2,})/i, '@');
+            }
+            if (cleaned.includes('@') && cleaned.includes('.')) {
+              detectedEmail = cleaned;
+              break;
+            }
+          }
+        }
+
+        // Strategy B: Global Regex Search (Lenient for spaces around @ and .)
+        if (!detectedEmail) {
+          const lenientEmailRegex = /[a-zA-Z0-9._%+-]+\s*[@0oO8]\s*[a-zA-Z0-9.-]+\s*\.\s*[a-zA-Z]{2,}/i;
+          const emailMatch = text.match(lenientEmailRegex);
+          if (emailMatch) {
+            detectedEmail = emailMatch[0].replace(/\s+/g, '');
+            // Ensure '@' is correct
+            if (!detectedEmail.includes('@')) {
+              detectedEmail = detectedEmail.replace(/[0oO8](?=[a-z0-9.-]+\.[a-z]{2,})/i, '@');
+            }
+          }
+        }
+
+        if (detectedEmail) {
+          emailInput.value = detectedEmail;
+          emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+          filledCount++;
+        }
       }
 
       // 2. Detect Name
@@ -595,6 +622,8 @@
         }
 
         if (!detectedName && lines.length > 0) {
+          // If no label found, take the first line that isn't email or password
+          const emailRegex = /[a-zA-Z0-9._%+-]+\s*[@0oO8]\s*[a-zA-Z0-9.-]+/;
           const firstMeaningfulLine = lines.find(l => !emailRegex.test(l) && !l.toLowerCase().includes('pass'));
           if (firstMeaningfulLine) {
             detectedName = firstMeaningfulLine.replace(/^(nom|name|full name|prénom|user)\s*[:\-;]?\s*/i, '').trim();
