@@ -105,35 +105,7 @@ class StudentController extends BaseController {
         $enrollmentModel->updateProgress($_SESSION['user_id'], $actualCourseId, $progress);
         
         $this->awardXP($_SESSION['user_id'], 15, 'Completed a lesson');
-        
-        // Generate certificate when last lesson is completed
-        error_log("CERT CHECK: progress=$progress, completed=$completedCount, total=$totalLessons");
-        if ($progress >= 100 && $completedCount >= $totalLessons && $totalLessons > 0) {
-            $db = getConnection();
-            $certCode = 'APP-' . date('Ymd') . '-' . rand(1000, 9999);
-            try {
-                // First ensure table exists
-                $db->exec("CREATE TABLE IF NOT EXISTS certificates (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    user_id INT NOT NULL,
-                    course_id INT NOT NULL,
-                    certificate_code VARCHAR(50) NOT NULL UNIQUE,
-                    issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE KEY unique_user_course (user_id, course_id)
-                )");
-                
-                $stmt = $db->prepare("INSERT INTO certificates (user_id, course_id, certificate_code) VALUES (?, ?, ?)");
-                $stmt->execute([$_SESSION['user_id'], $actualCourseId, $certCode]);
-                error_log("CERT CREATED: $certCode for user " . $_SESSION['user_id'] . " course $actualCourseId");
-                
-                $courseModel = $this->model('Course');
-                $course = $courseModel->findById($actualCourseId);
-                $this->createNotification($_SESSION['user_id'], 'certificate', '🎓 Certificate Earned!', "Congratulations! You've completed '" . ($course['title'] ?? 'the course') . "'. Your certificate is ready!", 'student/certificates');
-            } catch (Exception $e) {
-                error_log("CERT ERROR: " . $e->getMessage());
-            }
-        }
-        
+        error_log("PROGRESS CHECK: $progress / $totalLessons lessons, completed: $completedCount");
         $this->checkAndAwardBadges($_SESSION['user_id'], $actualCourseId, $completedCount, $totalLessons, $progress);
 
         header('Content-Type: application/json');
@@ -141,8 +113,7 @@ class StudentController extends BaseController {
             'success' => true, 
             'progress' => $progress, 
             'total' => $totalLessons, 
-            'completed' => $completedCount,
-            'debug' => "progress: $progress, enrollmentProgress: $enrollmentProgress"
+            'completed' => $completedCount
         ]);
         exit;
     }
@@ -239,7 +210,7 @@ if (!$badgeModel->hasBadge($userId, $badge['name'])) {
             require_once __DIR__ . '/../Service/CertificateService.php';
             $certService = new CertificateService();
             $existingCert = $certService->getCertificate($userId, $courseId);
-            error_log("Certificate check - userId: $userId, courseId: $courseId, existing: " . ($existingCert ? 'yes' : 'no'));
+            error_log("CERT DEBUG - userId:$userId courseId:$courseId existing:" . json_encode($existingCert));
             
             if (!$existingCert) {
                 $cert = $certService->generateCertificate($userId, $courseId);

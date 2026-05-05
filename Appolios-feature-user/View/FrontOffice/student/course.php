@@ -257,12 +257,14 @@ function toggleAndComplete(ci, li, lid, cid) {
     var c = document.getElementById('lesson-content-' + ci + '-' + li);
     var ic = document.getElementById('lesson-icon-' + ci + '-' + li);
     
-    if (c.style.display === 'none') {
-        c.style.display = 'block';
-        ic.style.transform = 'rotate(180deg)';
-    } else {
-        c.style.display = 'none';
-        ic.style.transform = 'rotate(0deg)';
+    if (c && ic) {
+        if (c.style.display === 'none') {
+            c.style.display = 'block';
+            ic.style.transform = 'rotate(180deg)';
+        } else {
+            c.style.display = 'none';
+            ic.style.transform = 'rotate(0deg)';
+        }
     }
     
     var lessonDiv = document.getElementById('lesson-' + ci + '-' + li);
@@ -273,7 +275,12 @@ function toggleAndComplete(ci, li, lid, cid) {
     }
 }
 
+var pendingCompletes = {};
+
 function markComplete(lid, cid, chapterIndex, lessonIndex) {
+    if (pendingCompletes[lid]) return;
+    pendingCompletes[lid] = true;
+    
     var x = new XMLHttpRequest();
     x.open('POST', 'index.php?url=student/completeLesson', true);
     x.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
@@ -281,7 +288,6 @@ x.onreadystatechange = function() {
         if (x.readyState === 4 && x.status === 200) {
             try { 
                 var d = JSON.parse(x.responseText); 
-                console.log("Lesson complete response:", d);
                 if (d.success) {
                     completedLessons++; 
                     updateProgress();
@@ -299,9 +305,11 @@ x.onreadystatechange = function() {
                             msg = d.badge.icon + ' ' + d.badge.name + ' - ' + d.badge.description;
                         }
                         alert(msg);
+                        window.location.reload();
                     }
                 }
             } catch(e) {}
+            delete pendingCompletes[lid];
         }
     };
     x.send('lessonId=' + lid + '&courseId=' + cid);

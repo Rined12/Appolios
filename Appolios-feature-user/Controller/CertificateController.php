@@ -16,14 +16,11 @@ class CertificateController extends BaseModel {
         
         if (!$course) return false;
 
-        $sql = "INSERT INTO {$this->table} (user_id, course_id, certificate_number, issued_at) 
-                VALUES (?, ?, ?, NOW())";
-        
-        $certNumber = 'CERT-' . strtoupper(uniqid()) . '-' . date('Y');
+        $certCode = 'APP-' . date('Ymd') . '-' . strtoupper(substr(md5($userId . $courseId . time()), 0, 8));
         
         try {
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$userId, $courseId, $certNumber]);
+            $stmt = $this->db->prepare("INSERT INTO {$this->table} (user_id, course_id, certificate_code) VALUES (?, ?, ?)");
+            $stmt->execute([$userId, $courseId, $certCode]);
             return $this->db->lastInsertId();
         } catch (PDOException $e) {
             return false;
@@ -62,14 +59,14 @@ class CertificateController extends BaseModel {
         return $result['count'] > 0;
     }
 
-    public function verifyCertificate($certificateNumber) {
+    public function verifyCertificate($certificateCode) {
         $sql = "SELECT cert.*, c.title as course_title, u.name as student_name
                 FROM {$this->table} cert
                 JOIN courses c ON cert.course_id = c.id
                 JOIN users u ON cert.user_id = u.id
-                WHERE cert.certificate_number = ?";
+                WHERE cert.certificate_code = ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$certificateNumber]);
+        $stmt->execute([$certificateCode]);
         return $stmt->fetch();
     }
 
