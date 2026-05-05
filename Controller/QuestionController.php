@@ -247,9 +247,6 @@ class QuestionController extends BaseController
         if ($correct < 0 || $correct >= count($opts)) {
             $errors[] = 'Réponse correcte invalide.';
         }
-        if (mb_strlen(trim($tags)) < 2) {
-            $errors[] = 'Tags requis.';
-        }
         if (mb_strlen($title) > 255) {
             $errors[] = 'Titre trop long.';
         }
