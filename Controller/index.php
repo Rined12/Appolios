@@ -64,8 +64,16 @@ if (!empty($segments)) {
             'logout' => 'logout',
             'authenticate' => 'authenticate',
         ][$first];
-    } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home', 'book'], true)) {
-        $controller = ucfirst($first) . 'Controller';
+    } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home', 'book', 'admin-quiz', 'student-quiz', 'teacher-quiz'], true)) {
+        if ($first === 'admin-quiz') {
+            $controller = 'AdminQuizController';
+        } elseif ($first === 'student-quiz') {
+            $controller = 'StudentQuizController';
+        } elseif ($first === 'teacher-quiz') {
+            $controller = 'TeacherQuizController';
+        } else {
+            $controller = ucfirst($first) . 'Controller';
+        }
         $action = $second !== '' ? toCamelCaseAction($second) : ($first === 'auth' ? 'login' : 'index');
         $params = array_slice($segments, 2);
     } else {

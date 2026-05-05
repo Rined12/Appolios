@@ -477,36 +477,102 @@ class TeacherController extends BaseController {
         $rows = $this->getQuizStatsForTeacher($teacherId);
         $series = $this->getQuizAttemptSeriesMapForTeacher($teacherId, 120);
 
+        $diffDist = [
+            'beginner' => 0,
+            'intermediate' => 0,
+            'advanced' => 0,
+        ];
+        $statusDist = [
+            'approved' => 0,
+            'pending' => 0,
+            'rejected' => 0,
+        ];
+
         $totalQuizzes = is_array($rows) ? count($rows) : 0;
         $totalAttempts = 0;
-        $wSum = 0.0;
-        $playedQuizzes = 0;
+        $sumAvg = 0.0;
+        $avgCount = 0;
+        $approved = 0;
 
         foreach ($rows as $r) {
             $att = (int) ($r['attempts_count'] ?? 0);
-            $avg = (float) ($r['avg_percentage'] ?? 0);
             $totalAttempts += $att;
-            $wSum += ($avg * $att);
             if ($att > 0) {
+                $sumAvg += (float) ($r['avg_percentage'] ?? 0);
+                $avgCount++;
+            }
+            if ((string) ($r['status'] ?? '') === 'approved') {
+                $approved++;
+            }
+
+            $d = (string) ($r['difficulty'] ?? 'beginner');
+            if (!isset($diffDist[$d])) {
+                $diffDist[$d] = 0;
+            }
+            $diffDist[$d]++;
+
+            $st = (string) ($r['status'] ?? 'approved');
+            if (!isset($statusDist[$st])) {
+                $statusDist[$st] = 0;
+            }
+            $statusDist[$st]++;
+        }
+
+        $overallAvg = $avgCount > 0 ? round($sumAvg / $avgCount, 1) : 0.0;
+
+        $playedQuizzes = 0;
+        foreach ($rows as $r) {
+            if ((int) ($r['attempts_count'] ?? 0) > 0) {
                 $playedQuizzes++;
             }
         }
-
-        $overallAvg = $totalAttempts > 0 ? round($wSum / (float) $totalAttempts, 1) : 0.0;
         $coveragePct = $totalQuizzes > 0 ? min(100, max(0, ($playedQuizzes / $totalQuizzes) * 100)) : 0;
         $attemptsPerQuiz = $totalQuizzes > 0 ? ($totalAttempts / $totalQuizzes) : 0;
         $engagementPct = 100 * (1 - exp(-($attemptsPerQuiz / 3)));
         if ($engagementPct < 0) $engagementPct = 0;
         if ($engagementPct > 100) $engagementPct = 100;
 
+        $trendRows = $this->getQuizAttemptsTrendForTeacher($teacherId, 21);
+        $trendMap = [];
+        foreach ($trendRows as $qid => $list) {
+            foreach (($list ?? []) as $p) {
+                $day = (string) ($p['day'] ?? '');
+                if ($day === '') {
+                    continue;
+                }
+                if (!isset($trendMap[$day])) {
+                    $trendMap[$day] = ['day' => $day, 'count' => 0, 'avg_sum' => 0.0, 'avg_n' => 0];
+                }
+                $trendMap[$day]['count'] += (int) ($p['count'] ?? 0);
+                $trendMap[$day]['avg_sum'] += (float) ($p['avg'] ?? 0);
+                $trendMap[$day]['avg_n'] += 1;
+            }
+        }
+        ksort($trendMap);
+        $trend = [];
+        foreach ($trendMap as $day => $info) {
+            $n = (int) ($info['avg_n'] ?? 0);
+            $trend[] = [
+                'day' => (string) ($info['day'] ?? ''),
+                'count' => (int) ($info['count'] ?? 0),
+                'avg' => $n > 0 ? round(((float) ($info['avg_sum'] ?? 0)) / $n, 1) : 0.0,
+            ];
+        }
+
         $this->view('FrontOffice/teacher/quiz_stats', [
             'title' => 'Statistiques quiz - ' . APP_NAME,
             'rows' => $rows,
             'series' => $series,
+            'charts' => [
+                'difficulty' => $diffDist,
+                'status' => $statusDist,
+                'trend' => $trend,
+            ],
             'kpis' => [
                 'total_quizzes' => $totalQuizzes,
                 'total_attempts' => $totalAttempts,
                 'overall_avg' => $overallAvg,
+                'approved_quizzes' => $approved,
                 'coverage_pct' => round((float) $coveragePct, 1),
                 'engagement_pct' => round((float) $engagementPct, 1),
                 'attempts_per_quiz' => round((float) $attemptsPerQuiz, 2),
@@ -518,8 +584,7 @@ class TeacherController extends BaseController {
     public function addQuiz() {
         $this->requireTeacher();
 
-        $chapterModel = $this->model('Chapter');
-        $chapters = $chapterModel->getAllForTeacher((int) $_SESSION['user_id']);
+        $chapters = $this->getChaptersForTeacher((int) $_SESSION['user_id']);
 
         $this->view('FrontOffice/teacher/quiz_form', [
             'title' => 'Nouveau quiz - ' . APP_NAME,
@@ -538,9 +603,7 @@ class TeacherController extends BaseController {
         }
 
         $chapterId = (int) ($_POST['chapter_id'] ?? 0);
-        $chapterModel = $this->model('Chapter');
-        $chapter = $chapterModel->findWithCourse($chapterId);
-        if (!$chapter || (int) ($chapter['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
+        if (!$this->teacherChapterOwnedByUser((int) $chapterId, (int) $_SESSION['user_id'])) {
             $this->setFlash('error', 'Chapitre invalide.');
             $this->redirect('teacher/add-quiz');
             return;
@@ -554,6 +617,18 @@ class TeacherController extends BaseController {
         }
 
         $bankIds = isset($_POST['bank_question_ids']) && is_array($_POST['bank_question_ids']) ? $_POST['bank_question_ids'] : [];
+        $autoCount = (int) ($_POST['auto_bank_count'] ?? 0);
+        $autoDifficulty = isset($_POST['auto_bank_difficulty']) ? strtolower(trim((string) $_POST['auto_bank_difficulty'])) : '';
+        $autoTags = isset($_POST['auto_bank_tags']) ? trim((string) $_POST['auto_bank_tags']) : '';
+        if ($autoCount > 0) {
+            $picked = $this->pickQuestionBankIdsForBlueprint((int) $_SESSION['user_id'], $autoCount, $autoDifficulty, $autoTags, $bankIds);
+            if (empty($picked)) {
+                $this->setFlash('error', 'Aucune question disponible dans la banque pour ces critères.');
+                $this->redirect('teacher/add-quiz');
+                return;
+            }
+            $bankIds = array_values(array_unique(array_merge($bankIds, $picked)));
+        }
         $questions = $this->appendBankQuestionsToQuiz(
             $this->normalizeQuizQuestionsFromPost($_POST),
             $bankIds,
@@ -604,8 +679,7 @@ class TeacherController extends BaseController {
             return;
         }
 
-        $chapterModel = $this->model('Chapter');
-        $chapters = $chapterModel->getAllForTeacher((int) $_SESSION['user_id']);
+        $chapters = $this->getChaptersForTeacher((int) $_SESSION['user_id']);
 
         $this->view('FrontOffice/teacher/quiz_form', [
             'title' => 'Modifier le quiz - ' . APP_NAME,
@@ -631,9 +705,7 @@ class TeacherController extends BaseController {
         }
 
         $chapterId = (int) ($_POST['chapter_id'] ?? 0);
-        $chapterModel = $this->model('Chapter');
-        $chapter = $chapterModel->findWithCourse($chapterId);
-        if (!$chapter || (int) ($chapter['course_owner_id'] ?? 0) !== (int) $_SESSION['user_id']) {
+        if (!$this->teacherChapterOwnedByUser((int) $chapterId, (int) $_SESSION['user_id'])) {
             $this->setFlash('error', 'Chapitre invalide.');
             $this->redirect('teacher/edit-quiz/' . (int) $id);
             return;
@@ -754,16 +826,133 @@ class TeacherController extends BaseController {
             $qbTopStats['avg_percentage'] = round($wSum / (float) $qbTopStats['attempts_total'], 1);
         }
 
+        $diffDist = [
+            'beginner' => 0,
+            'intermediate' => 0,
+            'advanced' => 0,
+        ];
+        foreach ($questions as $q) {
+            $d = (string) ($q['difficulty'] ?? 'beginner');
+            if (!isset($diffDist[$d])) {
+                $diffDist[$d] = 0;
+            }
+            $diffDist[$d]++;
+        }
+
+        $qaMap = [];
+        foreach ($questions as $q) {
+            $qid = (int) ($q['id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            $u = $questionUsage[$qid] ?? null;
+            $att = is_array($u) ? (int) ($u['attempts'] ?? 0) : 0;
+            $avg = is_array($u) ? (float) ($u['avg'] ?? 0) : 0.0;
+            $qz = is_array($u) ? (int) ($u['quizzes'] ?? 0) : 0;
+            $qaMap[$qid] = $this->questionQaFromUsage($qz, $att, $avg);
+        }
+
         $this->view('FrontOffice/teacher/questions_bank', [
             'title' => 'Banque de questions - ' . APP_NAME,
             'questions' => $questions,
             'questionUsage' => $questionUsage,
             'qbTopStats' => $qbTopStats,
+            'questionQa' => $qaMap,
+            'charts' => [
+                'difficulty' => $diffDist,
+            ],
             'collections' => $collections,
             'selectedCollectionId' => $selectedCollectionId,
             'collectionSelectedMap' => $selectedMap,
             'flash' => $this->getFlash(),
         ]);
+    }
+
+    private function questionQaFromUsage(int $quizzesCount, int $attempts, float $avgPercentage): array
+    {
+        if ($quizzesCount <= 0 || $attempts <= 0) {
+            return ['label' => 'Non utilisée', 'badge' => 'pro-badge', 'score' => null];
+        }
+        if ($attempts < 10) {
+            return ['label' => 'Données insuff.', 'badge' => 'pro-badge', 'score' => null];
+        }
+
+        $avg = max(0.0, min(100.0, $avgPercentage));
+        if ($avg >= 85.0) {
+            return ['label' => 'Trop facile', 'badge' => 'pro-badge pro-badge--beginner', 'score' => (int) round(100 - (($avg - 85.0) * 2.0))];
+        }
+        if ($avg <= 35.0) {
+            return ['label' => 'Trop difficile', 'badge' => 'pro-badge pro-badge--advanced', 'score' => (int) round(100 - ((35.0 - $avg) * 2.0))];
+        }
+
+        $target = 60.0;
+        $difficultyScore = 100.0 - (abs($avg - $target) * 1.5);
+        if ($difficultyScore < 0) $difficultyScore = 0;
+        if ($difficultyScore > 100) $difficultyScore = 100;
+
+        $attemptsNorm = log((float) ($attempts + 1), 10) / log(51.0, 10);
+        if ($attemptsNorm < 0) $attemptsNorm = 0;
+        if ($attemptsNorm > 1) $attemptsNorm = 1;
+        $reliability = $attemptsNorm * 100.0;
+
+        $score = (int) round(($difficultyScore * 0.7) + ($reliability * 0.3));
+        if ($score < 0) $score = 0;
+        if ($score > 100) $score = 100;
+
+        return ['label' => 'OK', 'badge' => 'pro-badge pro-badge--intermediate', 'score' => $score];
+    }
+
+    private function pickQuestionBankIdsForBlueprint(int $teacherId, int $count, string $difficulty, string $tags, array $excludeIds = []): array
+    {
+        $count = max(1, min(30, $count));
+
+        $difficulty = strtolower(trim($difficulty));
+        if (!in_array($difficulty, ['', 'beginner', 'intermediate', 'advanced'], true)) {
+            $difficulty = '';
+        }
+
+        $excludeIds = array_map('intval', $excludeIds);
+        $excludeIds = array_values(array_filter($excludeIds, static fn($v) => $v > 0));
+
+        $tagList = preg_split('/[\s,;]+/', strtolower(trim($tags)), -1, PREG_SPLIT_NO_EMPTY);
+        $tagList = is_array($tagList) ? array_values(array_unique($tagList)) : [];
+
+        $db = $this->db();
+        $sql = "SELECT qb.id
+                FROM question_bank qb
+                WHERE qb.created_by = ?";
+        $params = [(int) $teacherId];
+
+        if ($difficulty !== '') {
+            $sql .= " AND qb.difficulty = ?";
+            $params[] = $difficulty;
+        }
+
+        foreach ($tagList as $tg) {
+            $sql .= " AND LOWER(COALESCE(qb.tags,'')) LIKE ?";
+            $params[] = '%' . $tg . '%';
+        }
+
+        if (!empty($excludeIds)) {
+            $in = implode(',', array_fill(0, count($excludeIds), '?'));
+            $sql .= " AND qb.id NOT IN ($in)";
+            foreach ($excludeIds as $x) {
+                $params[] = (int) $x;
+            }
+        }
+
+        $sql .= " ORDER BY RAND() LIMIT " . (int) $count;
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $id = (int) ($r['id'] ?? 0);
+            if ($id > 0) {
+                $out[] = $id;
+            }
+        }
+        return $out;
     }
 
     public function createQuestionCollection() {
@@ -818,6 +1007,35 @@ class TeacherController extends BaseController {
             $this->setFlash('error', 'Impossible de retirer la question.');
         }
         $this->redirect('teacher/questions?collection_id=' . $cid);
+    }
+
+    private function getChaptersForTeacher(int $teacherId): array
+    {
+        $db = $this->db();
+        $sql = "SELECT ch.id, ch.course_id, ch.title, c.title AS course_title
+                FROM chapters ch
+                JOIN courses c ON c.id = ch.course_id
+                WHERE c.created_by = ?
+                ORDER BY c.title ASC, ch.title ASC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        return $stmt->fetchAll();
+    }
+
+    private function teacherChapterOwnedByUser(int $chapterId, int $teacherId): bool
+    {
+        if ($chapterId <= 0) {
+            return false;
+        }
+        $db = $this->db();
+        $sql = "SELECT ch.id
+                FROM chapters ch
+                JOIN courses c ON c.id = ch.course_id
+                WHERE ch.id = ? AND c.created_by = ?
+                LIMIT 1";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $chapterId, (int) $teacherId]);
+        return (bool) $stmt->fetch();
     }
 
     public function addQuestion() {
@@ -1098,6 +1316,42 @@ class TeacherController extends BaseController {
                 $item['question_bank_id'] = $bankId;
             }
             $out[] = $item;
+        }
+        return $out;
+    }
+
+    private function getQuizAttemptsTrendForTeacher(int $teacherId, int $days = 21): array
+    {
+        $days = max(1, min(90, $days));
+        $db = $this->db();
+        $sql = "SELECT a.quiz_id, DATE(a.submitted_at) AS day,
+                       COUNT(*) AS count,
+                       ROUND(AVG(a.percentage), 1) AS avg
+                FROM quiz_attempts a
+                JOIN quizzes q ON q.id = a.quiz_id
+                JOIN chapters ch ON ch.id = q.chapter_id
+                JOIN courses c ON c.id = ch.course_id
+                WHERE c.created_by = ?
+                  AND a.submitted_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)
+                GROUP BY a.quiz_id, DATE(a.submitted_at)
+                ORDER BY a.quiz_id ASC, day ASC";
+        $stmt = $db->prepare($sql);
+        $stmt->execute([(int) $teacherId]);
+        $rows = $stmt->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $qid = (int) ($r['quiz_id'] ?? 0);
+            if ($qid <= 0) {
+                continue;
+            }
+            if (!isset($out[$qid])) {
+                $out[$qid] = [];
+            }
+            $out[$qid][] = [
+                'day' => (string) ($r['day'] ?? ''),
+                'count' => (int) ($r['count'] ?? 0),
+                'avg' => (float) ($r['avg'] ?? 0),
+            ];
         }
         return $out;
     }

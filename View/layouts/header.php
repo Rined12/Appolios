@@ -13,10 +13,13 @@ if (str_starts_with($currentUrl, 'student/evenements') || str_starts_with($curre
 
 if (
     str_starts_with($currentUrl, 'student/quiz') ||
+    str_starts_with($currentUrl, 'student-quiz/quiz') ||
+    str_starts_with($currentUrl, 'student-quiz/') ||
     str_starts_with($currentUrl, 'student/coach') ||
     str_starts_with($currentUrl, 'student/chapitres') ||
     str_starts_with($currentUrl, 'student/questions-bank') ||
     str_starts_with($currentUrl, 'student/training') ||
+    str_starts_with($currentUrl, 'student/remedial') ||
     str_starts_with($currentUrl, 'student/quiz-history') ||
     str_starts_with($currentUrl, 'teacher/quiz') ||
     str_starts_with($currentUrl, 'teacher/quiz-stats') ||
@@ -24,7 +27,9 @@ if (
     str_starts_with($currentUrl, 'teacher/edit-quiz') ||
     str_starts_with($currentUrl, 'teacher/questions') ||
     str_starts_with($currentUrl, 'teacher/add-question') ||
-    str_starts_with($currentUrl, 'teacher/edit-question')
+    str_starts_with($currentUrl, 'teacher/edit-question') ||
+    str_starts_with($currentUrl, 'teacher-quiz/') ||
+    str_starts_with($currentUrl, 'admin-quiz/')
 ) {
     $bodyClasses[] = 'theme-quiz-pro';
 }
