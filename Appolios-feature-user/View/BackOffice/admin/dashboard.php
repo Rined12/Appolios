@@ -129,6 +129,81 @@
                     </a>
 </div>
 
+                <!-- Revenue Chart -->
+                <?php 
+                $chartData = $monthlyRevenue ?? [];
+                $chartLabels = array_column($chartData, 'period');
+                $chartValues = array_column($chartData, 'revenue');
+                ?>
+                <?php if (!empty($chartData)): ?>
+                <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; padding: 2rem; margin-top: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0; font-size: 1.3rem; color: #1e293b; font-weight: 800;">Platform Revenue</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="?url=admin/dashboard&range=day" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; <?= $chartRange === 'day' ? 'background: #3b82f6; color: white;' : 'background: #f1f5f9; color: #64748b;' ?>">Day</a>
+                            <a href="?url=admin/dashboard&range=month" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; <?= $chartRange === 'month' ? 'background: #3b82f6; color: white;' : 'background: #f1f5f9; color: #64748b;' ?>">Month</a>
+                            <a href="?url=admin/dashboard&range=year" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; <?= $chartRange === 'year' ? 'background: #3b82f6; color: white;' : 'background: #f1f5f9; color: #64748b;' ?>">Year</a>
+                        </div>
+                    </div>
+                    <canvas id="revenueChart" height="100"></canvas>
+                </div>
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <script>
+                const ctx = document.getElementById('revenueChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: <?= json_encode($chartLabels) ?>,
+                        datasets: [{
+                            label: 'Revenue ($)',
+                            data: <?= json_encode($chartValues) ?>,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#10b981',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        return '$' + context.parsed.y.toFixed(2);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value;
+                                    }
+                                },
+                                grid: { color: '#f1f5f9' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+                </script>
+                <?php endif; ?>
+
                 <!-- Earnings by Teacher -->
                 <?php if (!empty($earningsByTeacher)): ?>
                 <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden; margin-top: 2rem;">

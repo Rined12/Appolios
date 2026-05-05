@@ -52,6 +52,28 @@ class AnalyticsService {
         return (float) $stmt->fetch()['total'];
     }
     
+    public function getMonthlyRevenue($range = 'year') {
+        $conditions = "status = 'succeeded'";
+        
+        if ($range === 'day') {
+            $sql = "SELECT DATE(created_at) as period, SUM(amount) as revenue 
+                    FROM payments WHERE $conditions AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                    GROUP BY DATE(created_at) ORDER BY period";
+        } elseif ($range === 'month') {
+            $sql = "SELECT DATE_FORMAT(created_at, '%Y-%m') as period, SUM(amount) as revenue 
+                    FROM payments WHERE $conditions AND created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+                    GROUP BY DATE_FORMAT(created_at, '%Y-%m') ORDER BY period";
+        } else {
+            $sql = "SELECT DATE_FORMAT(created_at, '%Y') as period, SUM(amount) as revenue 
+                    FROM payments WHERE $conditions AND created_at >= DATE_SUB(NOW(), INTERVAL 5 YEAR)
+                    GROUP BY DATE_FORMAT(created_at, '%Y') ORDER BY period";
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+    
     public function getEarningsByTeacher() {
         $sql = "SELECT 
                     u.id as teacher_id,

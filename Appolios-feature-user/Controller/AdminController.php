@@ -37,6 +37,9 @@ class AdminController extends BaseController {
         $stats = $analytics->getOverviewStats();
         $earningsByTeacher = $analytics->getEarningsByTeacher();
 
+        $chartRange = $_GET['range'] ?? 'year';
+        $monthlyRevenue = $analytics->getMonthlyRevenue($chartRange);
+        
         $data = [
             'title' => 'Admin Dashboard - APPOLIOS',
             'description' => 'Administrator control panel',
@@ -49,6 +52,8 @@ class AdminController extends BaseController {
             'earningsByTeacher' => $earningsByTeacher,
             'statusDistribution' => $courseModel->getStatusDistribution(),
             'monthlyCourseStats' => $courseModel->getMonthlyCourseStats(),
+            'monthlyRevenue' => $monthlyRevenue,
+            'chartRange' => $chartRange,
             'recentCourses' => $courseModel->getAllWithCreator(),
             'recentEvenements' => $evenementModel->getRecent(3),
             'recentUsers' => $userModel->getStudents(),
