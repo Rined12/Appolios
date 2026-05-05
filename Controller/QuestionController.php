@@ -4,6 +4,15 @@ require_once __DIR__ . '/BaseController.php';
 
 class QuestionController extends BaseController
 {
+    private function getDb(): PDO
+    {
+        static $pdo = null;
+        if ($pdo === null) {
+            $pdo = $this->db();
+        }
+        return $pdo;
+    }
+
     public function questions()
     {
         $role = (string) ($_SESSION['role'] ?? '');
@@ -86,7 +95,7 @@ class QuestionController extends BaseController
         }
         $this->view('FrontOffice/student/questions_bank', [
             'title' => 'Banque de questions - ' . APP_NAME,
-            'questions' => $this->getAllReadableQuestions(),
+            'questions' => $this->queryAllReadableQuestions(),
             'flash' => $this->getFlash(),
         ]);
     }
@@ -102,7 +111,7 @@ class QuestionController extends BaseController
             return;
         }
 
-        $all = $this->getAllReadableQuestions();
+        $all = $this->queryAllReadableQuestions();
         $difficulty = isset($_GET['difficulty']) ? strtolower(trim((string) $_GET['difficulty'])) : '';
         if (!in_array($difficulty, ['', 'beginner', 'intermediate', 'advanced'], true)) {
             $difficulty = '';
@@ -163,7 +172,7 @@ class QuestionController extends BaseController
             $this->redirect('teacher/questions');
             return;
         }
-        $id = $this->createQuestionCollectionRow((int) $_SESSION['user_id'], $title);
+        $id = $this->queryCreateQuestionCollection((int) $_SESSION['user_id'], $title);
         $this->setFlash($id === false ? 'error' : 'success', $id === false ? 'Impossible de créer le pack.' : 'Pack créé.');
         $this->redirect('teacher/questions');
     }
@@ -171,7 +180,7 @@ class QuestionController extends BaseController
     public function deleteQuestionCollection($id)
     {
         $this->requireTeacher();
-        $ok = $this->deleteQuestionCollectionOwned((int) $id, (int) $_SESSION['user_id']);
+        $ok = $this->queryDeleteQuestionCollectionOwned((int) $id, (int) $_SESSION['user_id']);
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Pack supprimé.' : 'Impossible de supprimer.');
         $this->redirect('teacher/questions');
     }
@@ -181,7 +190,7 @@ class QuestionController extends BaseController
         $this->requireTeacher();
         $cid = (int) $collectionId;
         $qid = (int) $questionId;
-        $ok = $this->addQuestionToCollectionOwned($cid, $qid, (int) $_SESSION['user_id']);
+        $ok = $this->queryAddQuestionToCollectionOwned($cid, $qid, (int) $_SESSION['user_id']);
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Question ajoutée au pack.' : 'Impossible d\'ajouter la question.');
         $this->redirect('teacher/questions?collection_id=' . $cid);
     }
@@ -191,7 +200,7 @@ class QuestionController extends BaseController
         $this->requireTeacher();
         $cid = (int) $collectionId;
         $qid = (int) $questionId;
-        $ok = $this->removeQuestionFromCollectionOwned($cid, $qid, (int) $_SESSION['user_id']);
+        $ok = $this->queryRemoveQuestionFromCollectionOwned($cid, $qid, (int) $_SESSION['user_id']);
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Question retirée du pack.' : 'Impossible de retirer la question.');
         $this->redirect('teacher/questions?collection_id=' . $cid);
     }
@@ -247,9 +256,9 @@ class QuestionController extends BaseController
         return $errors;
     }
 
-    private function getAllReadableQuestions(): array
+    private function queryAllReadableQuestions(): array
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $sql = "SELECT qb.*, u.name AS author_name
                 FROM question_bank qb
                 JOIN users u ON u.id = qb.created_by
@@ -264,9 +273,9 @@ class QuestionController extends BaseController
         return $rows;
     }
 
-    private function getQuestionBankForTeacher(int $teacherId): array
+    private function queryTeacherQuestionBank(int $teacherId): array
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $stmt = $db->prepare("SELECT qb.*
                               FROM question_bank qb
                               WHERE qb.created_by = ?
@@ -281,17 +290,17 @@ class QuestionController extends BaseController
         return $rows;
     }
 
-    private function getQuestionCollectionsForTeacher(int $teacherId): array
+    private function queryTeacherQuestionCollections(int $teacherId): array
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $st = $db->prepare('SELECT * FROM question_collections WHERE created_by = ? ORDER BY created_at DESC');
         $st->execute([(int) $teacherId]);
         return $st->fetchAll();
     }
 
-    private function getQuestionIdsForCollection(int $collectionId, int $teacherId): array
+    private function queryQuestionIdsForTeacherCollection(int $collectionId, int $teacherId): array
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $sql = 'SELECT cq.question_id
                 FROM collection_questions cq
                 JOIN question_collections qc ON qc.id = cq.collection_id
@@ -302,9 +311,9 @@ class QuestionController extends BaseController
         return array_map('intval', is_array($ids) ? $ids : []);
     }
 
-    private function getQuestionBankUsageStatsMapForTeacher(int $teacherId): array
+    private function queryTeacherQuestionUsageStats(int $teacherId): array
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $sql = "SELECT qb.id AS question_bank_id,
                        COUNT(DISTINCT qqb.quiz_id) AS quizzes_count,
                        COUNT(a.id) AS attempts_count,
@@ -337,16 +346,16 @@ class QuestionController extends BaseController
         $this->requireTeacher();
         $teacherId = (int) $_SESSION['user_id'];
 
-        $collections = $this->getQuestionCollectionsForTeacher($teacherId);
+        $collections = $this->queryTeacherQuestionCollections($teacherId);
         $selectedCollectionId = isset($_GET['collection_id']) ? (int) $_GET['collection_id'] : 0;
-        $selectedIds = $selectedCollectionId > 0 ? $this->getQuestionIdsForCollection($selectedCollectionId, $teacherId) : [];
+        $selectedIds = $selectedCollectionId > 0 ? $this->queryQuestionIdsForTeacherCollection($selectedCollectionId, $teacherId) : [];
         $selectedMap = [];
         foreach ($selectedIds as $id) {
             $selectedMap[(int) $id] = true;
         }
 
-        $questions = $this->getQuestionBankForTeacher($teacherId);
-        $questionUsage = $this->getQuestionBankUsageStatsMapForTeacher($teacherId);
+        $questions = $this->queryTeacherQuestionBank($teacherId);
+        $questionUsage = $this->queryTeacherQuestionUsageStats($teacherId);
 
         $qbTopStats = [
             'questions_total' => count($questions),
@@ -398,26 +407,26 @@ class QuestionController extends BaseController
         ]);
     }
 
-    private function createQuestionCollectionRow(int $teacherId, string $title)
+    private function queryCreateQuestionCollection(int $teacherId, string $title)
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $st = $db->prepare('INSERT INTO question_collections (title, created_by) VALUES (?, ?)');
         $ok = $st->execute([(string) $title, (int) $teacherId]);
         return $ok ? (int) $db->lastInsertId() : false;
     }
 
-    private function deleteQuestionCollectionOwned(int $collectionId, int $teacherId): bool
+    private function queryDeleteQuestionCollectionOwned(int $collectionId, int $teacherId): bool
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $db->prepare('DELETE cq FROM collection_questions cq JOIN question_collections qc ON qc.id=cq.collection_id WHERE cq.collection_id=? AND qc.created_by=?')
             ->execute([(int) $collectionId, (int) $teacherId]);
         $st = $db->prepare('DELETE FROM question_collections WHERE id = ? AND created_by = ?');
         return $st->execute([(int) $collectionId, (int) $teacherId]);
     }
 
-    private function addQuestionToCollectionOwned(int $collectionId, int $questionId, int $teacherId): bool
+    private function queryAddQuestionToCollectionOwned(int $collectionId, int $questionId, int $teacherId): bool
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $st = $db->prepare('SELECT id FROM question_collections WHERE id = ? AND created_by = ? LIMIT 1');
         $st->execute([(int) $collectionId, (int) $teacherId]);
         if (!$st->fetch()) {
@@ -427,9 +436,9 @@ class QuestionController extends BaseController
         return $ins->execute([(int) $collectionId, (int) $questionId]);
     }
 
-    private function removeQuestionFromCollectionOwned(int $collectionId, int $questionId, int $teacherId): bool
+    private function queryRemoveQuestionFromCollectionOwned(int $collectionId, int $questionId, int $teacherId): bool
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $st = $db->prepare('DELETE cq FROM collection_questions cq JOIN question_collections qc ON qc.id=cq.collection_id WHERE cq.collection_id=? AND cq.question_id=? AND qc.created_by=?');
         return $st->execute([(int) $collectionId, (int) $questionId, (int) $teacherId]);
     }
@@ -464,7 +473,7 @@ class QuestionController extends BaseController
             $this->redirect('teacher/add-question');
             return;
         }
-        $this->createQuestionBankQuestion((int) $_SESSION['user_id'], $title !== '' ? $title : null, $questionText, $opts, $correct, $tags !== '' ? $tags : null, $difficulty);
+        $this->queryCreateQuestionBankQuestion((int) $_SESSION['user_id'], $title !== '' ? $title : null, $questionText, $opts, $correct, $tags !== '' ? $tags : null, $difficulty);
         $this->setFlash('success', 'Question enregistrée.');
         $this->redirect('teacher/questions');
     }
@@ -472,7 +481,7 @@ class QuestionController extends BaseController
     private function teacherEditQuestion($id): void
     {
         $this->requireTeacher();
-        $row = $this->findQuestionBankOwned((int) $id, (int) $_SESSION['user_id']);
+        $row = $this->queryFindQuestionBankOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$row) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
@@ -492,7 +501,7 @@ class QuestionController extends BaseController
             $this->redirect('teacher/questions');
             return;
         }
-        $existing = $this->findQuestionBankOwned((int) $id, (int) $_SESSION['user_id']);
+        $existing = $this->queryFindQuestionBankOwned((int) $id, (int) $_SESSION['user_id']);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('teacher/questions');
@@ -511,14 +520,14 @@ class QuestionController extends BaseController
             $this->redirect('teacher/edit-question/' . (int) $id);
             return;
         }
-        $this->updateQuestionBankOwned((int) $id, (int) $_SESSION['user_id'], $title !== '' ? $title : null, $questionText, $opts, $correct, $tags !== '' ? $tags : null, $difficulty);
+        $this->queryUpdateQuestionBankOwned((int) $id, (int) $_SESSION['user_id'], $title !== '' ? $title : null, $questionText, $opts, $correct, $tags !== '' ? $tags : null, $difficulty);
         $this->setFlash('success', 'Question mise à jour.');
         $this->redirect('teacher/questions');
     }
 
-    private function findQuestionBankOwned(int $questionId, int $teacherId): ?array
+    private function queryFindQuestionBankOwned(int $questionId, int $teacherId): ?array
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $stmt = $db->prepare('SELECT * FROM question_bank WHERE id = ? AND created_by = ? LIMIT 1');
         $stmt->execute([(int) $questionId, (int) $teacherId]);
         $row = $stmt->fetch();
@@ -530,9 +539,9 @@ class QuestionController extends BaseController
         return $row;
     }
 
-    private function updateQuestionBankOwned(int $questionId, int $teacherId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty): bool
+    private function queryUpdateQuestionBankOwned(int $questionId, int $teacherId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty): bool
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $check = $db->prepare('SELECT id FROM question_bank WHERE id = ? AND created_by = ? LIMIT 1');
         $check->execute([(int) $questionId, (int) $teacherId]);
         if (!$check->fetch()) {
@@ -561,8 +570,8 @@ class QuestionController extends BaseController
             $this->redirect('admin/login');
             return;
         }
-        $questions = $this->getAllQuestionBankForAdmin();
-        $usage = $this->getQuestionBankUsageStatsMapForAdmin();
+        $questions = $this->queryAllQuestionBankForAdmin();
+        $usage = $this->queryQuestionBankUsageStatsForAdmin();
 
         $top = [
             'questions_total' => count($questions),
@@ -631,7 +640,7 @@ class QuestionController extends BaseController
             $this->redirect('admin/add-question');
             return;
         }
-        $this->createQuestionBankQuestion((int) $_SESSION['user_id'], $title !== '' ? $title : null, $questionText, $opts, $correct, $tags !== '' ? $tags : null, $difficulty);
+        $this->queryCreateQuestionBankQuestion((int) $_SESSION['user_id'], $title !== '' ? $title : null, $questionText, $opts, $correct, $tags !== '' ? $tags : null, $difficulty);
         $this->setFlash('success', 'Question enregistrée.');
         $this->redirect('admin/questions');
     }
@@ -642,7 +651,7 @@ class QuestionController extends BaseController
             $this->redirect('admin/login');
             return;
         }
-        $row = $this->findQuestionByIdDecoded((int) $id);
+        $row = $this->queryFindQuestionByIdDecoded((int) $id);
         if (!$row) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('admin/questions');
@@ -665,7 +674,7 @@ class QuestionController extends BaseController
             $this->redirect('admin/questions');
             return;
         }
-        $existing = $this->findQuestionByIdDecoded((int) $id);
+        $existing = $this->queryFindQuestionByIdDecoded((int) $id);
         if (!$existing) {
             $this->setFlash('error', 'Question introuvable.');
             $this->redirect('admin/questions');
@@ -684,14 +693,14 @@ class QuestionController extends BaseController
             $this->redirect('admin/edit-question/' . (int) $id);
             return;
         }
-        $this->updateQuestionBank((int) $id, $title !== '' ? $title : null, $questionText, $opts, $correct, $tags !== '' ? $tags : null, $difficulty);
+        $this->queryUpdateQuestionBank((int) $id, $title !== '' ? $title : null, $questionText, $opts, $correct, $tags !== '' ? $tags : null, $difficulty);
         $this->setFlash('success', 'Question mise à jour.');
         $this->redirect('admin/questions');
     }
 
-    private function getAllQuestionBankForAdmin(): array
+    private function queryAllQuestionBankForAdmin(): array
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $sql = "SELECT qb.*, u.name AS author_name
                 FROM question_bank qb
                 JOIN users u ON u.id = qb.created_by
@@ -706,9 +715,9 @@ class QuestionController extends BaseController
         return $rows;
     }
 
-    private function getQuestionBankUsageStatsMapForAdmin(): array
+    private function queryQuestionBankUsageStatsForAdmin(): array
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $sql = "SELECT qb.id AS question_bank_id,
                        COUNT(DISTINCT qqb.quiz_id) AS quizzes_count,
                        COUNT(a.id) AS attempts_count,
@@ -734,9 +743,9 @@ class QuestionController extends BaseController
         return $out;
     }
 
-    private function createQuestionBankQuestion(int $adminId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty)
+    private function queryCreateQuestionBankQuestion(int $adminId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty)
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $sql = "INSERT INTO question_bank (title, question_text, options_json, correct_answer, tags, difficulty, created_by)
                 VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $db->prepare($sql);
@@ -753,9 +762,9 @@ class QuestionController extends BaseController
         return $ok ? (int) $db->lastInsertId() : false;
     }
 
-    private function findQuestionByIdDecoded(int $questionId): ?array
+    private function queryFindQuestionByIdDecoded(int $questionId): ?array
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $stmt = $db->prepare('SELECT * FROM question_bank WHERE id = ? LIMIT 1');
         $stmt->execute([(int) $questionId]);
         $row = $stmt->fetch();
@@ -767,9 +776,9 @@ class QuestionController extends BaseController
         return $row;
     }
 
-    private function updateQuestionBank(int $questionId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty): bool
+    private function queryUpdateQuestionBank(int $questionId, ?string $title, string $questionText, array $options, int $correctAnswer, ?string $tags, string $difficulty): bool
     {
-        $db = $this->db();
+        $db = $this->getDb();
         $sql = "UPDATE question_bank
                 SET title = ?, question_text = ?, options_json = ?, correct_answer = ?, tags = ?, difficulty = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?";
