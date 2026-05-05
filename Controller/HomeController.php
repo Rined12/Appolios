@@ -11,7 +11,7 @@ class HomeController extends BaseController {
 
     public function verifyCert() {
         $token = (string) ($_GET['token'] ?? '');
-        $token = trim($token);
+        $token = trim(rawurldecode($token));
 
         $data = [
             'title' => 'Vérification certificat - ' . APP_NAME,
@@ -35,7 +35,12 @@ class HomeController extends BaseController {
             return;
         }
 
-        $json = base64_decode(strtr($b64, '-_', '+/'), true);
+        $b64Std = strtr($b64, '-_', '+/');
+        $padLen = (4 - (strlen($b64Std) % 4)) % 4;
+        if ($padLen > 0) {
+            $b64Std .= str_repeat('=', $padLen);
+        }
+        $json = base64_decode($b64Std, true);
         if (!is_string($json) || $json === '') {
             $data['reason'] = 'Token illisible.';
             $this->view('FrontOffice/home/verify_cert', $data);
