@@ -625,6 +625,30 @@ Schéma JSON attendu:
         ]);
     }
 
+    public function remediationQuizDetail($id)
+    {
+        $this->requireTeacher();
+        $teacherId = (int) $_SESSION['user_id'];
+
+        $quiz = $this->queryFindQuizWithChapterCourse((int) $id);
+        if (!$quiz || (int) ($quiz['course_owner_id'] ?? 0) !== $teacherId) {
+            $this->setFlash('error', 'Quiz introuvable.');
+            $this->redirect('teacher-quiz/remediation-plan');
+            return;
+        }
+
+        $summary = $this->queryTeacherRemediationQuizSummary((int) $id);
+        $attempts = $this->queryTeacherRecentAttemptsForQuiz((int) $id, 40);
+
+        $this->view('FrontOffice/teacher/remediation_quiz_detail', [
+            'title' => 'Détails rattrapage - ' . APP_NAME,
+            'quiz' => $quiz,
+            'summary' => $summary,
+            'attempts' => $attempts,
+            'flash' => $this->getFlash(),
+        ]);
+    }
+
     public function riskQueue()
     {
         if (!$this->isAdmin()) {
@@ -1193,6 +1217,55 @@ Schéma JSON attendu:
                 ORDER BY q.created_at DESC";
         $st = $db->prepare($sql);
         $st->execute([(int) $teacherId]);
+        return $st->fetchAll();
+    }
+
+    private function queryTeacherRemediationQuizSummary(int $quizId): array
+    {
+        $db = $this->getDb();
+        $sql = "SELECT COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage,
+                       COALESCE(ROUND(STDDEV_POP(a.percentage), 1), 0) AS std_percentage,
+                       COALESCE(MAX(a.percentage), 0) AS best_percentage,
+                       COALESCE(MIN(a.percentage), 0) AS worst_percentage,
+                       COALESCE(AVG(CASE WHEN a.percentage >= 50 THEN 1 ELSE 0 END), 0) AS pass_rate,
+                       COALESCE(AVG(CASE WHEN a.percentage < 50 THEN 1 ELSE 0 END), 0) AS fail_rate,
+                       COALESCE(ROUND(AVG(CASE WHEN a.submitted_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN a.percentage END), 1), 0) AS trend_7d,
+                       COALESCE(ROUND(
+                           AVG(CASE WHEN a.submitted_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN a.percentage END)
+                           - AVG(CASE WHEN a.submitted_at >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND a.submitted_at < DATE_SUB(NOW(), INTERVAL 7 DAY) THEN a.percentage END)
+                       , 1), 0) AS trend_delta
+                FROM quiz_attempts a
+                WHERE a.quiz_id = ?";
+        $st = $db->prepare($sql);
+        $st->execute([(int) $quizId]);
+        $r = $st->fetch();
+        $r = is_array($r) ? $r : [];
+        return [
+            'attempts' => (int) ($r['attempts_count'] ?? 0),
+            'avg' => (float) ($r['avg_percentage'] ?? 0),
+            'std' => (float) ($r['std_percentage'] ?? 0),
+            'best' => (int) ($r['best_percentage'] ?? 0),
+            'worst' => (int) ($r['worst_percentage'] ?? 0),
+            'pass_rate' => round(((float) ($r['pass_rate'] ?? 0)) * 100.0, 1),
+            'fail_rate' => round(((float) ($r['fail_rate'] ?? 0)) * 100.0, 1),
+            'trend_7d' => (float) ($r['trend_7d'] ?? 0),
+            'trend_delta' => (float) ($r['trend_delta'] ?? 0),
+        ];
+    }
+
+    private function queryTeacherRecentAttemptsForQuiz(int $quizId, int $limit = 40): array
+    {
+        $limit = max(10, min(200, $limit));
+        $db = $this->getDb();
+        $sql = "SELECT a.*, u.name AS student_name
+                FROM quiz_attempts a
+                JOIN users u ON u.id = a.user_id
+                WHERE a.quiz_id = ?
+                ORDER BY a.submitted_at DESC
+                LIMIT " . (int) $limit;
+        $st = $db->prepare($sql);
+        $st->execute([(int) $quizId]);
         return $st->fetchAll();
     }
 

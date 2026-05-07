@@ -26,6 +26,7 @@ $flash = $flash ?? null;
                     <?php if (empty($items)): ?>
                         <div class="pro-cell-sub">Aucune donnée.</div>
                     <?php else: ?>
+                        <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
                         <?php foreach ($items as $it): ?>
                             <?php
                                 $level = (string) ($it['level'] ?? 'LOW');
@@ -34,8 +35,12 @@ $flash = $flash ?? null;
                                 elseif ($level === 'MEDIUM') $badge .= ' pro-badge--intermediate';
                                 else $badge .= ' pro-badge--beginner';
                                 $recs = isset($it['recommendations']) && is_array($it['recommendations']) ? $it['recommendations'] : [];
+
+                                $delta = (float) ($it['trend_delta'] ?? 0);
+                                $deltaArrow = $delta > 0.1 ? '↑' : ($delta < -0.1 ? '↓' : '→');
+                                $deltaTxt = $deltaArrow . ' ' . htmlspecialchars((string) $delta);
                             ?>
-                            <div style="padding: 12px; border: 1px solid rgba(148,163,184,0.14); border-radius: 12px; margin-bottom: 10px; background: rgba(2,6,23,.20);">
+                            <div style="padding: 12px; border: 1px solid rgba(148,163,184,0.14); border-radius: 12px; background: rgba(2,6,23,.20);">
                                 <div style="display:flex; justify-content:space-between; gap: 10px; align-items:flex-start; flex-wrap:wrap;">
                                     <div>
                                         <div style="font-weight: 900;">
@@ -47,7 +52,12 @@ $flash = $flash ?? null;
                                         <?php endif; ?>
                                     </div>
                                     <div style="text-align:right; min-width: 220px;">
-                                        <span class="<?= htmlspecialchars($badge) ?>"><?= htmlspecialchars($level) ?></span>
+                                        <div style="display:flex; gap: 6px; justify-content:flex-end; flex-wrap:wrap;">
+                                            <span class="<?= htmlspecialchars($badge) ?>"><?= htmlspecialchars($level) ?></span>
+                                            <span class="pro-badge" style="background: rgba(148, 163, 184, 0.10); border-color: rgba(148, 163, 184, 0.18); color: rgba(226, 232, 240, 0.88);">
+                                                Δ7j: <?= $deltaTxt ?>
+                                            </span>
+                                        </div>
                                         <div class="pro-cell-sub">
                                             Impact: <?= (int) ($it['score'] ?? 0) ?>/100 · <?= (int) ($it['attempts'] ?? 0) ?> tentatives · <?= (int) round((float) ($it['avg'] ?? 0)) ?>%
                                         </div>
@@ -60,6 +70,7 @@ $flash = $flash ?? null;
                                             <div style="opacity:.95;">Δ 7j: <strong><?= htmlspecialchars((string) ($it['trend_delta'] ?? '0')) ?></strong></div>
                                         </div>
                                         <div style="margin-top: 6px; display:flex; gap: 8px; justify-content:flex-end; flex-wrap:wrap;">
+                                            <a class="btn btn-outline" style="padding: 6px 10px;" href="<?= APP_ENTRY ?>?url=teacher-quiz/remediation-quiz-detail/<?= (int) ($it['id'] ?? 0) ?>">Détails</a>
                                             <a class="btn btn-outline" style="padding: 6px 10px;" href="<?= APP_ENTRY ?>?url=teacher-quiz/edit-quiz/<?= (int) ($it['id'] ?? 0) ?>">Éditer</a>
                                             <a class="btn btn-outline" style="padding: 6px 10px;" href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz-stats">Stats</a>
                                         </div>
@@ -77,6 +88,7 @@ $flash = $flash ?? null;
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
