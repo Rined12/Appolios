@@ -1,5 +1,7 @@
 # APPOLIOS - Git Ignore
 /config/credentials.php
+.env
+.env.local
 
 # IDEs
 .vscode/

@@ -1,8 +1,10 @@
-<?php
-/**
  * APPOLIOS - Historique d'Activité (Neo Admin Pro)
  */
 ?>
+
+<!-- Leaflet CSS for integrated Map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
     <div>
@@ -134,9 +136,22 @@
                             <td style="font-size: 0.85rem; color: #64748b; max-width: 250px;"><?= $activity['activity_description'] ?></td>
                             <td><code style="font-size: 0.8rem; background: #f8fafc; padding: 4px 8px; border-radius: 6px; color: #475569; border: 1px solid #e2e8f0;"><?= htmlspecialchars($activity['ip_address']) ?></code></td>
                             <td>
-                                <div style="font-size: 0.85rem; color: #475569; display: flex; align-items: center; gap: 6px;">
-                                    <i class="bi bi-geo-alt" style="color: #94a3b8;"></i>
-                                    <?= htmlspecialchars($activity['location'] ?? 'Local / Unknown') ?>
+                                <?php 
+                                $locParts = explode('|', $activity['location'] ?? '');
+                                $locText = $locParts[0] ?: 'Local / Unknown';
+                                $countryCode = isset($locParts[1]) ? $locParts[1] : null;
+                                ?>
+                                <div onclick="openMapModal('<?= addslashes($locText) ?>')" 
+                                   class="location-link"
+                                   style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                    <?php if ($countryCode): ?>
+                                        <img src="https://flagcdn.com/w20/<?= $countryCode ?>.png" 
+                                             style="width: 18px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" 
+                                             alt="<?= $countryCode ?>">
+                                    <?php else: ?>
+                                        <i class="bi bi-geo-alt" style="color: #94a3b8;"></i>
+                                    <?php endif; ?>
+                                    <span class="loc-text"><?= htmlspecialchars($locText) ?></span>
                                 </div>
                             </td>
                             <td>
@@ -228,6 +243,18 @@
     border-color: var(--admin-primary);
     box-shadow: 0 4px 12px rgba(67, 56, 202, 0.2);
 }
+.location-link .loc-text {
+    color: #475569;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+}
+.location-link:hover .loc-text {
+    color: var(--admin-primary);
+    text-decoration: underline;
+}
+.location-link:hover img {
+    transform: scale(1.1);
+}
 </style>
 
 
@@ -235,6 +262,46 @@
 function toggleFilters() {
     const p = document.getElementById('filters-panel');
     p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function openMapModal(location) {
+    if (location === 'Local / Unknown') return;
+    
+    Swal.fire({
+        title: `<i class="bi bi-geo-alt-fill" style="color: #ef4444;"></i> ${location}`,
+        html: `<div id="modal-map" style="width: 100%; height: 450px; border-radius: 12px; border: 1px solid #e2e8f0;"></div>`,
+        width: '850px',
+        showCloseButton: true,
+        showConfirmButton: false,
+        padding: '1.5rem',
+        background: '#ffffff',
+        backdrop: `rgba(15, 23, 42, 0.75)`,
+        didOpen: () => {
+            // Geocode the location text using Nominatim (Free)
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length > 0) {
+                        const lat = data[0].lat;
+                        const lon = data[0].lon;
+                        
+                        const map = L.map('modal-map').setView([lat, lon], 13);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '&copy; OpenStreetMap contributors'
+                        }).addTo(map);
+                        
+                        L.marker([lat, lon]).addTo(map)
+                            .bindPopup(`<b>${location}</b>`)
+                            .openPopup();
+                    } else {
+                        document.getElementById('modal-map').innerHTML = '<div style="padding: 2rem; text-align: center; color: #64748b;">Impossible de charger la carte pour cette adresse.</div>';
+                    }
+                })
+                .catch(() => {
+                    document.getElementById('modal-map').innerHTML = '<div style="padding: 2rem; text-align: center; color: #64748b;">Erreur de connexion au service de carte.</div>';
+                });
+        }
+    });
 }
 </script>
 

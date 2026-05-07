@@ -1319,6 +1319,32 @@ class AdminController extends BaseController
         $this->view('BackOffice/admin/activity_log', $data);
     }
 
+    /**
+     * Activity Map View
+     */
+    public function activityMap()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        // Get all activities that have coordinates
+        $activities = $this->getAllActivities(200); // Get last 200 activities
+
+        $data = [
+            'title' => 'Carte d\'Activité - APPOLIOS',
+            'description' => 'Visualisation géographique des activités',
+            'activities' => $activities,
+            'adminSidebarActive' => 'activity-map',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/activity_map', $data);
+    }
+
     // ==========================================
     // DATABASE METHODS - For User operations
     // ==========================================
@@ -1588,35 +1614,6 @@ class AdminController extends BaseController
     // ==========================================
     // DATABASE METHODS - For Activity Log operations
     // ==========================================
-
-    /**
-     * Log a new activity
-     */
-    public function logActivity(string $activityType, string $description, ?int $userId = null, ?string $userName = null, ?string $userEmail = null, ?string $userRole = null): bool {
-        $sql = "INSERT INTO activity_log
-                (user_id, user_name, user_email, user_role, activity_type, activity_description, ip_address, user_agent, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-
-        try {
-            $stmt = $this->getDb()->prepare($sql);
-            $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-            $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-
-            return $stmt->execute([
-                $userId,
-                $userName,
-                $userEmail,
-                $userRole,
-                $activityType,
-                $description,
-                $ipAddress,
-                $userAgent
-            ]);
-        } catch (PDOException $e) {
-            error_log("ActivityLog error: " . $e->getMessage());
-            return false;
-        }
-    }
 
     /**
      * Get all activities with pagination

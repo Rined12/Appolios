@@ -338,7 +338,7 @@ async function detectLoop() {
     if (!loaded) return;
     const v = document.getElementById('faceid-video');
     const c = document.getElementById('faceid-canvas');
-    const ctx = c.getContext('2d');
+    const ctx = c.getContext('2d', { willReadFrequently: true });
     const ring = document.getElementById('faceid-ring');
 
     const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
@@ -606,7 +606,7 @@ async function analyzeFace(imageUrl) {
 
         // Estimate skin tone from cheek area
         const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);

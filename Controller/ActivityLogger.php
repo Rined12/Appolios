@@ -32,16 +32,19 @@ trait ActivityLogger
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
             
-            // --- MODE TEST LOCAL ---
-            // Si on est en local (::1 ou 127.0.0.1), on utilise une IP publique de test
-            // pour voir la géolocalisation fonctionner.
-            $queryIp = $ipAddress;
+            // --- MODE RÉEL / TEST ---
+            // Si on est en local, on essaie de récupérer la VRAIE IP publique de l'utilisateur
             if ($ipAddress === '127.0.0.1' || $ipAddress === '::1' || $ipAddress === 'unknown') {
-                $queryIp = '197.230.150.10'; // Adresse IP de test (Tunisie)
+                $publicIp = $this->getPublicIp();
+                if ($publicIp) {
+                    $ipAddress = $publicIp;
+                } else {
+                    $ipAddress = '197.230.150.10'; // Fallback Tunisie si pas d'internet
+                }
             }
             
             // Fetch location from ip-api.com
-            $location = $this->fetchIpLocation($queryIp);
+            $location = $this->fetchIpLocation($ipAddress);
 
             // Use provided values or fall back to session
             $userId = $userId ?? $_SESSION['user_id'] ?? null;
@@ -66,6 +69,24 @@ trait ActivityLogger
     }
 
     /**
+     * Get actual public IP address from external service
+     */
+    private function getPublicIp(): ?string
+    {
+        try {
+            $ch = curl_init("https://api.ipify.org");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            $ip = curl_exec($ch);
+            curl_close($ch);
+            return $ip ?: null;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
+    /**
      * Fetch location details from IP address using ip-api.com
      */
     private function fetchIpLocation(string $ip): string
@@ -86,7 +107,15 @@ trait ActivityLogger
             if ($response) {
                 $data = json_decode($response, true);
                 if (isset($data['status']) && $data['status'] === 'success') {
-                    return $data['city'] . ', ' . $data['country'];
+                    // Format: City, Region, Zip, Country|CountryCode|lat|lon
+                    $fullLoc = $data['city'];
+                    if (!empty($data['regionName'])) $fullLoc .= ", " . $data['regionName'];
+                    if (!empty($data['zip'])) $fullLoc .= " (" . $data['zip'] . ")";
+                    $fullLoc .= ", " . $data['country'];
+                    
+                    $coords = (isset($data['lat']) && isset($data['lon'])) ? "|{$data['lat']}|{$data['lon']}" : "||";
+                    
+                    return $fullLoc . '|' . strtolower($data['countryCode']) . $coords;
                 }
             }
         } catch (Exception $e) {

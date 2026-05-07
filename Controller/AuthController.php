@@ -9,6 +9,7 @@
 require_once __DIR__ . '/../Controller/BaseController.php';
 require_once __DIR__ . '/../Controller/ActivityLogger.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../Controller/SmsService.php';
 
 class AuthController extends BaseController
 {
@@ -406,6 +407,14 @@ class AuthController extends BaseController
             ]);
 
             if ($appId) {
+                // Send SMS notification to admin via Twilio
+                $sms = new SmsService();
+                $adminPhone = defined('ADMIN_PHONE_NUMBER') ? ADMIN_PHONE_NUMBER : null;
+                if ($adminPhone) {
+                    $smsMsg = "APPOLIOS: Nouvelle candidature enseignant de {$name} ({$email}). Veuillez verifier le panel admin.";
+                    $sms->sendSms($adminPhone, $smsMsg);
+                }
+
                 $this->setFlash('success', 'Your teacher application has been submitted! An administrator will review your CV and notify you once approved.');
                 $this->redirect('login');
             } else {

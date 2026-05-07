@@ -10,6 +10,7 @@ require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
 require_once __DIR__ . '/../Controller/ActivityLogger.php';
+require_once __DIR__ . '/AvatarGenerator.php';
 
 class TeacherController extends BaseController {
     use ActivityLogger;
