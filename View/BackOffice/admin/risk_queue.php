@@ -14,6 +14,7 @@ $filters = isset($filters) && is_array($filters) ? $filters : [];
                         <p>Priorisez les contenus à revoir via un score de risque calculé automatiquement.</p>
                     </div>
                     <div class="pro-table-actions">
+                        <a href="<?= APP_ENTRY ?>?url=admin-quiz/ai-risk-review" class="btn btn-outline">AI Risk Review</a>
                         <a href="<?= APP_ENTRY ?>?url=admin-quiz/quizzes" class="btn btn-outline">Retour</a>
                     </div>
                 </div>

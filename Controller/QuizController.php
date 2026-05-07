@@ -13,6 +13,208 @@ class QuizController extends BaseController
         return $pdo;
     }
 
+    public function generateQuizAi()
+    {
+        $this->requireTeacher();
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['ok' => false, 'error' => 'Méthode non autorisée.']);
+            exit;
+        }
+
+        if (trim((string) GEMINI_API_KEY) === '') {
+            echo json_encode(['ok' => false, 'error' => 'Clé Gemini manquante (GEMINI_API_KEY).']);
+            exit;
+        }
+
+        $title = trim((string) ($_POST['title'] ?? ''));
+        $difficulty = trim((string) ($_POST['difficulty'] ?? 'beginner'));
+        $tags = trim((string) ($_POST['tags'] ?? ''));
+        $chapterId = (int) ($_POST['chapter_id'] ?? 0);
+        $count = (int) ($_POST['count'] ?? 8);
+        if ($count < 3) $count = 3;
+        if ($count > 20) $count = 20;
+
+        $chapterLabel = '';
+        if ($chapterId > 0) {
+            $chapterLabel = $this->queryTeacherChapterLabelById((int) $_SESSION['user_id'], $chapterId);
+        }
+
+        try {
+            $prompt = $this->buildGeminiQuizPrompt([
+                'title' => $title,
+                'difficulty' => $difficulty,
+                'tags' => $tags,
+                'chapterLabel' => $chapterLabel,
+                'count' => $count,
+            ]);
+
+            $rawText = $this->callGeminiGenerateText($prompt);
+            $objects = $this->extractAllJsonObjects($rawText);
+
+            $allQuestions = [];
+            foreach ($objects as $obj) {
+                if (isset($obj['questions']) && is_array($obj['questions'])) {
+                    $allQuestions = array_merge($allQuestions, $obj['questions']);
+                } elseif (isset($obj['type']) && isset($obj['question'])) {
+                    $allQuestions[] = $obj;
+                }
+            }
+
+            if (empty($allQuestions)) {
+                $preview = mb_substr($rawText, 0, 1000);
+                echo json_encode(['ok' => false, 'error' => 'Réponse IA invalide (JSON). Texte reçu: ' . $preview]);
+                exit;
+            }
+
+            $questions = $this->normalizeAiQuizQuestions(['questions' => $allQuestions], $count);
+            if (empty($questions)) {
+                echo json_encode(['ok' => false, 'error' => 'Aucune question générée.']);
+                exit;
+            }
+
+            echo json_encode(['ok' => true, 'questions' => $questions]);
+            exit;
+        } catch (Throwable $e) {
+            echo json_encode(['ok' => false, 'error' => 'Erreur IA : ' . $e->getMessage()]);
+            exit;
+        }
+    }
+
+    public function generateBlueprintAi()
+    {
+        $this->requireTeacher();
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['ok' => false, 'error' => 'Méthode non autorisée.']);
+            exit;
+        }
+        if (trim((string) GEMINI_API_KEY) === '') {
+            echo json_encode(['ok' => false, 'error' => 'Clé Gemini manquante (GEMINI_API_KEY).']);
+            exit;
+        }
+
+        $objective = trim((string) ($_POST['objective'] ?? ''));
+        $difficulty = trim((string) ($_POST['difficulty'] ?? ''));
+        $chapterId = (int) ($_POST['chapter_id'] ?? 0);
+        $count = (int) ($_POST['count'] ?? 10);
+        if ($count < 3) $count = 3;
+        if ($count > 30) $count = 30;
+
+        if ($objective === '') {
+            echo json_encode(['ok' => false, 'error' => 'Objectif IA vide.']);
+            exit;
+        }
+
+        $chapterLabel = '';
+        if ($chapterId > 0) {
+            $chapterLabel = $this->queryTeacherChapterLabelById((int) $_SESSION['user_id'], $chapterId);
+        }
+
+        try {
+            $prompt = $this->buildGeminiBlueprintPrompt([
+                'objective' => $objective,
+                'difficulty' => $difficulty,
+                'chapterLabel' => $chapterLabel,
+                'count' => $count,
+            ]);
+            $rawText = $this->callGeminiGenerateText($prompt);
+            $payload = $this->extractFirstJsonObject($rawText);
+            $decoded = json_decode($payload, true);
+            if (!is_array($decoded)) {
+                echo json_encode(['ok' => false, 'error' => 'Réponse IA invalide (JSON).']);
+                exit;
+            }
+            $out = $this->normalizeAiBlueprint($decoded);
+            if (!$out) {
+                echo json_encode(['ok' => false, 'error' => 'Blueprint IA invalide.']);
+                exit;
+            }
+            echo json_encode(['ok' => true, 'blueprint' => $out]);
+            exit;
+        } catch (Throwable $e) {
+            echo json_encode(['ok' => false, 'error' => 'Erreur IA.']);
+            exit;
+        }
+    }
+
+    public function aiRiskReview()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $items = $this->queryAdminRiskQueueItems();
+        usort($items, static function ($a, $b) {
+            return (int) ($b['risk_score'] ?? 0) <=> (int) ($a['risk_score'] ?? 0);
+        });
+
+        $this->view('BackOffice/admin/ai_risk_review', [
+            'title' => 'AI Risk Review - ' . APP_NAME,
+            'items' => $items,
+            'flash' => $this->getFlash(),
+        ]);
+    }
+
+    public function analyzeRiskAi()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['ok' => false, 'error' => 'Méthode non autorisée.']);
+            exit;
+        }
+        if (trim((string) GEMINI_API_KEY) === '') {
+            echo json_encode(['ok' => false, 'error' => 'Clé Gemini manquante (GEMINI_API_KEY).']);
+            exit;
+        }
+
+        $type = strtolower(trim((string) ($_POST['type'] ?? '')));
+        $id = (int) ($_POST['id'] ?? 0);
+        if (!in_array($type, ['quiz', 'question'], true) || $id <= 0) {
+            echo json_encode(['ok' => false, 'error' => 'Paramètres invalides.']);
+            exit;
+        }
+
+        try {
+            $ctx = $this->buildRiskAiContext($type, $id);
+            if ($ctx === null) {
+                echo json_encode(['ok' => false, 'error' => 'Objet introuvable.']);
+                exit;
+            }
+
+            $prompt = $this->buildGeminiRiskReviewPrompt($ctx);
+            $rawText = $this->callGeminiGenerateText($prompt);
+            $payload = $this->extractFirstJsonObject($rawText);
+            $decoded = json_decode($payload, true);
+            if (!is_array($decoded)) {
+                echo json_encode(['ok' => false, 'error' => 'Réponse IA invalide (JSON).']);
+                exit;
+            }
+            $analysis = $this->normalizeAiRiskAnalysis($decoded);
+            if (!$analysis) {
+                echo json_encode(['ok' => false, 'error' => 'Analyse IA invalide.']);
+                exit;
+            }
+
+            echo json_encode(['ok' => true, 'analysis' => $analysis]);
+            exit;
+        } catch (Throwable $e) {
+            echo json_encode(['ok' => false, 'error' => 'Erreur IA.']);
+            exit;
+        }
+    }
+
     public function remediationPlan()
     {
         $this->requireTeacher();
@@ -161,6 +363,480 @@ class QuizController extends BaseController
             $this->setFlash('error', 'Accès refusé.');
             $this->redirect('login');
         }
+    }
+
+    private function queryTeacherChapterLabelById(int $teacherId, int $chapterId): string
+    {
+        $db = $this->getDb();
+        $sql = "SELECT c.title AS course_title, ch.title AS chapter_title
+                FROM chapters ch
+                JOIN courses c ON c.id = ch.course_id
+                WHERE ch.id = ? AND c.created_by = ?
+                LIMIT 1";
+        $st = $db->prepare($sql);
+        $st->execute([$chapterId, $teacherId]);
+        $r = $st->fetch();
+        if (!is_array($r)) {
+            return '';
+        }
+        $ct = trim((string) ($r['course_title'] ?? ''));
+        $cht = trim((string) ($r['chapter_title'] ?? ''));
+        return trim($ct . ' — ' . $cht, " —");
+    }
+
+    private function buildGeminiQuizPrompt(array $ctx): string
+    {
+        $title = trim((string) ($ctx['title'] ?? ''));
+        $difficulty = trim((string) ($ctx['difficulty'] ?? 'beginner'));
+        $tags = trim((string) ($ctx['tags'] ?? ''));
+        $chapterLabel = trim((string) ($ctx['chapterLabel'] ?? ''));
+        $count = (int) ($ctx['count'] ?? 8);
+
+        $scope = [];
+        if ($title !== '') $scope[] = "Titre: {$title}";
+        if ($chapterLabel !== '') $scope[] = "Chapitre: {$chapterLabel}";
+        if ($tags !== '') $scope[] = "Tags: {$tags}";
+        $scope[] = "Difficulté: {$difficulty}";
+
+        $scopeTxt = implode(" | ", $scope);
+
+        return "Tu es un expert pédagogique. Génère un quiz ORIGINAL (ne pas copier une base de données).
+Objectif: {$scopeTxt}
+
+Contraintes:
+- Génère {$count} questions au total
+- Mix: environ 70% QCM (4 options) et 30% VRAI/FAUX (2 options: Vrai, Faux)
+- Chaque question doit être claire, sans ambiguïté
+- Pour QCM, l'index correctAnswer commence à 0
+- Ne mets pas de crochets autour des options dans la question
+
+Retourne UNIQUEMENT un objet JSON avec cette structure exacte (sans autre texte):
+{\"questions\":[{\"type\":\"mcq\",\"question\":\"...\",\"options\":[\"...\",\"...\",\"...\",\"...\"],\"correctAnswer\":0,\"explanation\":\"...\"}]} 
+";
+    }
+
+    private function buildGeminiBlueprintPrompt(array $ctx): string
+    {
+        $objective = trim((string) ($ctx['objective'] ?? ''));
+        $difficulty = trim((string) ($ctx['difficulty'] ?? ''));
+        $chapterLabel = trim((string) ($ctx['chapterLabel'] ?? ''));
+        $count = (int) ($ctx['count'] ?? 10);
+        if ($count < 3) $count = 3;
+        if ($count > 30) $count = 30;
+
+        $scope = [];
+        if ($chapterLabel !== '') $scope[] = "Chapitre: {$chapterLabel}";
+        if ($difficulty !== '') $scope[] = "Difficulté souhaitée: {$difficulty}";
+        $scope[] = "Nombre souhaité: {$count}";
+        $scopeTxt = implode(' | ', $scope);
+
+        return "Tu es un expert pédagogique. Ton rôle: transformer un objectif enseignant en blueprint pour un quiz.
+Contexte: {$scopeTxt}
+Objectif enseignant: {$objective}
+
+Contraintes:
+- Retourne STRICTEMENT du JSON valide (pas de texte, pas de markdown).
+- Le blueprint doit être utilisable pour filtrer une banque de questions via tags + difficulté + nombre.
+
+Schéma JSON attendu:
+{
+  \"title\": \"Titre de quiz proposé\",
+  \"tags\": \"tag1, tag2, ...\",
+  \"blueprint\": {
+    \"auto_bank_count\": 10,
+    \"auto_bank_difficulty\": \"beginner\" | \"intermediate\" | \"advanced\" | \"\",
+    \"auto_bank_tags\": \"tag1, tag2\"
+  }
+}
+";
+    }
+
+    private function normalizeAiBlueprint(array $decoded): ?array
+    {
+        $bp = $decoded['blueprint'] ?? null;
+        if (!is_array($bp)) {
+            return null;
+        }
+        $count = (int) ($bp['auto_bank_count'] ?? 0);
+        if ($count < 0) $count = 0;
+        if ($count > 30) $count = 30;
+        $diff = strtolower(trim((string) ($bp['auto_bank_difficulty'] ?? '')));
+        if (!in_array($diff, ['', 'beginner', 'intermediate', 'advanced'], true)) {
+            $diff = '';
+        }
+        $tags = trim((string) ($bp['auto_bank_tags'] ?? ''));
+
+        return [
+            'title' => trim((string) ($decoded['title'] ?? '')),
+            'tags' => trim((string) ($decoded['tags'] ?? '')),
+            'auto_bank_count' => $count,
+            'auto_bank_difficulty' => $diff,
+            'auto_bank_tags' => $tags,
+        ];
+    }
+
+    private function buildRiskAiContext(string $type, int $id): ?array
+    {
+        $db = $this->getDb();
+
+        if ($type === 'quiz') {
+            $sql = "SELECT q.id, q.title, q.difficulty, q.status,
+                           ch.title AS chapter_title,
+                           c.title AS course_title,
+                           COUNT(a.id) AS attempts_count,
+                           COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage
+                    FROM quizzes q
+                    JOIN chapters ch ON ch.id = q.chapter_id
+                    JOIN courses c ON c.id = ch.course_id
+                    LEFT JOIN quiz_attempts a ON a.quiz_id = q.id
+                    WHERE q.id = ?
+                    GROUP BY q.id
+                    LIMIT 1";
+            $st = $db->prepare($sql);
+            $st->execute([(int) $id]);
+            $r = $st->fetch();
+            if (!is_array($r)) {
+                return null;
+            }
+            return [
+                'type' => 'quiz',
+                'id' => (int) ($r['id'] ?? 0),
+                'title' => (string) ($r['title'] ?? ''),
+                'sub' => trim(((string) ($r['course_title'] ?? '')) . ' — ' . ((string) ($r['chapter_title'] ?? ''))),
+                'difficulty' => (string) ($r['difficulty'] ?? ''),
+                'status' => (string) ($r['status'] ?? ''),
+                'attempts' => (int) ($r['attempts_count'] ?? 0),
+                'avg' => (float) ($r['avg_percentage'] ?? 0),
+            ];
+        }
+
+        $sql = "SELECT qb.id, COALESCE(NULLIF(qb.title,''), CONCAT('Question #', qb.id)) AS title,
+                       qb.question_text,
+                       qb.difficulty,
+                       qb.tags,
+                       u.name AS author_name,
+                       COUNT(a.id) AS attempts_count,
+                       COALESCE(ROUND(AVG(a.percentage), 1), 0) AS avg_percentage
+                FROM question_bank qb
+                JOIN users u ON u.id = qb.created_by
+                LEFT JOIN quiz_question_bank qqb ON qqb.question_bank_id = qb.id
+                LEFT JOIN quiz_attempts a ON a.quiz_id = qqb.quiz_id
+                WHERE qb.id = ?
+                GROUP BY qb.id
+                LIMIT 1";
+        $st = $db->prepare($sql);
+        $st->execute([(int) $id]);
+        $r = $st->fetch();
+        if (!is_array($r)) {
+            return null;
+        }
+        return [
+            'type' => 'question',
+            'id' => (int) ($r['id'] ?? 0),
+            'title' => (string) ($r['title'] ?? ''),
+            'sub' => (string) ($r['author_name'] ?? ''),
+            'question_text' => (string) ($r['question_text'] ?? ''),
+            'difficulty' => (string) ($r['difficulty'] ?? ''),
+            'tags' => (string) ($r['tags'] ?? ''),
+            'attempts' => (int) ($r['attempts_count'] ?? 0),
+            'avg' => (float) ($r['avg_percentage'] ?? 0),
+        ];
+    }
+
+    private function buildGeminiRiskReviewPrompt(array $ctx): string
+    {
+        $type = (string) ($ctx['type'] ?? '');
+        $title = (string) ($ctx['title'] ?? '');
+        $sub = (string) ($ctx['sub'] ?? '');
+        $attempts = (int) ($ctx['attempts'] ?? 0);
+        $avg = (float) ($ctx['avg'] ?? 0);
+        $difficulty = (string) ($ctx['difficulty'] ?? '');
+        $status = (string) ($ctx['status'] ?? '');
+        $qtxt = (string) ($ctx['question_text'] ?? '');
+        $tags = (string) ($ctx['tags'] ?? '');
+
+        $lines = [];
+        $lines[] = "Type: {$type}";
+        $lines[] = "Titre: {$title}";
+        if ($sub !== '') $lines[] = "Contexte: {$sub}";
+        $lines[] = "Tentatives: {$attempts}";
+        $lines[] = "Moyenne: {$avg}%";
+        if ($difficulty !== '') $lines[] = "Difficulté: {$difficulty}";
+        if ($status !== '') $lines[] = "Statut: {$status}";
+        if ($tags !== '') $lines[] = "Tags: {$tags}";
+        if ($qtxt !== '') $lines[] = "Énoncé: {$qtxt}";
+        $ctxTxt = implode("\n", $lines);
+
+        return "Tu es un expert en qualité pédagogique. Analyse un contenu (quiz ou question) qui semble à risque.
+Tu dois produire une analyse actionnable pour un administrateur.
+
+Contexte:
+{$ctxTxt}
+
+Contraintes:
+- Retourne STRICTEMENT du JSON valide (pas de texte, pas de markdown).
+- Ne fais aucune mention d'API/LLM dans la réponse.
+- Actions: 3 à 6 actions maximum.
+
+Schéma JSON attendu:
+{
+  \"summary\": \"Résumé en 1-2 phrases\",
+  \"root_causes\": [\"cause 1\", \"cause 2\"],
+  \"actions\": [
+    {
+      \"title\": \"Action\",
+      \"priority\": \"HIGH\" | \"MEDIUM\" | \"LOW\",
+      \"steps\": [\"étape 1\", \"étape 2\"]
+    }
+  ],
+  \"quick_fix\": \"Une action rapide si possible\"
+}
+";
+    }
+
+    private function normalizeAiRiskAnalysis(array $decoded): ?array
+    {
+        $summary = trim((string) ($decoded['summary'] ?? ''));
+        $root = $decoded['root_causes'] ?? [];
+        $actions = $decoded['actions'] ?? [];
+        $quick = trim((string) ($decoded['quick_fix'] ?? ''));
+        if ($summary === '') {
+            return null;
+        }
+        if (!is_array($root)) $root = [];
+        $root = array_values(array_filter(array_map(static function ($v) {
+            return trim((string) $v);
+        }, $root), static function ($v) {
+            return $v !== '';
+        }));
+
+        $outActions = [];
+        if (is_array($actions)) {
+            foreach ($actions as $a) {
+                if (!is_array($a)) continue;
+                $t = trim((string) ($a['title'] ?? ''));
+                $p = strtoupper(trim((string) ($a['priority'] ?? 'MEDIUM')));
+                if (!in_array($p, ['HIGH', 'MEDIUM', 'LOW'], true)) $p = 'MEDIUM';
+                $steps = $a['steps'] ?? [];
+                if (!is_array($steps)) $steps = [];
+                $steps = array_values(array_filter(array_map(static function ($v) {
+                    return trim((string) $v);
+                }, $steps), static function ($v) {
+                    return $v !== '';
+                }));
+                if ($t === '') continue;
+                $outActions[] = [
+                    'title' => $t,
+                    'priority' => $p,
+                    'steps' => array_slice($steps, 0, 8),
+                ];
+                if (count($outActions) >= 6) break;
+            }
+        }
+
+        return [
+            'summary' => $summary,
+            'root_causes' => array_slice($root, 0, 8),
+            'actions' => $outActions,
+            'quick_fix' => $quick,
+        ];
+    }
+
+    private function callGeminiGenerateText(string $prompt): string
+    {
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . urlencode((string) GEMINI_API_KEY);
+        $body = json_encode([
+            'contents' => [
+                [
+                    'role' => 'user',
+                    'parts' => [
+                        ['text' => $prompt],
+                    ],
+                ],
+            ],
+            'generationConfig' => [
+                'temperature' => 0.4,
+                'topP' => 0.95,
+                'maxOutputTokens' => 4096,
+                'responseMimeType' => 'application/json',
+            ],
+        ]);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $resp = curl_exec($ch);
+        $err = curl_error($ch);
+        $errno = curl_errno($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($resp === false || $code < 200 || $code >= 300) {
+            $detail = $err !== '' ? $err : 'Gemini HTTP error';
+            if ($resp !== false) {
+                $body = substr((string) $resp, 0, 500);
+                $detail .= ' (HTTP ' . $code . ': ' . $body . ')';
+            } elseif ($errno !== 0) {
+                $detail .= ' (errno: ' . $errno . ')';
+            }
+            throw new RuntimeException($detail);
+        }
+
+        $decoded = json_decode((string) $resp, true);
+        if (!is_array($decoded)) {
+            throw new RuntimeException('Gemini response not JSON');
+        }
+
+        $parts = $decoded['candidates'][0]['content']['parts'] ?? [];
+        $text = '';
+        foreach ((array) $parts as $part) {
+            if (!empty($part['thought'])) continue;
+            $text .= ($part['text'] ?? '');
+        }
+        if (trim((string) $text) === '') {
+            throw new RuntimeException('Gemini empty response');
+        }
+        error_log('GEMINI_RAW_RESPONSE: ' . substr((string) $text, 0, 500));
+        return (string) $text;
+    }
+
+    private function extractFirstJsonObject(string $text): string
+    {
+        $t = trim($text);
+        // Remove markdown code block wrappers if present
+        $t = preg_replace('/^```json\s*/i', '', $t);
+        $t = preg_replace('/```\s*$/', '', $t);
+
+        $start = strpos($t, '{');
+        if ($start === false) {
+            return '';
+        }
+        $depth = 0;
+        $inStr = false;
+        $escape = false;
+        for ($i = $start; $i < strlen($t); $i++) {
+            $c = $t[$i];
+            if ($inStr) {
+                if ($escape) {
+                    $escape = false;
+                } elseif ($c === '\\') {
+                    $escape = true;
+                } elseif ($c === '"') {
+                    $inStr = false;
+                }
+                continue;
+            }
+            if ($c === '"') {
+                $inStr = true;
+                continue;
+            }
+            if ($c === '{') {
+                $depth++;
+            } elseif ($c === '}') {
+                $depth--;
+                if ($depth === 0) {
+                    return substr($t, $start, $i - $start + 1);
+                }
+            }
+        }
+        return '';
+    }
+
+    private function extractAllJsonObjects(string $text): array
+    {
+        $t = trim($text);
+        $t = preg_replace('/^```json\s*/i', '', $t);
+        $t = preg_replace('/```\s*$/', '', $t);
+
+        $objects = [];
+        $len = strlen($t);
+        $i = 0;
+        while ($i < $len) {
+            $start = strpos($t, '{', $i);
+            if ($start === false) break;
+            $depth = 0;
+            $inStr = false;
+            $escape = false;
+            $valid = false;
+            for ($j = $start; $j < $len; $j++) {
+                $c = $t[$j];
+                if ($inStr) {
+                    if ($escape) { $escape = false; }
+                    elseif ($c === '\\') { $escape = true; }
+                    elseif ($c === '"') { $inStr = false; }
+                    continue;
+                }
+                if ($c === '"') { $inStr = true; continue; }
+                if ($c === '{') { $depth++; }
+                elseif ($c === '}') {
+                    $depth--;
+                    if ($depth === 0) {
+                        $obj = substr($t, $start, $j - $start + 1);
+                        $decoded = json_decode($obj, true);
+                        if (is_array($decoded)) {
+                            $objects[] = $decoded;
+                        }
+                        $i = $j + 1;
+                        $valid = true;
+                        break;
+                    }
+                }
+            }
+            if (!$valid) break;
+        }
+        return $objects;
+    }
+
+    private function normalizeAiQuizQuestions(array $decoded, int $max): array
+    {
+        $qs = $decoded['questions'] ?? [];
+        if (!is_array($qs)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($qs as $q) {
+            if (!is_array($q)) continue;
+            $question = trim((string) ($q['question'] ?? ''));
+            $type = strtolower(trim((string) ($q['type'] ?? 'mcq')));
+            $options = $q['options'] ?? [];
+            $correct = (int) ($q['correctAnswer'] ?? 0);
+
+            if ($question === '' || !is_array($options)) continue;
+            $opts = array_values(array_map(static function ($v) {
+                return trim((string) $v);
+            }, $options));
+            $opts = array_values(array_filter($opts, static function ($v) {
+                return $v !== '';
+            }));
+
+            if ($type === 'tf') {
+                $opts = ['Vrai', 'Faux'];
+                if ($correct !== 0 && $correct !== 1) $correct = 0;
+            } else {
+                $type = 'mcq';
+                if (count($opts) < 4) {
+                    while (count($opts) < 4) $opts[] = 'Option';
+                }
+                $opts = array_slice($opts, 0, 4);
+                if ($correct < 0 || $correct > 3) $correct = 0;
+            }
+
+            $out[] = [
+                'type' => $type,
+                'question' => $question,
+                'options' => $opts,
+                'correctAnswer' => $correct,
+                'explanation' => trim((string) ($q['explanation'] ?? '')),
+            ];
+
+            if (count($out) >= $max) break;
+        }
+        return $out;
     }
 
     private function queryTeacherQuizRemediationRows(int $teacherId): array

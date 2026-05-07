@@ -20,6 +20,37 @@ $appBaseDir = preg_replace('#/(public|Controller)$#', '', $scriptDir) ?? $script
 define('APP_URL', $scheme . '://' . $host . $appBaseDir);
 define('APP_ENTRY', APP_URL . '/Controller/index.php');
 
+// Load environment variables from .env (optional)
+$envPath = dirname(__DIR__) . DIRECTORY_SEPARATOR . '.env';
+if (file_exists($envPath) && is_readable($envPath)) {
+    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (is_array($lines)) {
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+            $pos = strpos($line, '=');
+            if ($pos === false) {
+                continue;
+            }
+            $k = trim(substr($line, 0, $pos));
+            $v = trim(substr($line, $pos + 1));
+            if ($k === '') {
+                continue;
+            }
+            if ((str_starts_with($v, '"') && str_ends_with($v, '"')) || (str_starts_with($v, "'") && str_ends_with($v, "'"))) {
+                $v = substr($v, 1, -1);
+            }
+            if (getenv($k) === false) {
+                putenv($k . '=' . $v);
+                $_ENV[$k] = $v;
+                $_SERVER[$k] = $v;
+            }
+        }
+    }
+}
+
 // Database Configuration
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'appolios_db');
@@ -34,7 +65,10 @@ define('SESSION_NAME', 'APPOLIOS_SESSION');
 // Security
 define('HASH_COST', 12);
 define('APP_QR_SECRET', 'appolios-qr-secret-change-me');
-define('APP_LAN_HOST', '192.168.56.1');
+define('APP_LAN_HOST', '172.16.5.0');
+
+// Gemini (AI)
+define('GEMINI_API_KEY', (string) (getenv('GEMINI_API_KEY') ?: ''));
 
 // Debug Mode (Set to false in production)
 define('DEBUG_MODE', true);
