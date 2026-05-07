@@ -709,4 +709,113 @@ class StudentController extends BaseController {
         <?php
         exit;
     }
+
+    /**
+     * AI Recommendation for events based on student profile/history
+     */
+    public function recommendEvents() {
+        header('Content-Type: application/json');
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'message' => 'Not logged in.']);
+            exit;
+        }
+
+        try {
+            $studentId = (int)$_SESSION['user_id'];
+            $studentName = $_SESSION['user_name'];
+            
+            // Get available events
+            $events = $this->queryApprovedEvenements();
+            
+            // Get student's past/current participations for context
+            $myParticipations = $this->queryMyParticipations($studentId);
+            
+            if (empty($events)) {
+                echo json_encode(['success' => false, 'message' => 'No events available for recommendation.']);
+                exit;
+            }
+
+            // Prepare context
+            $pastEventTitles = array_map(fn($p) => $p['title'] ?? ($p['titre'] ?? 'Event'), $myParticipations);
+            
+            $promptEvents = [];
+            foreach ($events as $e) {
+                $promptEvents[] = [
+                    'id' => $e['id'],
+                    'title' => ($e['titre'] ?? '') ?: ($e['title'] ?? 'Event'),
+                    'type' => $e['type'] ?? 'General',
+                    'description' => substr(strip_tags((string)($e['description'] ?? '')), 0, 150)
+                ];
+            }
+
+            $prompt = "As an AI career and education counselor at APPOLIOS, recommend the best 3 events for a student named {$studentName}.\n\n";
+            if (!empty($pastEventTitles)) {
+                $prompt .= "The student has previously shown interest or participated in: " . implode(', ', array_unique($pastEventTitles)) . ".\n\n";
+            }
+            $prompt .= "Available Events Data:\n" . json_encode($promptEvents) . "\n\n";
+            $prompt .= "Return ONLY a valid JSON array containing exactly 3 recommendation objects. Each object MUST have:\n";
+            $prompt .= "- 'id' (integer: the event ID from data)\n";
+            $prompt .= "- 'title' (string: exact title)\n";
+            $prompt .= "- 'reason' (string: 1-sentence personalized reason why this fits the student)\n";
+            $prompt .= "- 'match_score' (integer: 0-100 percentage of match)\n";
+            $prompt .= "Do not include markdown blocks like ```json. Return raw JSON directly.";
+
+            // Get API Key
+            $apiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ''; 
+            if (empty($apiKey)) {
+                $envPath = __DIR__ . '/../.env';
+                if (file_exists($envPath)) {
+                    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                    foreach ($lines as $line) {
+                        if (strpos(trim($line), 'GEMINI_API_KEY=') === 0) {
+                            $apiKey = trim(explode('=', $line, 2)[1]);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (empty($apiKey)) {
+                throw new Exception("Gemini API Key is not configured.");
+            }
+
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+
+            $postData = [
+                "contents" => [["parts" => [["text" => $prompt]]]],
+                "generationConfig" => ["temperature" => 0.7, "responseMimeType" => "application/json"]
+            ];
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode !== 200) {
+                $err = json_decode($response, true);
+                $errMsg = $err['error']['message'] ?? 'Unknown Error';
+                throw new Exception("Gemini API failed ($httpCode): " . $errMsg);
+            }
+
+            $responseData = json_decode($response, true);
+            $aiText = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
+            $aiText = trim(str_replace(['```json', '```'], '', $aiText));
+            $recommendations = json_decode($aiText, true);
+
+            echo json_encode([
+                'success' => true,
+                'recommendations' => $recommendations
+            ]);
+
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
 }

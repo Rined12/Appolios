@@ -128,9 +128,13 @@ $participationMap = $participationMap ?? [];
                             </select>
 
                             <div style="position: relative;">
-                                <input type="text" id="studentEventSearch" placeholder="Search event by title..." style="padding: 10px 15px 10px 35px; border-radius: 8px; border: 1px solid #e2e8f0; width: 250px; outline: none; transition: border-color 0.2s; font-family: inherit;" onfocus="this.style.borderColor='#548CA8'" onblur="this.style.borderColor='#e2e8f0'">
+                                <input type="text" id="studentEventSearch" placeholder="Search event by title..." style="padding: 10px 15px 10px 35px; border-radius: 8px; border: 1px solid #e2e8f0; width: 220px; outline: none; transition: border-color 0.2s; font-family: inherit;" onfocus="this.style.borderColor='#548CA8'" onblur="this.style.borderColor='#e2e8f0'">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </div>
+                            <button id="aiRecommendBtn" style="background: linear-gradient(135deg, #FFD700, #FFA500); color: #2B4865; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(255, 165, 0, 0.3); transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(255, 165, 0, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(255, 165, 0, 0.3)'">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                                AI Recommender
+                            </button>
                         </div>
                     </div>
 
@@ -353,53 +357,113 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('studentEventSearch');
     const sortSelect = document.getElementById('studentEventSort');
     const grid = document.querySelector('.student-events-grid');
-    if (!grid) return;
-
-    let cards = Array.from(grid.querySelectorAll('.student-event-card'));
     
-    // Search
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const filter = this.value.toLowerCase();
-            cards.forEach(card => {
-                const titleEl = card.querySelector('h3');
-                if (titleEl) {
-                    const titleText = titleEl.textContent.toLowerCase();
-                    card.style.display = titleText.includes(filter) ? '' : 'none';
-                }
+    if (grid) {
+        let cards = Array.from(grid.querySelectorAll('.student-event-card'));
+        
+        // Search
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const filter = this.value.toLowerCase();
+                cards.forEach(card => {
+                    const titleEl = card.querySelector('h3');
+                    if (titleEl) {
+                        const titleText = titleEl.textContent.toLowerCase();
+                        card.style.display = titleText.includes(filter) ? '' : 'none';
+                    }
+                });
             });
-        });
+        }
+
+        // Sort
+        if (sortSelect) {
+            sortSelect.addEventListener('change', function() {
+                const val = this.value;
+                if (val === 'default') return;
+
+                const visibleCards = cards.filter(card => card.style.display !== 'none');
+                const hiddenCards = cards.filter(card => card.style.display === 'none');
+
+                visibleCards.sort((a, b) => {
+                    const aTitle = a.querySelector('h3').textContent.trim();
+                    const bTitle = b.querySelector('h3').textContent.trim();
+                    
+                    if (val === 'titleAsc') return aTitle.localeCompare(bTitle);
+                    if (val === 'titleDesc') return bTitle.localeCompare(aTitle);
+                    return 0;
+                });
+
+                grid.innerHTML = '';
+                visibleCards.forEach(card => grid.appendChild(card));
+                hiddenCards.forEach(card => grid.appendChild(card));
+            });
+        }
     }
 
-    // Sort
-    if (sortSelect) {
-        sortSelect.addEventListener('change', function() {
-            const val = this.value;
-            if (val === 'default') return;
+    /**
+     * AI Recommendations Logic
+     */
+    const aiBtn = document.getElementById('aiRecommendBtn');
+    if (aiBtn) {
+        aiBtn.addEventListener('click', function() {
+            const btn = this;
+            const originalContent = btn.innerHTML;
+            
+            // Loading State
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path></svg> Analyzing...';
+            btn.style.opacity = '0.8';
 
-            // Separate visible and hidden to avoid messing up the filtered view
-            const visibleCards = cards.filter(card => card.style.display !== 'none');
-            const hiddenCards = cards.filter(card => card.style.display === 'none');
+            fetch('<?= APP_ENTRY ?>?url=student/recommend-events')
+                .then(response => response.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                    btn.style.opacity = '1';
 
-            visibleCards.sort((a, b) => {
-                const aTitle = a.querySelector('h3').textContent.trim();
-                const bTitle = b.querySelector('h3').textContent.trim();
-                
-                if (val === 'titleAsc') {
-                    return aTitle.localeCompare(bTitle);
-                } else if (val === 'titleDesc') {
-                    return bTitle.localeCompare(aTitle);
-                }
-                return 0;
-            });
+                    if (data.success) {
+                        const container = document.getElementById('aiRecommendationsList');
+                        container.innerHTML = '';
+                        
+                        data.recommendations.forEach(rec => {
+                            const card = document.createElement('div');
+                            card.className = 'ai-rec-card';
+                            card.style.cssText = 'background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; margin-bottom: 15px; transition: all 0.2s; cursor: pointer;';
+                            card.innerHTML = `
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                    <h4 style="margin: 0; color: #1e293b; font-size: 1.1rem; font-weight: 700;">${rec.title}</h4>
+                                    <span style="background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 50px; font-size: 0.75rem; font-weight: 800;">${rec.match_score}% Match</span>
+                                </div>
+                                <p style="margin: 0 0 15px 0; color: #64748b; font-size: 0.9rem; line-height: 1.5;">${rec.reason}</p>
+                                <a href="<?= APP_ENTRY ?>?url=student/evenement/${rec.id}" style="color: #548CA8; text-decoration: none; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 5px;">
+                                    View Event Details 
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                </a>
+                            `;
+                            card.onmouseover = () => { card.style.borderColor = '#548CA8'; card.style.background = '#fff'; card.style.transform = 'translateX(5px)'; };
+                            card.onmouseout = () => { card.style.borderColor = '#e2e8f0'; card.style.background = '#f8fafc'; card.style.transform = 'translateX(0)'; };
+                            container.appendChild(card);
+                        });
 
-            // Re-append to DOM
-            grid.innerHTML = '';
-            visibleCards.forEach(card => grid.appendChild(card));
-            hiddenCards.forEach(card => grid.appendChild(card));
+                        document.getElementById('aiRecommendModal').style.display = 'flex';
+                    } else {
+                        alert('AI Error: ' + (data.message || 'Could not get recommendations.'));
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                    btn.style.opacity = '1';
+                    alert('A network error occurred. Please try again.');
+                });
         });
     }
 });
+
+function closeAiModal() {
+    document.getElementById('aiRecommendModal').style.display = 'none';
+}
 
 function showRejectionReason(reason, date) {
     document.getElementById('rejectionModalDate').textContent = date;
@@ -411,6 +475,31 @@ function closeRejectionModal() {
     document.getElementById('rejectionModal').style.display = 'none';
 }
 </script>
+
+<!-- AI RECOMMENDATIONS MODAL -->
+<div id="aiRecommendModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(8px); z-index: 10001; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; padding: 20px; box-sizing: border-box;">
+    <div style="background: white; border-radius: 32px; width: 100%; max-width: 550px; max-height: 95vh; display: flex; flex-direction: column; padding: 30px; box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.25); position: relative; animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); box-sizing: border-box;">
+        <button onclick="closeAiModal()" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #64748b; cursor: pointer; transition: all 0.2s; z-index: 2;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#1e293b'" onmouseout="this.style.background='#f1f5f9'; this.style.color='#64748b'">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+
+        <div style="text-align: center; margin-bottom: 25px; flex-shrink: 0;">
+            <div style="background: linear-gradient(135deg, #FFC107, #FF9800); width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #ffffff; margin: 0 auto 20px; box-shadow: 0 8px 16px rgba(255, 152, 0, 0.25);">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>
+            </div>
+            <h2 style="margin: 0; font-size: 1.8rem; font-weight: 800; color: #0f172a; letter-spacing: -0.03em;">Smart Recommendations</h2>
+            <p style="margin: 8px 0 0; font-size: 1rem; color: #64748b;">AI-tailored events just for you, <?= htmlspecialchars($userName ?? 'Student') ?>.</p>
+        </div>
+
+        <div id="aiRecommendationsList" style="overflow-y: auto; padding-right: 5px; scrollbar-width: thin; flex-grow: 1;">
+            <!-- Recommendations will be injected here -->
+        </div>
+
+        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eef2f6; text-align: center; flex-shrink: 0;">
+            <p style="font-size: 0.85rem; color: #94a3b8; font-weight: 500; margin: 0;">Powered by Gemini Pro AI • Appolios Intelligent Learning</p>
+        </div>
+    </div>
+</div>
 
 <!-- REJECTION MODAL -->
 <div id="rejectionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(5px); z-index: 10000; align-items: center; justify-content: center; font-family: 'Inter', sans-serif;">
@@ -445,5 +534,9 @@ function closeRejectionModal() {
 @keyframes modalPop {
     from { opacity: 0; transform: scale(0.9) translateY(20px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 </style>
