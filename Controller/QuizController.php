@@ -13,6 +13,147 @@ class QuizController extends BaseController
         return $pdo;
     }
 
+    private function queryTeacherChapterLabelsByIds(int $teacherId, array $chapterIds): array
+    {
+        $chapterIds = array_values(array_unique(array_filter(array_map('intval', $chapterIds), static fn($v) => $v > 0)));
+        if (empty($chapterIds)) {
+            return [];
+        }
+        $db = $this->getDb();
+        $in = implode(',', array_fill(0, count($chapterIds), '?'));
+        $params = $chapterIds;
+        $params[] = (int) $teacherId;
+        $sql = "SELECT ch.id, c.title AS course_title, ch.title AS chapter_title
+                FROM chapters ch
+                JOIN courses c ON c.id = ch.course_id
+                WHERE ch.id IN ($in) AND c.created_by = ?";
+        $st = $db->prepare($sql);
+        $st->execute($params);
+        $rows = $st->fetchAll();
+        $out = [];
+        foreach ($rows as $r) {
+            $cid = (int) ($r['id'] ?? 0);
+            if ($cid <= 0) continue;
+            $out[$cid] = trim(((string) ($r['course_title'] ?? '')) . ' — ' . ((string) ($r['chapter_title'] ?? '')));
+        }
+        return $out;
+    }
+
+    private function buildGeminiExamPlanPrompt(array $ctx): string
+    {
+        $objective = trim((string) ($ctx['objective'] ?? ''));
+        $difficulty = trim((string) ($ctx['difficulty'] ?? ''));
+        $quizCount = (int) ($ctx['quizCount'] ?? 3);
+        $qPerQuiz = (int) ($ctx['qPerQuiz'] ?? 10);
+        $chapters = $ctx['chapters'] ?? [];
+        if (!is_array($chapters)) $chapters = [];
+
+        $chapterLines = [];
+        foreach ($chapters as $id => $label) {
+            $chapterLines[] = $id . ': ' . $label;
+        }
+        $chaptersTxt = implode("\n", $chapterLines);
+
+        return "Tu es un expert pédagogique. Génère un plan d'examen composé de plusieurs quiz.
+Objectif: {$objective}
+Contraintes:
+- Retourne STRICTEMENT du JSON valide (pas de texte, pas de markdown).
+- Produis {$quizCount} quiz.
+- Chaque quiz contient exactement {$qPerQuiz} questions.
+- Types de questions: mix QCM (4 options) et VRAI/FAUX.
+- Tu dois associer chaque quiz à un chapitre existant parmi la liste fournie.
+" . ($difficulty !== '' ? "- Difficulté globale souhaitée: {$difficulty}\n" : '') .
+"Chapitres disponibles (id: label):\n{$chaptersTxt}
+
+Schéma JSON attendu:
+{
+  \"quizzes\": [
+    {
+      \"chapter_id\": 123,
+      \"title\": \"...\",
+      \"difficulty\": \"beginner\"|\"intermediate\"|\"advanced\",
+      \"tags\": \"tag1, tag2\",
+      \"questions\": [
+        {\"type\":\"mcq\"|\"tf\",\"question\":\"...\",\"options\":[\"...\"],\"correctAnswer\":0}
+      ]
+    }
+  ]
+}
+";
+    }
+
+    private function normalizeAiExamPlan(array $decoded, array $chapterLabels, int $quizCount, int $qPerQuiz, string $fallbackDifficulty): ?array
+    {
+        $qs = $decoded['quizzes'] ?? null;
+        if (!is_array($qs)) {
+            return null;
+        }
+        $out = ['quizzes' => []];
+        $allowedChapterIds = array_map('intval', array_keys($chapterLabels));
+        foreach ($qs as $qz) {
+            if (!is_array($qz)) continue;
+            $chapterId = (int) ($qz['chapter_id'] ?? 0);
+            if (!in_array($chapterId, $allowedChapterIds, true)) {
+                continue;
+            }
+            $title = trim((string) ($qz['title'] ?? 'Quiz'));
+            $difficulty = strtolower(trim((string) ($qz['difficulty'] ?? '')));
+            if (!in_array($difficulty, ['beginner', 'intermediate', 'advanced'], true)) {
+                $difficulty = $fallbackDifficulty !== '' ? $fallbackDifficulty : 'beginner';
+            }
+            $tags = trim((string) ($qz['tags'] ?? ''));
+            $questions = $qz['questions'] ?? [];
+            if (!is_array($questions)) $questions = [];
+
+            $normQs = [];
+            foreach ($questions as $qq) {
+                if (!is_array($qq)) continue;
+                $type = strtolower(trim((string) ($qq['type'] ?? 'mcq')));
+                $question = trim((string) ($qq['question'] ?? ''));
+                $options = $qq['options'] ?? [];
+                $correct = (int) ($qq['correctAnswer'] ?? 0);
+                if ($question === '' || !is_array($options)) continue;
+                if ($type === 'tf') {
+                    $options = ['Vrai', 'Faux'];
+                    if ($correct !== 0 && $correct !== 1) $correct = 0;
+                } else {
+                    $type = 'mcq';
+                    $opts = array_values(array_filter(array_map(static function ($v) {
+                        return trim((string) $v);
+                    }, $options), static fn($v) => $v !== ''));
+                    while (count($opts) < 4) $opts[] = 'Option';
+                    $options = array_slice($opts, 0, 4);
+                    if ($correct < 0 || $correct > 3) $correct = 0;
+                }
+                $normQs[] = [
+                    'type' => $type,
+                    'question' => $question,
+                    'options' => array_values($options),
+                    'correctAnswer' => $correct,
+                ];
+            }
+            if (count($normQs) !== $qPerQuiz) {
+                continue;
+            }
+
+            $out['quizzes'][] = [
+                'chapter_id' => $chapterId,
+                'chapter_label' => (string) ($chapterLabels[$chapterId] ?? ''),
+                'title' => $title !== '' ? $title : 'Quiz',
+                'difficulty' => $difficulty,
+                'tags' => $tags,
+                'questions' => $normQs,
+            ];
+
+            if (count($out['quizzes']) >= $quizCount) break;
+        }
+
+        if (count($out['quizzes']) !== $quizCount) {
+            return null;
+        }
+        return $out;
+    }
+
     public function generateQuizAi()
     {
         $this->requireTeacher();
@@ -81,6 +222,170 @@ class QuizController extends BaseController
             echo json_encode(['ok' => false, 'error' => 'Erreur IA : ' . $e->getMessage()]);
             exit;
         }
+    }
+
+    public function examBuilder()
+    {
+        $this->requireTeacher();
+        $teacherId = (int) $_SESSION['user_id'];
+        $this->view('FrontOffice/teacher/exam_builder', [
+            'title' => 'Exam Builder - ' . APP_NAME,
+            'chapters' => $this->queryChaptersForTeacher($teacherId),
+            'flash' => $this->getFlash(),
+        ]);
+    }
+
+    public function generateExamAi()
+    {
+        $this->requireTeacher();
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['ok' => false, 'error' => 'Méthode non autorisée.']);
+            exit;
+        }
+        if (trim((string) GEMINI_API_KEY) === '') {
+            echo json_encode(['ok' => false, 'error' => 'Clé Gemini manquante (GEMINI_API_KEY).']);
+            exit;
+        }
+
+        $objective = trim((string) ($_POST['objective'] ?? ''));
+        $difficulty = strtolower(trim((string) ($_POST['difficulty'] ?? '')));
+        $quizCount = (int) ($_POST['quiz_count'] ?? 3);
+        $qPerQuiz = (int) ($_POST['questions_per_quiz'] ?? 10);
+        $chapterIds = $_POST['chapter_ids'] ?? [];
+        if (!is_array($chapterIds)) $chapterIds = [];
+        $chapterIds = array_values(array_unique(array_filter(array_map('intval', $chapterIds), static fn($v) => $v > 0)));
+
+        if ($objective === '') {
+            echo json_encode(['ok' => false, 'error' => 'Objectif vide.']);
+            exit;
+        }
+        if ($quizCount < 1) $quizCount = 1;
+        if ($quizCount > 10) $quizCount = 10;
+        if ($qPerQuiz < 3) $qPerQuiz = 3;
+        if ($qPerQuiz > 20) $qPerQuiz = 20;
+        if (!in_array($difficulty, ['', 'beginner', 'intermediate', 'advanced'], true)) {
+            $difficulty = '';
+        }
+        if (empty($chapterIds)) {
+            echo json_encode(['ok' => false, 'error' => 'Aucun chapitre.']);
+            exit;
+        }
+
+        $teacherId = (int) $_SESSION['user_id'];
+        foreach ($chapterIds as $cid) {
+            if (!$this->queryTeacherChapterOwnedByUser((int) $cid, $teacherId)) {
+                echo json_encode(['ok' => false, 'error' => 'Chapitre invalide.']);
+                exit;
+            }
+        }
+
+        try {
+            $chapterLabels = $this->queryTeacherChapterLabelsByIds($teacherId, $chapterIds);
+            $prompt = $this->buildGeminiExamPlanPrompt([
+                'objective' => $objective,
+                'difficulty' => $difficulty,
+                'quizCount' => $quizCount,
+                'qPerQuiz' => $qPerQuiz,
+                'chapters' => $chapterLabels,
+            ]);
+            $rawText = $this->callGeminiGenerateText($prompt);
+            $payload = $this->extractFirstJsonObject($rawText);
+            $decoded = json_decode($payload, true);
+            if (!is_array($decoded)) {
+                echo json_encode(['ok' => false, 'error' => 'Réponse IA invalide (JSON).']);
+                exit;
+            }
+            $plan = $this->normalizeAiExamPlan($decoded, $chapterLabels, $quizCount, $qPerQuiz, $difficulty);
+            if (!$plan) {
+                echo json_encode(['ok' => false, 'error' => 'Plan IA invalide.']);
+                exit;
+            }
+            echo json_encode(['ok' => true, 'plan' => $plan]);
+            exit;
+        } catch (Throwable $e) {
+            echo json_encode(['ok' => false, 'error' => 'Erreur IA.']);
+            exit;
+        }
+    }
+
+    public function storeExamAi()
+    {
+        $this->requireTeacher();
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['ok' => false, 'error' => 'Méthode non autorisée.']);
+            exit;
+        }
+
+        $planJson = (string) ($_POST['plan_json'] ?? '');
+        $decoded = json_decode($planJson, true);
+        if (!is_array($decoded) || !isset($decoded['quizzes']) || !is_array($decoded['quizzes'])) {
+            echo json_encode(['ok' => false, 'error' => 'Plan invalide.']);
+            exit;
+        }
+
+        $teacherId = (int) $_SESSION['user_id'];
+        $created = [];
+        foreach ($decoded['quizzes'] as $qz) {
+            if (!is_array($qz)) continue;
+            $chapterId = (int) ($qz['chapter_id'] ?? 0);
+            if ($chapterId <= 0 || !$this->queryTeacherChapterOwnedByUser($chapterId, $teacherId)) {
+                continue;
+            }
+            $title = trim((string) ($qz['title'] ?? 'Quiz'));
+            $difficulty = strtolower(trim((string) ($qz['difficulty'] ?? 'beginner')));
+            if (!in_array($difficulty, ['beginner', 'intermediate', 'advanced'], true)) {
+                $difficulty = 'beginner';
+            }
+            $tags = trim((string) ($qz['tags'] ?? ''));
+            $questionsRaw = $qz['questions'] ?? [];
+            if (!is_array($questionsRaw) || empty($questionsRaw)) {
+                continue;
+            }
+
+            $questions = [];
+            foreach ($questionsRaw as $qq) {
+                if (!is_array($qq)) continue;
+                $question = trim((string) ($qq['question'] ?? ''));
+                $options = $qq['options'] ?? [];
+                $correct = (int) ($qq['correctAnswer'] ?? 0);
+                if ($question === '' || !is_array($options)) continue;
+                $opts = array_values(array_filter(array_map(static function ($v) {
+                    return trim((string) $v);
+                }, $options), static fn($v) => $v !== ''));
+                if (count($opts) < 2) continue;
+                $opts = array_slice($opts, 0, 6);
+                $correct = max(0, min(count($opts) - 1, $correct));
+                $questions[] = [
+                    'question' => $question,
+                    'options' => $opts,
+                    'correctAnswer' => $correct,
+                ];
+            }
+            if (empty($questions)) {
+                continue;
+            }
+
+            $newId = $this->queryCreateTeacherQuiz(
+                $chapterId,
+                $teacherId,
+                $this->sanitize($title !== '' ? $title : 'Quiz'),
+                $difficulty,
+                $tags !== '' ? $tags : null,
+                null,
+                $questions,
+                'approved'
+            );
+            if ($newId) {
+                $created[] = (int) $newId;
+            }
+        }
+
+        echo json_encode(['ok' => true, 'created_ids' => $created]);
+        exit;
     }
 
     public function generateBlueprintAi()

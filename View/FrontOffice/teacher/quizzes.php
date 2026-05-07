@@ -25,6 +25,11 @@ $top = isset($quizTopStats) && is_array($quizTopStats) ? $quizTopStats : [];
                             Plan de rattrapage
                             <span class="btn-training-pro-badge">PRO</span>
                         </a>
+                        <a href="<?= APP_ENTRY ?>?url=teacher-quiz/exam-builder" class="btn btn-training-pro">
+                            <i class="bi bi-journal-text" aria-hidden="true"></i>
+                            Exam Builder
+                            <span class="btn-training-pro-badge">PRO</span>
+                        </a>
                         <a href="<?= APP_ENTRY ?>?url=teacher-quiz/add-quiz" class="btn btn-primary">Nouveau quiz</a>
                     </div>
                 </div>
