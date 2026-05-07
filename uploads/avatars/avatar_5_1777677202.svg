@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" style="background: radial-gradient(circle at center, #ffffff 0%, #cbd5e1 100%); border-radius: 20px;"><defs><radialGradient id="skinGrad" cx="50%" cy="40%" r="65%">
+                    <stop offset="0%" stop-color="#f5b996" />
+                    <stop offset="60%" stop-color="#bd8f74" />
+                    <stop offset="90%" stop-color="#8d6b57" />
+                    <stop offset="100%" stop-color="#674e3f" />
+                 </radialGradient><radialGradient id="noseGrad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#f5b996" />
+                    <stop offset="100%" stop-color="#bd8f74" />
+                 </radialGradient><linearGradient id="eyeSclera" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#f8fafc" />
+                    <stop offset="100%" stop-color="#ffffff" />
+                 </linearGradient><radialGradient id="irisGrad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#955f33" />
+                    <stop offset="40%" stop-color="#6B4425" />
+                    <stop offset="80%" stop-color="#2a1b0e" />
+                    <stop offset="100%" stop-color="#000000" />
+                 </radialGradient><linearGradient id="hoodieGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#334155" />
+                    <stop offset="100%" stop-color="#0f172a" />
+                 </linearGradient><linearGradient id="hairTexture" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#47362c" />
+                    <stop offset="50%" stop-color="#efb493" />
+                    <stop offset="100%" stop-color="#ffeabf" />
+                 </linearGradient><filter id="ambientOcclusion" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.4" />
+                 </filter><filter id="softGlow">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                 </filter><filter id="noseShadow">
+                    <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.2" />
+                 </filter><clipPath id="leftEyeClip">
+                    <path d="M125 180 C 140 165, 160 165, 175 180 C 160 195, 140 195, 125 180 Z"/>
+                 </clipPath><clipPath id="rightEyeClip">
+                    <path d="M225 180 C 240 165, 260 165, 275 180 C 260 195, 240 195, 225 180 Z"/>
+                 </clipPath></defs><path d="M 100 280 C 80 340, 50 400, 50 400 L 350 400 C 350 400, 320 340, 300 280 Q 200 240 100 280 Z" fill="#0f172a" /><path d="M 160 250 L 240 250 L 240 310 Q 200 330 160 310 Z" fill="#8d6b57" /><path d="M 160 250 Q 200 280 240 250 L 240 270 Q 200 300 160 270 Z" fill="#674e3f" opacity="0.3" /><path d="M 115 150 C 115 40, 285 40, 285 150 C 285 270, 250 305, 200 305 C 150 305, 115 270, 115 150 Z" fill="url(#skinGrad)" filter="url(#ambientOcclusion)" /><ellipse cx="150" cy="190" rx="30" ry="20" fill="#ffffff" opacity="0.1" filter="blur(8px)" /><ellipse cx="250" cy="190" rx="30" ry="20" fill="#ffffff" opacity="0.1" filter="blur(8px)" /><path d="M 115 190 C 115 260, 150 305, 200 305 C 250 305, 285 260, 285 190 C 275 220, 250 240, 200 240 C 150 240, 125 220, 115 190 Z" fill="#47362c" opacity="0.8" filter="blur(2px)" /><path d="M 155 235 Q 200 220 245 235 Q 200 255 155 235 Z" fill="#47362c" /><path d="M 185 270 Q 200 285 215 270 L 205 300 L 195 300 Z" fill="#47362c" /><path d="M 125 180 C 140 165, 160 165, 175 180 C 160 195, 140 195, 125 180 Z" fill="url(#eyeSclera)" /><g clip-path="url(#leftEyeClip)"><circle cx="150" cy="182" r="14" fill="url(#irisGrad)" /><circle cx="150" cy="182" r="6" fill="#000000" /><circle cx="145" cy="177" r="4" fill="#ffffff" opacity="0.8" /><circle cx="154" cy="186" r="2" fill="#ffffff" opacity="0.4" /></g><path d="M 122 180 Q 150 160 178 180" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round" opacity="0.8" /><path d="M 225 180 C 240 165, 260 165, 275 180 C 260 195, 240 195, 225 180 Z" fill="url(#eyeSclera)" /><g clip-path="url(#rightEyeClip)"><circle cx="250" cy="182" r="14" fill="url(#irisGrad)" /><circle cx="250" cy="182" r="6" fill="#000000" /><circle cx="245" cy="177" r="4" fill="#ffffff" opacity="0.8" /><circle cx="254" cy="186" r="2" fill="#ffffff" opacity="0.4" /></g><path d="M 222 180 Q 250 160 278 180" fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round" opacity="0.8" /><path d="M 120 155 Q 150 140 180 155" fill="none" stroke="#47362c" stroke-width="10" stroke-linecap="round" /><path d="M 220 155 Q 250 140 280 155" fill="none" stroke="#47362c" stroke-width="10" stroke-linecap="round" /><path d="M 185 180 Q 200 230 215 180" fill="none" stroke="#8d6b57" stroke-width="2" opacity="0.3" /><path d="M 188 215 Q 200 225 212 215" fill="url(#noseGrad)" filter="url(#noseShadow)" /><circle cx="192" cy="218" r="3" fill="#674e3f" opacity="0.2" /><circle cx="208" cy="218" r="3" fill="#674e3f" opacity="0.2" /><path d="M 165 260 Q 200 275 235 260" fill="none" stroke="#674e3f" stroke-width="1" opacity="0.4" /><path d="M 168 260 Q 200 255 232 260" fill="#846451" opacity="0.6" /><path d="M 168 262 Q 200 278 232 262 Q 200 270 168 262" fill="#fca5a5" /><path d="M 185 270 Q 200 273 215 270" fill="#ffffff" opacity="0.3" filter="blur(2px)" /><path d="M 115 130 C 115 30, 285 30, 285 130 Q 200 50 115 130 Z" fill="url(#hairTexture)" filter="url(#ambientOcclusion)" /><path d="M 125 100 Q 200 50 275 100" fill="none" stroke="#ffeabf" stroke-width="12" opacity="0.3" filter="blur(5px)" /><path d="M 60 400 C 60 330, 100 280, 160 280 Q 200 300 240 280 C 300 280, 340 330, 340 400 Z" fill="url(#hoodieGrad)" filter="url(#ambientOcclusion)" /><path d="M 160 280 Q 200 310 240 280 L 250 290 Q 200 320 150 290 Z" fill="#1e293b" /><path d="M 180 300 L 175 380" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" /><path d="M 220 300 L 225 380" fill="none" stroke="#94a3b8" stroke-width="5" stroke-linecap="round" /><rect x="171" y="375" width="8" height="15" rx="3" fill="#cbd5e1" /><rect x="221" y="375" width="8" height="15" rx="3" fill="#cbd5e1" /><path d="M 115 150 C 115 40, 285 40, 285 150" fill="none" stroke="#ffe4b9" stroke-width="2" opacity="0.4" filter="blur(1px)" /></svg>
