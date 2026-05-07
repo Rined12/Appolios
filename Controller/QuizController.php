@@ -949,7 +949,12 @@ Schéma JSON attendu:
 
     private function callGeminiGenerateText(string $prompt): string
     {
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . urlencode((string) GEMINI_API_KEY);
+        $models = [
+            'gemini-2.5-flash',
+            'gemini-1.5-flash',
+            'gemini-1.5-pro',
+        ];
+
         $body = json_encode([
             'contents' => [
                 [
@@ -967,46 +972,63 @@ Schéma JSON attendu:
             ],
         ]);
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $resp = curl_exec($ch);
-        $err = curl_error($ch);
-        $errno = curl_errno($ch);
-        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        $lastError = '';
+        foreach ($models as $model) {
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent?key=' . urlencode((string) GEMINI_API_KEY);
 
-        if ($resp === false || $code < 200 || $code >= 300) {
-            $detail = $err !== '' ? $err : 'Gemini HTTP error';
-            if ($resp !== false) {
-                $body = substr((string) $resp, 0, 500);
-                $detail .= ' (HTTP ' . $code . ': ' . $body . ')';
-            } elseif ($errno !== 0) {
-                $detail .= ' (errno: ' . $errno . ')';
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                $ch = curl_init($url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $resp = curl_exec($ch);
+                $err = curl_error($ch);
+                $errno = curl_errno($ch);
+                $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($resp === false || $code < 200 || $code >= 300) {
+                    $detail = $err !== '' ? $err : 'Gemini HTTP error';
+                    if ($resp !== false) {
+                        $respBody = substr((string) $resp, 0, 600);
+                        $detail .= ' (HTTP ' . $code . ': ' . $respBody . ')';
+                    } elseif ($errno !== 0) {
+                        $detail .= ' (errno: ' . $errno . ')';
+                    }
+                    $lastError = '[' . $model . '] ' . $detail;
+
+                    if (in_array($code, [429, 503], true) && $attempt < 3) {
+                        usleep(250000 * $attempt);
+                        continue;
+                    }
+                    break;
+                }
+
+                $decoded = json_decode((string) $resp, true);
+                if (!is_array($decoded)) {
+                    $lastError = '[' . $model . '] Gemini response not JSON';
+                    break;
+                }
+
+                $parts = $decoded['candidates'][0]['content']['parts'] ?? [];
+                $text = '';
+                foreach ((array) $parts as $part) {
+                    if (!empty($part['thought'])) continue;
+                    $text .= ($part['text'] ?? '');
+                }
+                if (trim((string) $text) === '') {
+                    $lastError = '[' . $model . '] Gemini empty response';
+                    break;
+                }
+                error_log('GEMINI_RAW_RESPONSE: ' . substr((string) $text, 0, 500));
+                return (string) $text;
             }
-            throw new RuntimeException($detail);
         }
 
-        $decoded = json_decode((string) $resp, true);
-        if (!is_array($decoded)) {
-            throw new RuntimeException('Gemini response not JSON');
-        }
-
-        $parts = $decoded['candidates'][0]['content']['parts'] ?? [];
-        $text = '';
-        foreach ((array) $parts as $part) {
-            if (!empty($part['thought'])) continue;
-            $text .= ($part['text'] ?? '');
-        }
-        if (trim((string) $text) === '') {
-            throw new RuntimeException('Gemini empty response');
-        }
-        error_log('GEMINI_RAW_RESPONSE: ' . substr((string) $text, 0, 500));
-        return (string) $text;
+        throw new RuntimeException($lastError !== '' ? $lastError : 'Gemini error');
     }
 
     private function extractFirstJsonObject(string $text): string
