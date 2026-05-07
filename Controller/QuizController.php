@@ -305,7 +305,7 @@ Schéma JSON attendu:
             echo json_encode(['ok' => true, 'plan' => $plan]);
             exit;
         } catch (Throwable $e) {
-            echo json_encode(['ok' => false, 'error' => 'Erreur IA.']);
+            echo json_encode(['ok' => false, 'error' => 'Erreur IA : ' . $e->getMessage()]);
             exit;
         }
     }
