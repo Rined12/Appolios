@@ -26,11 +26,11 @@ $weakChapters = isset($weakChapters) && is_array($weakChapters) ? $weakChapters 
                     </div>
                     <div class="pro-table-actions">
                         <?php if ($good && !empty($cert['verify_url'])): ?>
-                            <button type="button" class="btn btn-stats-pro" id="openCertQr">
+                            <a class="btn btn-stats-pro" href="<?= APP_ENTRY ?>?url=student-quiz/cert-qr/<?= (int) ($cert['attempt_id'] ?? 0) ?>">
                                 <i class="bi bi-award" aria-hidden="true"></i>
                                 Certificat QR
                                 <span class="btn-stats-pro-badge">PRO</span>
-                            </button>
+                            </a>
                         <?php endif; ?>
                         <?php if ($pct < 60): ?>
                             <a href="<?= APP_ENTRY ?>?url=student-quiz/remedial/<?= (int) ($quiz['id'] ?? 0) ?>" class="btn btn-training-pro">
@@ -229,144 +229,6 @@ $weakChapters = isset($weakChapters) && is_array($weakChapters) ? $weakChapters 
                         </div>
                     </div>
                 </div>
-
-                <?php if ($good && !empty($cert['verify_url'])): ?>
-                    <div class="pro-modal" id="certQrModal" aria-hidden="true" style="display:none;">
-                        <div class="pro-modal__backdrop" data-close="1"></div>
-                        <div class="pro-modal__panel" role="dialog" aria-modal="true" aria-label="Certificat QR">
-                            <div class="pro-modal__head">
-                                <div>
-                                    <div class="pro-modal__title">Certificat QR</div>
-                                    <div class="pro-modal__sub">Scannez pour vérifier l'authenticité du résultat.</div>
-                                </div>
-                                <button type="button" class="pro-modal__close" data-close="1" aria-label="Close">×</button>
-                            </div>
-                            <div class="pro-modal__body">
-                                <?php
-                                    $qrData = (string) ($cert['verify_url'] ?? '');
-                                    $qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' . rawurlencode($qrData);
-                                    $isLocalhost = (strpos($qrData, '://localhost') !== false) || (strpos($qrData, '://127.0.0.1') !== false);
-                                    $lanGuess = '';
-                                    if (defined('APP_LAN_HOST') && is_string(APP_LAN_HOST) && trim(APP_LAN_HOST) !== '') {
-                                        $lanGuess = trim((string) APP_LAN_HOST);
-                                    } else {
-                                        try {
-                                            $h = gethostbyname(gethostname());
-                                            if (is_string($h) && $h !== '' && $h !== '127.0.0.1') {
-                                                $lanGuess = $h;
-                                            }
-                                        } catch (Throwable $e) {
-                                            $lanGuess = '';
-                                        }
-                                    }
-                                ?>
-                                <div style="display:grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; align-items: start;">
-                                    <div class="pro-table-card" style="padding: 14px; text-align:center;">
-                                        <img id="certQrImg" src="<?= htmlspecialchars($qrImg) ?>" alt="QR" width="320" height="320" style="max-width:100%; border-radius: 18px; border: 1px solid rgba(148,163,184,0.16);" />
-                                        <div style="margin-top:10px; font-weight: 950;">Valide 12 mois</div>
-                                        <div style="margin-top:6px; opacity:.82; font-weight: 800; font-size:.88rem;">Caméra iPhone / Android · Scanner QR</div>
-                                    </div>
-
-                                    <div class="pro-table-card" style="padding: 14px;">
-                                        <div style="font-weight: 950;">Lien de vérification</div>
-                                        <?php if ($isLocalhost): ?>
-                                            <div class="flash flash-error" style="margin-top:10px;">
-                                                Le QR contient <strong>localhost</strong> : sur téléphone, ça ne marche pas.
-                                                Solution rapide : utilise l'<strong>IP du PC</strong> (même Wi‑Fi) et le QR devient scannable.
-                                            </div>
-
-                                            <div class="pro-table-card" style="margin-top:12px; padding: 12px; background: rgba(255,255,255,.03); border: 1px solid rgba(148,163,184,0.14);">
-                                                <div style="font-weight: 950;">Rendre le QR scannable</div>
-                                                <div style="margin-top:8px; display:flex; gap: 10px; align-items:center; flex-wrap: wrap;">
-                                                    <label style="font-weight: 900; opacity:.85;">IP du PC</label>
-                                                    <input id="certLanHost" type="text" value="<?= htmlspecialchars($lanGuess !== '' ? $lanGuess : '192.168.x.x') ?>" style="flex:1; min-width: 180px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.14); background: rgba(2, 6, 23, 0.25); color: rgba(226,232,240,0.95); font-weight: 800;" />
-                                                    <button type="button" class="btn btn-primary" id="applyLanHost">Appliquer</button>
-                                                </div>
-                                                <div style="margin-top:8px; opacity:.85; font-weight: 750;">
-                                                    Astuce : ton téléphone et ton PC doivent être sur le même Wi‑Fi.
-                                                </div>
-                                            </div>
-                                        <?php endif; ?>
-                                        <div style="margin-top:8px; display:flex; gap: 10px; align-items:center; flex-wrap: wrap;">
-                                            <input id="certVerifyUrl" type="text" value="<?= htmlspecialchars((string) ($cert['verify_url'] ?? '')) ?>" readonly style="flex:1; min-width: 220px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(148,163,184,0.14); background: rgba(2, 6, 23, 0.25); color: rgba(226,232,240,0.95); font-weight: 800;" />
-                                            <button type="button" class="btn btn-outline" id="copyCertUrl">Copier</button>
-                                            <a class="btn btn-primary" id="certOpenUrl" href="<?= htmlspecialchars((string) ($cert['verify_url'] ?? '')) ?>" target="_blank" rel="noopener">Ouvrir</a>
-                                        </div>
-                                        <div style="margin-top:10px; opacity:.8; font-weight: 750;">
-                                            Le scanner ouvre une page sécurisée qui confirme si le certificat est authentique.
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="pro-modal__foot">
-                                <button type="button" class="btn btn-outline" data-close="1">Fermer</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <script>
-                        (function () {
-                            var openBtn = document.getElementById('openCertQr');
-                            var modal = document.getElementById('certQrModal');
-                            var copyBtn = document.getElementById('copyCertUrl');
-                            var urlInput = document.getElementById('certVerifyUrl');
-                            var openLink = document.getElementById('certOpenUrl');
-                            var qrImg = document.getElementById('certQrImg');
-                            var lanHostInput = document.getElementById('certLanHost');
-                            var applyLanHostBtn = document.getElementById('applyLanHost');
-                            if (!modal) return;
-
-                            function open() {
-                                modal.style.display = 'block';
-                                modal.setAttribute('aria-hidden', 'false');
-                                document.body.style.overflow = 'hidden';
-                            }
-
-                            function close() {
-                                modal.style.display = 'none';
-                                modal.setAttribute('aria-hidden', 'true');
-                                document.body.style.overflow = '';
-                            }
-
-                            if (openBtn) openBtn.addEventListener('click', open);
-                            modal.addEventListener('click', function (e) {
-                                var t = e.target;
-                                if (t && t.getAttribute && t.getAttribute('data-close') === '1') close();
-                            });
-                            document.addEventListener('keydown', function (e) {
-                                if (e.key === 'Escape') close();
-                            });
-
-                            if (copyBtn && urlInput) {
-                                copyBtn.addEventListener('click', async function () {
-                                    try {
-                                        await navigator.clipboard.writeText(urlInput.value);
-                                        copyBtn.textContent = 'Copié';
-                                        setTimeout(function () { copyBtn.textContent = 'Copier'; }, 900);
-                                    } catch (err) {
-                                        urlInput.select();
-                                        document.execCommand('copy');
-                                    }
-                                });
-                            }
-
-                            function applyLanHost() {
-                                if (!lanHostInput || !urlInput || !qrImg || !openLink) return;
-                                var host = (lanHostInput.value || '').trim();
-                                if (!host) return;
-                                var cur = urlInput.value;
-                                var next = cur
-                                    .replace('://localhost', '://' + host)
-                                    .replace('://127.0.0.1', '://' + host);
-                                urlInput.value = next;
-                                openLink.setAttribute('href', next);
-                                qrImg.setAttribute('src', 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' + encodeURIComponent(next));
-                            }
-
-                            if (applyLanHostBtn) applyLanHostBtn.addEventListener('click', applyLanHost);
-                        })();
-                    </script>
-                <?php endif; ?>
 
                 <?php if (!empty($recs)): ?>
                     <div class="pro-table-card" style="padding: 1.2rem; margin-top: 16px;">

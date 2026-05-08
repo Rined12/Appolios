@@ -65,8 +65,16 @@ $chapters = isset($chapters) && is_array($chapters) ? $chapters : [];
                     </div>
 
                     <div class="pro-table-card" style="padding: 12px; margin-top: 12px; background: rgba(255,255,255,.03);">
-                        <div style="font-weight: 950; margin-bottom: 8px;">Preview</div>
+                        <div style="display:flex; justify-content:space-between; gap: 10px; align-items:center; flex-wrap:wrap; margin-bottom: 8px;">
+                            <div style="font-weight: 950;">Preview</div>
+                            <div class="pro-cell-sub" id="ex-preview-meta" style="opacity:.9;"></div>
+                        </div>
                         <div id="ex-preview" class="pro-cell-sub">Aucun preview.</div>
+                    </div>
+
+                    <div class="pro-table-card" id="ex-created" style="display:none; padding: 12px; margin-top: 12px; background: rgba(255,255,255,.03);">
+                        <div style="font-weight: 950; margin-bottom: 8px;">Création</div>
+                        <div id="ex-created-body" class="pro-cell-sub"></div>
                     </div>
                 </div>
 
@@ -80,9 +88,14 @@ $chapters = isset($chapters) && is_array($chapters) ? $chapters : [];
                     var genBtn = document.getElementById('ex-generate');
                     var createBtn = document.getElementById('ex-create');
                     var preview = document.getElementById('ex-preview');
+                    var previewMeta = document.getElementById('ex-preview-meta');
+                    var createdBox = document.getElementById('ex-created');
+                    var createdBody = document.getElementById('ex-created-body');
                     if(!objective || !diff || !quizCount || !qPerQuiz || !chapters || !genBtn || !createBtn || !preview) return;
 
                     var lastPlan = null;
+                    var creating = false;
+                    var generating = false;
 
                     function esc(s){
                         s = (s == null ? '' : String(s));
@@ -102,34 +115,138 @@ $chapters = isset($chapters) && is_array($chapters) ? $chapters : [];
                         return Array.from(chapters.options).filter(function(o){ return o.selected; }).map(function(o){ return o.value; });
                     }
 
-                    function setLoading(on){
-                        genBtn.disabled = !!on;
-                        genBtn.textContent = on ? 'IA…' : 'Générer preview (IA)';
+                    function setGenerating(on){
+                        generating = !!on;
+                        genBtn.disabled = generating || creating;
+                        createBtn.disabled = creating || generating || !lastPlan;
+                        genBtn.textContent = generating ? 'IA…' : 'Générer preview (IA)';
                     }
+
+                    function setCreating(on){
+                        creating = !!on;
+                        genBtn.disabled = generating || creating;
+                        createBtn.disabled = creating || generating || !lastPlan;
+                        createBtn.textContent = creating ? 'Création…' : 'Créer les quiz';
+                    }
+
+                    function updateMeta(){
+                        if(!previewMeta) return;
+                        if(!lastPlan || !Array.isArray(lastPlan.quizzes)){
+                            previewMeta.textContent = '';
+                            return;
+                        }
+                        var n = lastPlan.quizzes.length;
+                        previewMeta.textContent = n + ' quiz · ' + (generating ? 'génération…' : (creating ? 'création…' : 'prêt'));
+                    }
+
+                    function toggleQuestions(idx){
+                        var el = document.getElementById('ex-q-list-' + idx);
+                        if(!el) return;
+                        el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+                    }
+
+                    function removeQuiz(idx){
+                        if(!lastPlan || !Array.isArray(lastPlan.quizzes)) return;
+                        lastPlan.quizzes.splice(idx, 1);
+                        renderPlan(lastPlan);
+                    }
+
+                    function regenerateQuiz(idx){
+                        if(generating || creating) return;
+                        if(!lastPlan || !Array.isArray(lastPlan.quizzes) || !lastPlan.quizzes[idx]) return;
+                        var qz = lastPlan.quizzes[idx];
+                        var obj = String(objective.value || '').trim();
+                        if(!obj){
+                            alert('Écris un objectif pour l\'examen.');
+                            return;
+                        }
+                        var nQ = normInt(qPerQuiz.value, 10, 3, 20);
+
+                        setGenerating(true);
+                        updateMeta();
+
+                        var fd = new FormData();
+                        fd.append('objective', obj + ' | Régénérer 1 quiz: ' + String(qz.title || ''));
+                        fd.append('difficulty', diff.value || '');
+                        fd.append('quiz_count', '1');
+                        fd.append('questions_per_quiz', String(nQ));
+                        fd.append('chapter_ids[]', String(qz.chapter_id || ''));
+
+                        fetch('<?= APP_ENTRY ?>?url=teacher-quiz/generate-exam-ai', {
+                            method: 'POST',
+                            body: fd,
+                            credentials: 'same-origin'
+                        }).then(function(r){ return r.json(); })
+                          .then(function(data){
+                              if(!data || !data.ok || !data.plan || !Array.isArray(data.plan.quizzes) || !data.plan.quizzes[0]){
+                                  alert((data && data.error) ? data.error : 'Erreur IA');
+                                  return;
+                              }
+                              lastPlan.quizzes[idx] = data.plan.quizzes[0];
+                              renderPlan(lastPlan);
+                          })
+                          .catch(function(){ alert('Erreur IA'); })
+                          .finally(function(){
+                              setGenerating(false);
+                              updateMeta();
+                          });
+                    }
+
+                    window.__ex_toggleQuestions = toggleQuestions;
+                    window.__ex_removeQuiz = removeQuiz;
+                    window.__ex_regenerateQuiz = regenerateQuiz;
 
                     function renderPlan(plan){
                         if(!plan || !Array.isArray(plan.quizzes) || plan.quizzes.length === 0){
                             preview.innerHTML = '<div class="pro-cell-sub">Preview vide.</div>';
-                            createBtn.disabled = true;
+                            lastPlan = null;
+                            setCreating(false);
+                            setGenerating(false);
+                            if(createdBox) createdBox.style.display = 'none';
+                            updateMeta();
                             return;
                         }
                         var html = '';
                         plan.quizzes.forEach(function(qz, i){
                             var qs = Array.isArray(qz.questions) ? qz.questions : [];
-                            html += '<div style="padding: 12px; border: 1px solid rgba(148,163,184,0.14); border-radius: 12px; margin-bottom: 10px; background: rgba(2,6,23,.20);">' +
-                                '<div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">' +
-                                  '<div><div style="font-weight:900;">' + esc(qz.title || ('Quiz ' + (i+1))) + '</div>' +
-                                  '<div class="pro-cell-sub">Chapitre: ' + esc(qz.chapter_label || '') + ' · Diff: ' + esc(qz.difficulty || '') + ' · Tags: ' + esc(qz.tags || '') + '</div></div>' +
-                                  '<div class="pro-cell-sub">Questions: ' + qs.length + '</div>' +
+                            html += '<div style="padding: 12px; border: 1px solid rgba(148,163,184,0.14); border-radius: 14px; margin-bottom: 10px; background: rgba(2,6,23,.20);">' +
+                                '<div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:flex-start;">' +
+                                  '<div style="min-width: 260px; flex:1;">' +
+                                    '<div style="font-weight:950; font-size: 1.02rem;">' + esc(qz.title || ('Quiz ' + (i+1))) + '</div>' +
+                                    '<div class="pro-cell-sub" style="margin-top:4px;">Chapitre: ' + esc(qz.chapter_label || '') + '</div>' +
+                                    '<div class="pro-cell-sub" style="margin-top:4px;">Diff: <strong>' + esc(qz.difficulty || '') + '</strong> · Tags: ' + esc(qz.tags || '') + '</div>' +
+                                  '</div>' +
+                                  '<div style="display:flex; flex-direction:column; gap: 8px; align-items:flex-end;">' +
+                                    '<div class="pro-cell-sub">Questions: <strong>' + qs.length + '</strong></div>' +
+                                    '<div style="display:flex; gap: 8px; flex-wrap:wrap; justify-content:flex-end;">' +
+                                      '<button type="button" class="btn btn-outline" style="padding:6px 10px;" onclick="window.__ex_toggleQuestions(' + i + ')">Questions</button>' +
+                                      '<button type="button" class="btn btn-outline" style="padding:6px 10px;" onclick="window.__ex_regenerateQuiz(' + i + ')">Régénérer</button>' +
+                                      '<button type="button" class="btn btn-outline" style="padding:6px 10px;" onclick="window.__ex_removeQuiz(' + i + ')">Retirer</button>' +
+                                    '</div>' +
+                                  '</div>' +
                                 '</div>' +
-                                (qs.length ? ('<ol style="margin: 8px 0 0; padding-left: 18px;">' + qs.map(function(x){ return '<li class="pro-cell-sub">' + esc(x.question || '') + '</li>'; }).join('') + '</ol>') : '') +
+                                '<div id="ex-q-list-' + i + '" style="display:none; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(148,163,184,0.12);">' +
+                                  (qs.length ? ('<ol style="margin: 0; padding-left: 18px;">' + qs.map(function(x){
+                                        var t = String(x.type || 'mcq');
+                                        var badge = t === 'tf' ? 'V/F' : 'QCM';
+                                        return '<li class="pro-cell-sub" style="margin-bottom: 6px;">' +
+                                            '<span class="pro-badge" style="margin-right:8px; background: rgba(148,163,184,0.10); border-color: rgba(148,163,184,0.18); color: rgba(226,232,240,0.85);">' + badge + '</span>' +
+                                            esc(x.question || '') +
+                                        '</li>';
+                                    }).join('') + '</ol>') : '<div class="pro-cell-sub">Aucune question</div>') +
+                                '</div>' +
                             '</div>';
                         });
                         preview.innerHTML = html;
-                        createBtn.disabled = false;
+                        lastPlan = plan;
+                        if(createdBox) createdBox.style.display = 'none';
+                        setGenerating(false);
+                        setCreating(false);
+                        updateMeta();
                     }
 
                     genBtn.addEventListener('click', function(){
+                        if(generating || creating) return;
                         var obj = String(objective.value || '').trim();
                         if(!obj){
                             alert('Écris un objectif pour l\'examen.');
@@ -145,10 +262,11 @@ $chapters = isset($chapters) && is_array($chapters) ? $chapters : [];
                         quizCount.value = String(nQuiz);
                         qPerQuiz.value = String(nQ);
 
-                        setLoading(true);
-                        createBtn.disabled = true;
+                        setGenerating(true);
                         preview.innerHTML = '<div class="pro-cell-sub">Génération IA…</div>';
                         lastPlan = null;
+                        if(createdBox) createdBox.style.display = 'none';
+                        updateMeta();
 
                         var fd = new FormData();
                         fd.append('objective', obj);
@@ -168,25 +286,26 @@ $chapters = isset($chapters) && is_array($chapters) ? $chapters : [];
                                   preview.innerHTML = '<div class="pro-cell-sub">Erreur IA</div>';
                                   return;
                               }
-                              lastPlan = data.plan || null;
-                              renderPlan(lastPlan);
+                              renderPlan(data.plan || null);
                           })
                           .catch(function(){
                               preview.innerHTML = '<div class="pro-cell-sub">Erreur IA</div>';
                           })
                           .finally(function(){
-                              setLoading(false);
+                              setGenerating(false);
+                              updateMeta();
                           });
                     });
 
                     createBtn.addEventListener('click', function(){
+                        if(generating || creating) return;
                         if(!lastPlan){
                             alert('Génère un preview d\'abord.');
                             return;
                         }
                         if(!confirm('Créer les quiz générés ?')) return;
-                        createBtn.disabled = true;
-                        createBtn.textContent = 'Création…';
+                        setCreating(true);
+                        updateMeta();
 
                         var fd = new FormData();
                         fd.append('plan_json', JSON.stringify(lastPlan));
@@ -201,14 +320,32 @@ $chapters = isset($chapters) && is_array($chapters) ? $chapters : [];
                                   alert((data && data.error) ? data.error : 'Erreur');
                                   return;
                               }
-                              window.location.href = '<?= APP_ENTRY ?>?url=teacher-quiz/quiz';
+                              var ids = Array.isArray(data.created_ids) ? data.created_ids : [];
+                              if(createdBox && createdBody){
+                                  createdBox.style.display = 'block';
+                                  if(ids.length === 0){
+                                      createdBody.innerHTML = 'Création terminée, mais aucun quiz n\'a été créé.';
+                                  } else {
+                                      createdBody.innerHTML = '<div style="font-weight:900; margin-bottom: 6px;">' + ids.length + ' quiz créé(s)</div>' +
+                                          '<div style="display:flex; flex-wrap:wrap; gap: 8px;">' +
+                                          ids.map(function(id){
+                                              return '<a class="btn btn-outline" style="padding:6px 10px;" href="<?= APP_ENTRY ?>?url=teacher-quiz/edit-quiz/' + id + '">Quiz #' + id + '</a>';
+                                          }).join('') +
+                                          '</div>' +
+                                          '<div style="margin-top: 10px;">' +
+                                              '<a class="btn btn-primary" href="<?= APP_ENTRY ?>?url=teacher-quiz/quiz">Retour à la liste</a>' +
+                                          '</div>';
+                                  }
+                              }
                           })
                           .catch(function(){ alert('Erreur'); })
                           .finally(function(){
-                              createBtn.disabled = false;
-                              createBtn.textContent = 'Créer les quiz';
+                              setCreating(false);
+                              updateMeta();
                           });
                     });
+
+                    updateMeta();
                 })();
                 </script>
             </div>

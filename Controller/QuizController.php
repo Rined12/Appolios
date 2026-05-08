@@ -224,6 +224,110 @@ Schéma JSON attendu:
         }
     }
 
+    private function parseGeminiJson(string $rawText): array
+    {
+        $t = (string) $rawText;
+
+        $try = $this->tryDecodeRelaxedJson($t);
+        if (is_array($try)) {
+            return $try;
+        }
+
+        $payload = $this->extractFirstJsonObject($t);
+        $try = $this->tryDecodeRelaxedJson($payload);
+        if (is_array($try)) {
+            return $try;
+        }
+
+        $payload = $this->extractFirstJsonArray($t);
+        $try = $this->tryDecodeRelaxedJson($payload);
+        if (is_array($try)) {
+            return $try;
+        }
+
+        $snippet = trim(preg_replace('/\s+/', ' ', substr(trim($t), 0, 260)));
+        throw new RuntimeException('Réponse IA invalide (JSON). Extrait: ' . $snippet);
+    }
+
+    private function tryDecodeRelaxedJson(string $text): ?array
+    {
+        $s = trim((string) $text);
+        if ($s === '') {
+            return null;
+        }
+
+        $s = preg_replace('/^```json\s*/i', '', $s);
+        $s = preg_replace('/^```\s*/', '', $s);
+        $s = preg_replace('/```\s*$/', '', $s);
+
+        $s = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $s);
+
+        $decoded = json_decode($s, true);
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        $fixed = $s;
+        for ($i = 0; $i < 4; $i++) {
+            $fixed2 = preg_replace('/,\s*([}\]])/', '$1', $fixed);
+            if ($fixed2 === $fixed) {
+                break;
+            }
+            $fixed = $fixed2;
+        }
+
+        if ($fixed !== $s) {
+            $decoded = json_decode($fixed, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return null;
+    }
+
+    private function extractFirstJsonArray(string $text): string
+    {
+        $t = trim($text);
+        $t = preg_replace('/^```json\s*/i', '', $t);
+        $t = preg_replace('/``\`\s*$/', '', $t);
+
+        $start = strpos($t, '[');
+        if ($start === false) {
+            return '';
+        }
+        $depth = 0;
+        $inStr = false;
+        $escape = false;
+        $len = strlen($t);
+        for ($i = $start; $i < $len; $i++) {
+            $c = $t[$i];
+            if ($inStr) {
+                if ($escape) {
+                    $escape = false;
+                } elseif ($c === '\\') {
+                    $escape = true;
+                } elseif ($c === '"') {
+                    $inStr = false;
+                }
+                continue;
+            }
+            if ($c === '"') {
+                $inStr = true;
+                continue;
+            }
+            if ($c === '[') {
+                $depth++;
+            } elseif ($c === ']') {
+                $depth--;
+                if ($depth === 0) {
+                    return substr($t, $start, $i - $start + 1);
+                }
+            }
+        }
+        return '';
+    }
+
     public function examBuilder()
     {
         $this->requireTeacher();
@@ -291,12 +395,7 @@ Schéma JSON attendu:
                 'chapters' => $chapterLabels,
             ]);
             $rawText = $this->callGeminiGenerateText($prompt);
-            $payload = $this->extractFirstJsonObject($rawText);
-            $decoded = json_decode($payload, true);
-            if (!is_array($decoded)) {
-                echo json_encode(['ok' => false, 'error' => 'Réponse IA invalide (JSON).']);
-                exit;
-            }
+            $decoded = $this->parseGeminiJson($rawText);
             $plan = $this->normalizeAiExamPlan($decoded, $chapterLabels, $quizCount, $qPerQuiz, $difficulty);
             if (!$plan) {
                 echo json_encode(['ok' => false, 'error' => 'Plan IA invalide.']);
@@ -973,10 +1072,35 @@ Schéma JSON attendu:
 
     private function callGeminiGenerateText(string $prompt): string
     {
+        $cacheKey = sha1($prompt);
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            if (isset($_SESSION['gemini_cache']) && is_array($_SESSION['gemini_cache']) && isset($_SESSION['gemini_cache'][$cacheKey])) {
+                $cached = (string) $_SESSION['gemini_cache'][$cacheKey];
+                if (trim($cached) !== '') {
+                    return $cached;
+                }
+            }
+        }
+
+        $cacheFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'appolios_gemini_' . $cacheKey . '.txt';
+        if (is_file($cacheFile)) {
+            $cached = (string) @file_get_contents($cacheFile);
+            if (trim($cached) !== '') {
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    if (!isset($_SESSION['gemini_cache']) || !is_array($_SESSION['gemini_cache'])) {
+                        $_SESSION['gemini_cache'] = [];
+                    }
+                    $_SESSION['gemini_cache'][$cacheKey] = $cached;
+                }
+                return $cached;
+            }
+        }
+
         $models = [
             'gemini-2.5-flash',
             'gemini-1.5-flash',
-            'gemini-1.5-pro',
+            'gemini-1.5-flash-latest',
+            'gemini-2.0-flash',
         ];
 
         $body = json_encode([
@@ -1024,6 +1148,12 @@ Schéma JSON attendu:
                     }
                     $lastError = '[' . $model . '] ' . $detail;
 
+                    if ($code === 404) {
+                        break;
+                    }
+                    if ($code === 429) {
+                        throw new RuntimeException('Quota Gemini dépassé (HTTP 429). Attends quelques minutes, ou utilise une autre clé / upgrade ton plan. Détail: ' . $lastError);
+                    }
                     if (in_array($code, [429, 503], true) && $attempt < 3) {
                         usleep(250000 * $attempt);
                         continue;
@@ -1048,6 +1178,17 @@ Schéma JSON attendu:
                     break;
                 }
                 error_log('GEMINI_RAW_RESPONSE: ' . substr((string) $text, 0, 500));
+
+                if (session_status() === PHP_SESSION_ACTIVE) {
+                    if (!isset($_SESSION['gemini_cache']) || !is_array($_SESSION['gemini_cache'])) {
+                        $_SESSION['gemini_cache'] = [];
+                    }
+                    if (count($_SESSION['gemini_cache']) > 30) {
+                        array_shift($_SESSION['gemini_cache']);
+                    }
+                    $_SESSION['gemini_cache'][$cacheKey] = (string) $text;
+                }
+                @file_put_contents($cacheFile, (string) $text);
                 return (string) $text;
             }
         }
@@ -1686,6 +1827,48 @@ Schéma JSON attendu:
         $ok = $this->queryToggleRedo((int) $_SESSION['user_id'], (int) $quizId);
         $this->setFlash($ok ? 'success' : 'error', $ok ? 'Redo mis à jour.' : 'Impossible de mettre à jour.');
         $this->redirect('student/quiz');
+    }
+
+    public function certQr($attemptId)
+    {
+        if (!$this->requireStudentRole()) {
+            return;
+        }
+
+        $aid = (int) $attemptId;
+        if ($aid <= 0) {
+            $this->setFlash('error', 'Tentative invalide.');
+            $this->redirect('student-quiz/quiz');
+            return;
+        }
+
+        $attempt = $this->queryFindAttemptWithQuizAndStudent($aid);
+        if (!$attempt || (int) ($attempt['user_id'] ?? 0) !== (int) $_SESSION['user_id']) {
+            $this->setFlash('error', 'Tentative introuvable.');
+            $this->redirect('student-quiz/quiz');
+            return;
+        }
+
+        $pct = (int) ($attempt['percentage'] ?? 0);
+        if ($pct < 70) {
+            $this->setFlash('error', 'Certificat disponible à partir de 70%.');
+            $this->redirect('student-quiz/quiz');
+            return;
+        }
+
+        $cert = $this->buildCertificatePayload(
+            (int) ($attempt['id'] ?? $aid),
+            (int) $_SESSION['user_id'],
+            (int) ($attempt['quiz_id'] ?? 0),
+            $pct
+        );
+
+        $this->view('FrontOffice/student/cert_qr', [
+            'title' => 'Certificat QR - ' . APP_NAME,
+            'attempt' => $attempt,
+            'cert' => $cert,
+            'flash' => $this->getFlash(),
+        ]);
     }
 
     public function coach()
@@ -4230,6 +4413,21 @@ Schéma JSON attendu:
             'token' => $token,
             'verify_url' => $entry . '?url=home/verify-cert&token=' . rawurlencode($token),
         ];
+    }
+
+    private function queryFindAttemptWithQuizAndStudent(int $attemptId): ?array
+    {
+        $db = $this->getDb();
+        $sql = "SELECT a.*, q.title AS quiz_title, u.name AS student_name
+                FROM quiz_attempts a
+                JOIN quizzes q ON q.id = a.quiz_id
+                JOIN users u ON u.id = a.user_id
+                WHERE a.id = ?
+                LIMIT 1";
+        $st = $db->prepare($sql);
+        $st->execute([(int) $attemptId]);
+        $r = $st->fetch();
+        return is_array($r) ? $r : null;
     }
 
     private function queryLastAttemptPercentageForUserQuiz(int $userId, int $quizId): ?int
