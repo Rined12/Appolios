@@ -4,16 +4,23 @@
  * Main application configuration settings
  */
 
-// Load .env file
-if (file_exists(__DIR__ . '/../.env')) {
-    $lines = file(__DIR__ . '/../.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+// Load environment variables from .env file
+function loadEnv($path) {
+    if (!file_exists($path)) return;
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
-        if (strpos(trim($line), '#') === 0) continue;
-        list($name, $value) = explode('=', $line, 2);
-        $_ENV[trim($name)] = trim($value);
-        putenv(sprintf('%s=%s', trim($name), trim($value)));
+        if (strpos($line, '#') === 0) continue; // Skip comments
+        if (strpos($line, '=') === false) continue;
+        list($key, $value) = explode('=', $line, 2);
+        $key = trim($key);
+        $value = trim($value);
+        if (!empty($key) && !isset($_ENV[$key])) {
+            $_ENV[$key] = $value;
+            putenv("$key=$value");
+        }
     }
 }
+loadEnv(__DIR__ . '/../.env');
 
 // Application Settings
 define('APP_NAME', 'APPOLIOS');
@@ -38,6 +45,11 @@ define('DB_USER', 'root');
 define('DB_PASS', '');
 define('DB_CHARSET', 'utf8mb4');
 
+// Mail Configuration (used by MailService)
+// Change MAIL_FROM_EMAIL to a real address for production.
+define('MAIL_FROM_EMAIL', 'jilenibenhamouda@gmail.com');
+define('MAIL_FROM_NAME', 'APPOLIOS Platform');
+
 // Session Configuration
 define('SESSION_LIFETIME', 3600); // 1 hour
 define('SESSION_NAME', 'APPOLIOS_SESSION');
@@ -45,8 +57,30 @@ define('SESSION_NAME', 'APPOLIOS_SESSION');
 // Security
 define('HASH_COST', 12);
 
-// AI Integration
-define('GEMINI_API_KEY', getenv('GEMINI_API_KEY') ?: '');
+// API Credentials (Loaded from a separate file ignored by Git)
+if (file_exists(__DIR__ . '/credentials.php')) {
+    require_once __DIR__ . '/credentials.php';
+}
+
+// Google reCAPTCHA Configuration
+if (!defined('RECAPTCHA_SITE_KEY')) define('RECAPTCHA_SITE_KEY', $_ENV['RECAPTCHA_SITE_KEY'] ?? '');
+if (!defined('RECAPTCHA_SECRET_KEY')) define('RECAPTCHA_SECRET_KEY', $_ENV['RECAPTCHA_SECRET_KEY'] ?? '');
+define('RECAPTCHA_VERIFY_URL', 'https://www.google.com/recaptcha/api/siteverify');
+define('RECAPTCHA_MIN_SCORE', 0.5);
+
+// Gemini AI Configuration
+if (!defined('GEMINI_API_KEY')) define('GEMINI_API_KEY', $_ENV['GEMINI_API_KEY'] ?? '');
+
+// Google OAuth Configuration
+if (!defined('GOOGLE_CLIENT_ID')) define('GOOGLE_CLIENT_ID', $_ENV['GOOGLE_CLIENT_ID'] ?? '');
+if (!defined('GOOGLE_CLIENT_SECRET')) define('GOOGLE_CLIENT_SECRET', $_ENV['GOOGLE_CLIENT_SECRET'] ?? '');
+define('GOOGLE_REDIRECT_URL', APP_ENTRY . '?url=auth/google-callback');
+
+// Twilio SMS Configuration (from .env file)
+define('TWILIO_SID', $_ENV['TWILIO_SID'] ?? '');
+define('TWILIO_TOKEN', $_ENV['TWILIO_TOKEN'] ?? '');
+define('TWILIO_FROM_NUMBER', $_ENV['TWILIO_FROM_NUMBER'] ?? '');
+define('ADMIN_PHONE_NUMBER', $_ENV['ADMIN_PHONE_NUMBER'] ?? '');
 
 // Debug Mode (Set to false in production)
 define('DEBUG_MODE', true);

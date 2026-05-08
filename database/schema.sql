@@ -18,11 +18,15 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'student', 'teacher') DEFAULT 'student',
     is_blocked TINYINT(1) DEFAULT 0,
+    face_descriptor LONGTEXT NULL DEFAULT NULL,
+    reset_token VARCHAR(64) NULL DEFAULT NULL,
+    reset_token_expiry DATETIME NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
     INDEX idx_role (role),
-    INDEX idx_is_blocked (is_blocked)
+    INDEX idx_is_blocked (is_blocked),
+    INDEX idx_reset_token (reset_token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
@@ -196,6 +200,7 @@ CREATE TABLE IF NOT EXISTS teacher_applications (
     password VARCHAR(255) NOT NULL,
     cv_filename VARCHAR(255) NOT NULL,
     cv_path VARCHAR(500) NOT NULL,
+    face_descriptor LONGTEXT NULL DEFAULT NULL,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     admin_notes TEXT,
     reviewed_by INT NULL,

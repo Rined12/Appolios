@@ -207,35 +207,35 @@ $participationMap = $participationMap ?? [];
                     </div>
 
                     <?php if (!empty($participations)): ?>
-                        <div class="table-container" style="background: white; border-radius: 15px; border: 1px solid #eef2f6; box-shadow: 0 10px 30px rgba(0,0,0,0.02); overflow: hidden;">
-                            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <div class="table-container force-white-table table-responsive" style="background: #ffffff !important; border-radius: 14px !important; border: 1px solid #eef2f6 !important; box-shadow: 0 4px 15px rgba(0,0,0,0.02) !important; overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; text-align: left; border: none !important;">
                                 <thead>
-                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-                                        <th style="padding: 1.2rem 1.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Event Title</th>
-                                        <th style="padding: 1.2rem 1.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Date & Location</th>
-                                        <th style="padding: 1.2rem 1.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">Status</th>
-                                        <th style="padding: 1.2rem 1.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Actions</th>
+                                    <tr style="background: #f8fafc !important; border-bottom: 2px solid #e2e8f0 !important;">
+                                        <th style="background: #f8fafc !important; padding: 1.2rem 1.5rem; color: #475569 !important; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Event Title</th>
+                                        <th style="background: #f8fafc !important; padding: 1.2rem 1.5rem; color: #475569 !important; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Date & Location</th>
+                                        <th style="background: #f8fafc !important; padding: 1.2rem 1.5rem; color: #475569 !important; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">Status</th>
+                                        <th style="background: #f8fafc !important; padding: 1.2rem 1.5rem; color: #475569 !important; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($participations as $p): ?>
-                                        <tr style="border-bottom: 1px solid #eef2f6; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                                            <td style="padding: 1.2rem 1rem;">
-                                                <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem;"><?= htmlspecialchars($p['titre'] ?: $p['title']) ?></div>
-                                                <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;"><?= htmlspecialchars($p['type'] ?? 'General') ?></div>
+                                        <tr style="border-bottom: 1px solid #eef2f6 !important; transition: background 0.2s; background: #ffffff !important;" onmouseover="this.style.setProperty('background', '#f8fafc', 'important')" onmouseout="this.style.setProperty('background', '#ffffff', 'important')">
+                                            <td style="padding: 1.2rem 1rem; background: transparent !important;">
+                                                <div style="font-weight: 700; color: #1e293b !important; font-size: 0.95rem;"><?= htmlspecialchars($p['titre'] ?: $p['title']) ?></div>
+                                                <div style="font-size: 0.8rem; color: #64748b !important; margin-top: 2px;"><?= htmlspecialchars($p['type'] ?? 'General') ?></div>
                                             </td>
-                                            <td style="padding: 1.2rem 1.5rem;">
-                                                <div style="font-weight: 600; color: #2B4865; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                            <td style="padding: 1.2rem 1.5rem; background: transparent !important;">
+                                                <div style="font-weight: 600; color: #2B4865 !important; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                                                     <?= htmlspecialchars((string) (!empty($p['date_debut']) ? date('M d, Y', strtotime($p['date_debut'])) : 'N/A')) ?>
-                                                    <span style="color: #94a3b8; font-weight: 400; font-size: 0.8rem;"><?= htmlspecialchars((string) (!empty($p['heure_debut']) ? substr($p['heure_debut'], 0, 5) : '—')) ?></span>
+                                                    <span style="color: #94a3b8 !important; font-weight: 400; font-size: 0.8rem;"><?= htmlspecialchars((string) (!empty($p['heure_debut']) ? substr($p['heure_debut'], 0, 5) : '—')) ?></span>
                                                 </div>
-                                                <div style="display: flex; align-items: center; gap: 6px; color: #64748b; font-size: 0.85rem; font-weight: 500;">
+                                                <div style="display: flex; align-items: center; gap: 6px; color: #64748b !important; font-size: 0.85rem; font-weight: 500;">
                                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E19864" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                                                     <?= htmlspecialchars((string) ($p['lieu'] ?: 'TBA')) ?>
                                                 </div>
                                             </td>
-                                            <td style="padding: 1.2rem 1.5rem; text-align: center;">
+                                            <td style="padding: 1.2rem 1.5rem; text-align: center; background: transparent !important;">
                                                 <?php 
                                                     $statusKey = strtolower((string) ($p['p_status'] ?? 'pending'));
                                                     $statutColor = '#64748b'; $statutBg = '#f1f5f9';
@@ -264,7 +264,7 @@ $participationMap = $participationMap ?? [];
                                                     <?= htmlspecialchars($statusKey) ?>
                                                 </span>
                                             </td>
-                                            <td style="padding: 1.2rem 1.5rem; text-align: right;">
+                                            <td style="padding: 1.2rem 1.5rem; text-align: right; background: transparent !important;">
                                                 <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
                                                     <!-- Details Button -->
                                                     <a href="<?= APP_ENTRY ?>?url=student/evenement/<?= (int) $p['id'] ?>" 
@@ -538,5 +538,32 @@ function closeRejectionModal() {
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+/* Force White Mode for the Participation Table */
+body.dark-mode .force-white-table,
+.force-white-table {
+    background: #ffffff !important;
+    border-color: #eef2f6 !important;
+}
+body.dark-mode .force-white-table table,
+.force-white-table table {
+    color: #1e293b !important;
+}
+body.dark-mode .force-white-table table th,
+.force-white-table table th {
+    background: #f8fafc !important;
+    color: #475569 !important;
+    border-bottom-color: #e2e8f0 !important;
+}
+body.dark-mode .force-white-table table td,
+.force-white-table table td {
+    background: #ffffff !important;
+    border-bottom-color: #eef2f6 !important;
+    color: #1e293b !important;
+}
+body.dark-mode .force-white-table table tr:hover td,
+.force-white-table table tr:hover td {
+    background: #f8fafc !important;
 }
 </style>

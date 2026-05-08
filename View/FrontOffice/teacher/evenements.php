@@ -126,16 +126,16 @@ $teacherSidebarActive = 'evenements';
                     </div>
                     
                     <div class="table-responsive" style="overflow-x: auto; border-radius: 14px; border: 1px solid #eef2f6; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
-                        <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 1000px;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left;">
                             <thead>
                                 <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-                                    <th style="padding: 1.2rem 1rem; color: #475569; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">ID</th>
-                                    <th style="padding: 1.2rem 1rem; color: #475569; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Title</th>
-                                    <th style="padding: 1.2rem 1rem; color: #475569; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Start Date</th>
-                                    <th style="padding: 1.2rem 1rem; color: #475569; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Location</th>
-                                    <th style="padding: 1.2rem 1rem; color: #475569; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Approval</th>
-                                    <th style="padding: 1.2rem 1rem; color: #475569; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Resources</th>
-                                    <th style="padding: 1.2rem 1rem; color: #475569; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Actions</th>
+                                    <th style="padding: 1rem 0.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">ID</th>
+                                    <th style="padding: 1rem 0.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Title</th>
+                                    <th style="padding: 1rem 0.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Start Date</th>
+                                    <th style="padding: 1rem 0.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Location</th>
+                                    <th style="padding: 1rem 0.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Approval</th>
+                                    <th style="padding: 1rem 0.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Resources</th>
+                                    <th style="padding: 1rem 0.5rem; color: #475569; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -155,42 +155,42 @@ $teacherSidebarActive = 'evenements';
                                             onmouseover="this.style.background='#f8fafc'" 
                                             onmouseout="this.style.background='transparent'"
                                             <?= $approval === 'approved' ? 'onclick="showParticipantsListModal('.(int)$evenement['id'].')"' : '' ?>>
-                                            <td style="padding: 1.2rem 1rem; color: #64748b; font-size: 0.9rem; font-weight: 500;">#<?= (int) $evenement['id'] ?></td>
-                                            <td style="padding: 1.2rem 1rem; color: #1e293b; font-weight: 700; font-size: 0.95rem;"><?= htmlspecialchars(($evenement['titre'] ?? '') ?: ($evenement['title'] ?? '')) ?></td>
-                                            <td style="padding: 1.2rem 1rem; color: #475569; font-size: 0.9rem;">
+                                            <td style="padding: 1rem 0.5rem; color: #64748b; font-size: 0.85rem; font-weight: 500;">#<?= (int) $evenement['id'] ?></td>
+                                            <td style="padding: 1rem 0.5rem; color: #1e293b; font-weight: 700; font-size: 0.9rem;"><?= htmlspecialchars(($evenement['titre'] ?? '') ?: ($evenement['title'] ?? '')) ?></td>
+                                            <td style="padding: 1rem 0.5rem; color: #475569; font-size: 0.85rem;">
                                                 <div style="font-weight: 600; color: #2B4865;"><?= htmlspecialchars((string) (($evenement['date_debut'] ?? '') ?: (!empty($evenement['event_date']) ? date('M d, Y', strtotime((string) $evenement['event_date'])) : 'N/A'))) ?></div>
-                                                <div style="font-size: 0.8rem; color: #94a3b8;"><?= htmlspecialchars((string) (($evenement['heure_debut'] ?? '') ?: (!empty($evenement['event_date']) ? date('H:i', strtotime((string) $evenement['event_date'])) : '—'))) ?></div>
+                                                <div style="font-size: 0.75rem; color: #94a3b8;"><?= htmlspecialchars((string) (($evenement['heure_debut'] ?? '') ?: (!empty($evenement['event_date']) ? date('H:i', strtotime((string) $evenement['event_date'])) : '—'))) ?></div>
                                             </td>
-                                            <td style="padding: 1.2rem 1rem; color: #475569; font-size: 0.9rem; font-weight: 500;">
-                                                <div style="display: flex; align-items: center; gap: 6px;">
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E19864" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                            <td style="padding: 1rem 0.5rem; color: #475569; font-size: 0.85rem; font-weight: 500;">
+                                                <div style="display: flex; align-items: center; gap: 4px;">
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#E19864" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                                                     <?= htmlspecialchars((string) (($evenement['lieu'] ?? '') ?: ($evenement['location'] ?? 'TBA'))) ?>
                                                 </div>
                                             </td>
-                                            <td style="padding: 1.2rem 1rem;">
+                                            <td style="padding: 1rem 0.5rem;">
                                                 <?php if ($approval === 'rejected'): ?>
                                                     <button type="button" 
                                                             onclick="showRejectionModal('<?= htmlspecialchars(addslashes($evenement['rejection_reason'] ?? 'No specific reason provided.')) ?>', '<?= htmlspecialchars(addslashes(!empty($evenement['approved_at']) ? date('d M Y \a\t H:i', strtotime($evenement['approved_at'])) : 'Unknown date')) ?>')"
-                                                            style="background: <?= $pillBg ?>; color: <?= $pillColor ?>; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: all 0.2s; outline: none;"
+                                                            style="background: <?= $pillBg ?>; color: <?= $pillColor ?>; border: 1px solid rgba(239, 68, 68, 0.3); padding: 5px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: all 0.2s; outline: none;"
                                                             onmouseover="this.style.boxShadow='0 4px 10px rgba(239,68,68,0.2)'; this.style.transform='translateY(-1px)'; this.style.background='#fee2e2';"
                                                             onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)'; this.style.background='<?= $pillBg ?>';">
                                                         <?= htmlspecialchars($approval) ?>
-                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                                                     </button>
                                                 <?php else: ?>
-                                                    <span style="background: <?= $pillBg ?>; color: <?= $pillColor ?>; padding: 6px 12px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block;">
+                                                    <span style="background: <?= $pillBg ?>; color: <?= $pillColor ?>; padding: 4px 10px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block;">
                                                         <?= htmlspecialchars($approval) ?>
                                                     </span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td style="padding: 1.2rem 1rem;">
-                                                <a href="<?= APP_ENTRY ?>?url=teacher/evenement-ressources&evenement_id=<?= (int) $evenement['id'] ?>" onclick="event.stopPropagation();" style="background: #e9f1fa; color: #548CA8; text-decoration: none; padding: 6px 14px; border-radius: 50px; font-size: 0.85rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                                            <td style="padding: 1rem 0.5rem;">
+                                                <a href="<?= APP_ENTRY ?>?url=teacher/evenement-ressources&evenement_id=<?= (int) $evenement['id'] ?>" onclick="event.stopPropagation();" style="background: #e9f1fa; color: #548CA8; text-decoration: none; padding: 4px 10px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; transition: background 0.2s;" onmouseover="this.style.background='#d0e3f5'" onmouseout="this.style.background='#e9f1fa'">
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                                                     <?= (int) ($evenement['resource_count'] ?? 0) ?> items
                                                 </a>
                                             </td>
 
-                                            <td style="padding: 1.2rem 1rem;">
+                                            <td style="padding: 1rem 0.5rem;">
                                                 <div style="display: flex; gap: 8px;">
                                                     <a href="<?= APP_ENTRY ?>?url=teacher/edit-evenement/<?= (int) $evenement['id'] ?>" onclick="event.stopPropagation();" style="background: #f8fafc; border: 1.5px solid #e2e8f0; color: #64748b; text-decoration: none; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.borderColor='#548CA8'; this.style.color='#548CA8'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'" title="Edit">
                                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>

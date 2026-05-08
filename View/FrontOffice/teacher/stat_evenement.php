@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * APPOLIOS - Teacher Event Statistics
  */
@@ -193,7 +193,7 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem;">
                                 <!-- Participations per Type Pie Chart -->
                                 <div class="stat-card">
-                                    <h4 class="stat-title"><i class="fas fa-chart-pie"></i> Participations par Type d'Événement</h4>
+                                    <h4 class="stat-title"><i class="fas fa-chart-pie"></i> Participations par Type d'├ëv├®nement</h4>
                                     <div class="pie-chart-wrapper">
                                         <canvas id="eventParticipationPieChart"></canvas>
                                     </div>
@@ -322,7 +322,7 @@ document.addEventListener("DOMContentLoaded", function() {
         data: {
             labels: labels,
             datasets: [{
-                label: 'Acceptés',
+                label: 'Accept├®s',
                 borderColor: '#28a745',
                 backgroundColor: 'rgba(40, 167, 69, 0.1)',
                 data: participants,
@@ -342,7 +342,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 pointRadius: 4,
                 pointBackgroundColor: '#ffc107'
             }, {
-                label: 'Refusés',
+                label: 'Refus├®s',
                 borderColor: '#dc3545',
                 backgroundColor: 'rgba(220, 53, 69, 0.1)',
                 data: refused,
@@ -390,7 +390,7 @@ document.addEventListener("DOMContentLoaded", function() {
     new Chart(ctxEventPart, {
         type: 'polarArea',
         data: {
-            labels: partTypeLabels.length > 0 ? partTypeLabels : ['Aucune Donnée'],
+            labels: partTypeLabels.length > 0 ? partTypeLabels : ['Aucune Donn├®e'],
             datasets: [{
                 data: partTypeData.length > 0 ? partTypeData : [1],
                 backgroundColor: partTypeLabels.length > 0 ? modernPalette.map(color => color + 'CC') : ['#e2e8f0'],

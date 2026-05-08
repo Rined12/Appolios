@@ -30,6 +30,17 @@ $teacherSidebarActive = $teacherSidebarActive ?? '';
             <span>Mes Evenements</span>
         </a>
 
+        <a href="<?= APP_ENTRY ?>?url=teacher/stat-evenements" class="admin-side-link <?= $teacherSidebarActive === 'stat-evenements' ? 'active' : '' ?>">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+            </span>
+            <span>Stat Événements</span>
+        </a>
+
         <a href="<?= APP_ENTRY ?>?url=teacher/add-course" class="admin-side-link <?= $teacherSidebarActive === 'add-course' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -52,27 +63,14 @@ $teacherSidebarActive = $teacherSidebarActive ?? '';
             <span>Add Evenement</span>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=teacher/participation-requests" class="admin-side-link <?= $teacherSidebarActive === 'participations' ? 'active' : '' ?>">
+        <a href="<?= APP_ENTRY ?>?url=teacher/profile" class="admin-side-link <?= $teacherSidebarActive === 'profile' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
                 </svg>
             </span>
-            <span>Participations</span>
-        </a>
-
-        <a href="<?= APP_ENTRY ?>?url=teacher/stats-evenements" class="admin-side-link <?= $teacherSidebarActive === 'stat_evenements' ? 'active' : '' ?>">
-            <span class="admin-side-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="20" x2="18" y2="10"></line>
-                    <line x1="12" y1="20" x2="12" y2="4"></line>
-                    <line x1="6" y1="20" x2="6" y2="14"></line>
-                </svg>
-            </span>
-            <span>Stats Evenement</span>
+            <span>Profile</span>
         </a>
     </nav>
 

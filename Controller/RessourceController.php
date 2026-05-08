@@ -8,7 +8,7 @@ require_once __DIR__ . '/../Model/EvenementRessource.php';
 
 class RessourceController extends BaseController {
 
-    private function getDb(): PDO {
+    protected function getDb(): PDO {
         static $pdo = null;
         if ($pdo === null) {
             $pdo = new PDO(
@@ -337,6 +337,14 @@ class RessourceController extends BaseController {
         }
 
         $this->redirect('ressource/evenement-ressources&evenement_id=' . $evenementId);
+    }
+
+    /**
+     * Send an HTML email using MailService (PHPMailer)
+     */
+    private function sendEmail($to, $subject, $message) {
+        require_once __DIR__ . '/EventController.php';
+        EventController::sendRaw($to, $subject, $message);
     }
 
     /**

@@ -7,53 +7,13 @@
 require_once __DIR__ . '/../Controller/BaseController.php';
 require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Enrollment.php';
+require_once __DIR__ . '/../Model/Evenement.php';
+require_once __DIR__ . '/../Model/EvenementRessource.php';
+require_once __DIR__ . '/../Controller/ActivityLogger.php';
+// generateAvatar() is inherited from BaseController
 
 class StudentController extends BaseController {
-
-    private function getDb(): PDO {
-        static $pdo = null;
-        if ($pdo === null) {
-            $pdo = new PDO(
-                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET,
-                DB_USER, DB_PASS,
-                [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
-        }
-        return $pdo;
-    }
-
-    private function queryApprovedEvenements(): array {
-        return $this->getDb()->query(
-            "SELECT e.*, u.name as creator_name
-             FROM evenements e
-             JOIN users u ON e.created_by = u.id
-             WHERE e.approval_status = 'approved'
-             ORDER BY COALESCE(CONCAT(e.date_debut,' ',e.heure_debut), e.event_date) ASC"
-        )->fetchAll();
-    }
-
-    private function queryEvenementWithCreator(int $id): array|false {
-        $st = $this->getDb()->prepare(
-            "SELECT e.*, u.name as creator_name, u.role as creator_role
-             FROM evenements e
-             JOIN users u ON u.id = e.created_by
-             WHERE e.id = ? LIMIT 1"
-        );
-        $st->execute([$id]);
-        return $st->fetch();
-    }
-
-    private function queryRessourcesByType(string $type, int $evenementId): array {
-        $st = $this->getDb()->prepare(
-            "SELECT r.*, u.name as creator_name
-             FROM evenement_ressources r
-             JOIN users u ON r.created_by = u.id
-             WHERE r.type = ? AND r.evenement_id = ?
-             ORDER BY r.created_at DESC"
-        );
-        $st->execute([$type, $evenementId]);
-        return $st->fetchAll();
-    }
+    use ActivityLogger;
 
     /**
      * Route alias for /student/evenement/{id}
@@ -80,16 +40,19 @@ class StudentController extends BaseController {
             return;
         }
 
-        $evenements = $this->queryApprovedEvenements();
+        $evenementModel = $this->model('Evenement');
+        $evenements = $this->queryApprovedUpcoming();
+        $participations = $this->queryParticipationsByUser($_SESSION['user_id']);
+        $participationMap = $this->queryParticipationMap($_SESSION['user_id']);
 
         $data = [
-            'title'            => 'My Dashboard - APPOLIOS',
-            'description'      => 'Student evenement dashboard',
-            'userName'         => $_SESSION['user_name'],
-            'evenements'       => $evenements,
-            'participationMap' => $this->queryParticipationMap((int)$_SESSION['user_id']),
-            'participations'   => $this->queryMyParticipations((int)$_SESSION['user_id']),
-            'flash'            => $this->getFlash()
+            'title' => 'My Dashboard - APPOLIOS',
+            'description' => 'Student evenement dashboard',
+            'userName' => $_SESSION['user_name'],
+            'evenements' => $evenements,
+            'participations' => $participations,
+            'participationMap' => $participationMap,
+            'flash' => $this->getFlash()
         ];
 
         $this->view('FrontOffice/student/evenements', $data);
@@ -105,14 +68,16 @@ class StudentController extends BaseController {
             return;
         }
 
+        $evenementModel = $this->model('Evenement');
+
         $data = [
-            'title'            => 'Evenements - APPOLIOS',
-            'description'      => 'Browse upcoming evenements',
-            'userName'         => $_SESSION['user_name'],
-            'evenements'       => $this->queryApprovedEvenements(),
-            'participationMap' => $this->queryParticipationMap((int)$_SESSION['user_id']),
-            'participations'   => $this->queryMyParticipations((int)$_SESSION['user_id']),
-            'flash'            => $this->getFlash()
+            'title' => 'Evenements - APPOLIOS',
+            'description' => 'Browse upcoming evenements',
+            'userName' => $_SESSION['user_name'],
+            'evenements' => $this->queryApprovedUpcoming(),
+            'participations' => $this->queryParticipationsByUser($_SESSION['user_id']),
+            'participationMap' => $this->queryParticipationMap($_SESSION['user_id']),
+            'flash' => $this->getFlash()
         ];
 
         $this->view('FrontOffice/student/evenements', $data);
@@ -128,7 +93,10 @@ class StudentController extends BaseController {
             return;
         }
 
-        $evenement = $this->queryEvenementWithCreator((int)$id);
+        $evenementModel = $this->model('Evenement');
+        $ressourceModel = $this->model('EvenementRessource');
+
+        $evenement = $this->queryEventByIdWithCreator($id);
         if (!$evenement) {
             $this->setFlash('error', 'Evenement not found.');
             $this->redirect('student/evenements');
@@ -141,11 +109,8 @@ class StudentController extends BaseController {
             return;
         }
 
-        $grouped = [
-            'rules'     => $this->queryRessourcesByType('rule',     (int)$id),
-            'materiels' => $this->queryRessourcesByType('materiel', (int)$id),
-            'plans'     => $this->queryRessourcesByType('plan',     (int)$id),
-        ];
+        $grouped = $this->queryGroupedRessources($id);
+        $participation = $this->queryFindParticipation($id, $_SESSION['user_id']);
 
         $data = [
             'title' => (($evenement['titre'] ?? '') ?: ($evenement['title'] ?? 'Evenement')) . ' - APPOLIOS',
@@ -154,7 +119,7 @@ class StudentController extends BaseController {
             'rules' => $grouped['rules'],
             'materiels' => $grouped['materiels'],
             'plans' => $grouped['plans'],
-            'participation' => $this->queryFindParticipation((int)$id, (int)$_SESSION['user_id']),
+            'participation' => $participation,
             'flash' => $this->getFlash()
         ];
 
@@ -172,8 +137,8 @@ class StudentController extends BaseController {
             return;
         }
 
-        // Only students can access this page
-        if ($_SESSION['role'] !== 'student') {
+        // Only students or admins can access this page
+        if ($_SESSION['role'] !== 'student' && !$this->isAdmin()) {
             $this->setFlash('error', 'Access denied.');
             $this->redirect('login');
             return;
@@ -287,30 +252,6 @@ class StudentController extends BaseController {
     }
 
     /**
-     * My events page (Events student is participating in)
-     */
-    public function myEvents() {
-        if (!$this->isLoggedIn()) {
-            $this->setFlash('error', 'Please login to view your events.');
-            $this->redirect('login');
-            return;
-        }
-
-        $studentId = (int) $_SESSION['user_id'];
-        $participations = $this->queryMyParticipations($studentId);
-
-        $data = [
-            'title'          => 'My Events - APPOLIOS',
-            'description'    => 'Events you are participating in',
-            'userName'       => $_SESSION['user_name'],
-            'participations' => $participations,
-            'flash'          => $this->getFlash()
-        ];
-
-        $this->view('FrontOffice/student/my_events', $data);
-    }
-
-    /**
      * Student profile page
      */
     public function profile() {
@@ -320,9 +261,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/User.php';
-        $userModel = $this->model('User');
-        $user = $userModel->findById($_SESSION['user_id']);
+        $user = $this->findUserById($_SESSION['user_id']);
 
         $data = [
             'title' => 'My Profile - APPOLIOS',
@@ -344,9 +283,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/User.php';
-        $userModel = $this->model('User');
-        $user = $userModel->findById($_SESSION['user_id']);
+        $user = $this->findUserById($_SESSION['user_id']);
 
         $data = [
             'title' => 'Edit Profile - APPOLIOS',
@@ -393,13 +330,11 @@ class StudentController extends BaseController {
             $errors[] = 'Please enter a valid email address.';
         }
 
-        require_once __DIR__ . '/../Model/User.php';
-        $userModel = $this->model('User');
-        $currentUser = $userModel->findById($_SESSION['user_id']);
+        $currentUser = $this->findUserById($_SESSION['user_id']);
 
         // Check if email is taken by another user
         if ($email !== $currentUser['email']) {
-            if ($userModel->emailExists($email)) {
+            if ($this->emailExists($email)) {
                 $errors[] = 'This email is already taken.';
             }
         }
@@ -436,7 +371,7 @@ class StudentController extends BaseController {
             $updateData['password'] = password_hash($newPassword, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
         }
 
-        if ($userModel->update($_SESSION['user_id'], $updateData)) {
+        if ($this->updateUser($_SESSION['user_id'], $updateData)) {
             // Update session data
             $_SESSION['user_name'] = $name;
             $_SESSION['user_email'] = $email;
@@ -449,373 +384,635 @@ class StudentController extends BaseController {
         $this->redirect('student/profile');
     }
 
-    // =========================================================================
-    // PUBLIC PARTICIPATION ACTIONS
-    // =========================================================================
+    /**
+     * Upload avatar image
+     */
+    public function uploadAvatar() {
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            return;
+        }
+
+        if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No file uploaded or upload error']);
+            return;
+        }
+
+        $file = $_FILES['avatar'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+        // Check file type
+        if (!in_array($file['type'], $allowedTypes)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, GIF, and WEBP are allowed.']);
+            return;
+        }
+
+        // Check file size (max 10MB)
+        if ($file['size'] > 10 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'error' => 'File size must be less than 10MB']);
+            return;
+        }
+
+        // Generate unique filename
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = uniqid() . '.' . $extension;
+        $uploadDir = __DIR__ . '/../uploads/avatars/';
+
+        // Create directory if it doesn't exist
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        // Move uploaded file
+        if (move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+            // Update user avatar in database
+            // Delete old avatar if exists
+            $currentUser = $this->findUserById($_SESSION['user_id']);
+            if (!empty($currentUser['avatar']) && file_exists($uploadDir . $currentUser['avatar'])) {
+                unlink($uploadDir . $currentUser['avatar']);
+            }
+
+            if ($this->updateUser($_SESSION['user_id'], ['avatar' => $filename])) {
+                $_SESSION['user_avatar'] = $filename;
+                echo json_encode(['success' => true, 'avatar' => $filename]);
+            } else {
+                unlink($uploadDir . $filename);
+                echo json_encode(['success' => false, 'error' => 'Failed to save avatar']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to upload file']);
+        }
+    }
+
+    // ==========================================
+    // DATABASE METHODS - For User operations
+    // ==========================================
+
+    public function findUserById($id)
+    {
+        $sql = "SELECT * FROM users WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch();
+    }
+
+    public function getUsersWithFaceDescriptors()
+    {
+        $sql = "SELECT id, name, email, face_descriptor FROM users WHERE face_descriptor IS NOT NULL AND face_descriptor != ''";
+        $stmt = $this->getDb()->query($sql);
+        return $stmt ? $stmt->fetchAll() : [];
+    }
+
+    public function emailExists($email)
+    {
+        $sql = "SELECT id FROM users WHERE email = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$email]);
+        return $stmt->fetch() !== false;
+    }
+
+    public function updateUser($id, $data)
+    {
+        // Get old data for audit trail
+        $oldUser = $this->findUserById($id);
+
+        $fields = [];
+        $values = [];
+        foreach ($data as $key => $value) {
+            $fields[] = "{$key} = ?";
+            $values[] = $value;
+        }
+        $values[] = $id;
+        $sql = "UPDATE users SET " . implode(', ', $fields) . " WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        
+        $result = $stmt->execute($values);
+        
+        if ($result && $oldUser) {
+            $this->logDiff('update_user', $oldUser, $data, "User updated profile:");
+        }
+
+        return $result;
+    }
 
     /**
-     * Student requests to participate in an event.
+     * Update Face ID descriptor
      */
-    public function participate($id) {
+    public function updateFaceId() {
         if (!$this->isLoggedIn()) {
-            $this->redirect('login');
+            echo json_encode(['success' => false, 'error' => 'Please login']);
             return;
         }
+
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('student/evenements');
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
             return;
         }
 
-        $eventId   = (int) $id;
-        $studentId = (int) $_SESSION['user_id'];
+        $data = json_decode(file_get_contents('php://input'), true);
+        $faceDescriptor = $data['face_descriptor'] ?? null;
 
-        $event = $this->queryApprovedEventById($eventId);
-        if (!$event) {
-            $this->setFlash('error', 'Event not found or not available.');
-            $this->redirect('student/evenements');
+        if (!$faceDescriptor) {
+            echo json_encode(['success' => false, 'error' => 'No face descriptor provided']);
             return;
         }
 
-        $existing = $this->queryFindParticipation($eventId, $studentId);
-        if ($existing) {
-            $this->setFlash('info', 'You already requested participation for this event.');
-            $this->redirect('student/evenements');
-            return;
-        }
-
-        if ($this->queryCreateParticipation($eventId, $studentId)) {
-            $this->setFlash('success', 'Participation request sent! Waiting for teacher approval.');
+        $sql = "UPDATE users SET face_descriptor = ? WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        
+        if ($stmt->execute([$faceDescriptor, $_SESSION['user_id']])) {
+            echo json_encode(['success' => true]);
         } else {
-            $this->setFlash('error', 'Failed to send participation request.');
+            echo json_encode(['success' => false, 'error' => 'Failed to update face descriptor']);
+        }
+    }
+
+    /**
+     * Remove Face ID descriptor
+     */
+    public function removeFaceId() {
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
         }
 
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            return;
+        }
+
+        $sql = "UPDATE users SET face_descriptor = NULL WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        
+        if ($stmt->execute([$_SESSION['user_id']])) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to remove face descriptor']);
+        }
+    }
+
+    /**
+     * Check if face is unique - returns other users with face descriptors
+     */
+    public function checkFaceUnique() {
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        $users = $this->getUsersWithFaceDescriptors();
+
+        // Filter out current user
+        $otherUsers = array_filter($users, function($user) {
+            return $user['id'] != $_SESSION['user_id'];
+        });
+
+        echo json_encode(['success' => true, 'users' => array_values($otherUsers)]);
+    }
+
+    /**
+     * Generate avatar from face photo
+     */
+    public function generateAvatar() {
+        // Set JSON header
+        header('Content-Type: application/json');
+
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            return;
+        }
+
+        if (!isset($_FILES['faceImage']) || $_FILES['faceImage']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No image uploaded or upload error']);
+            return;
+        }
+
+        $file = $_FILES['faceImage'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+        // Check file type
+        if (!in_array($file['type'], $allowedTypes)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, and WEBP are allowed.']);
+            return;
+        }
+
+        // Check file size (max 10MB)
+        if ($file['size'] > 10 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'error' => 'File size must be less than 10MB']);
+            return;
+        }
+
+        // Get face data from POST
+        $faceData = json_decode($_POST['faceData'] ?? '{}', true);
+
+        try {
+            // Generate avatar via BaseController method
+            $result = $this->buildAvatarFromFace($faceData, $_SESSION['user_id']);
+            echo json_encode($result);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
+
+    public function deleteAccount()
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Location: ' . APP_ENTRY . '?url=student/edit-profile');
+            exit;
+        }
+
+        $userId = $_SESSION['user_id'];
+        
+        try {
+            // Because relationships are CASCADE in DB, deleting user deletes participations.
+            $sql = "DELETE FROM users WHERE id = ?";
+            $stmt = $this->getDb()->prepare($sql);
+            $stmt->execute([$userId]);
+
+            // Clear session and logout
+            session_unset();
+            session_destroy();
+            
+            if (isset($_COOKIE['remember_token'])) {
+                setcookie('remember_token', '', time() - 3600, '/');
+            }
+
+            header('Location: ' . APP_ENTRY . '?url=auth/login&deleted=1');
+            exit;
+        } catch (PDOException $e) {
+            error_log("Failed to delete account: " . $e->getMessage());
+            header('Location: ' . APP_ENTRY . '?url=student/edit-profile&error=failed');
+            exit;
+        }
+    }
+
+    // ==========================================
+    // EVENT PARTICIPATION LOGIC
+    // ==========================================
+
+    public function participate($eventId) {
+        if (!$this->isLoggedIn()) { $this->redirect('login'); return; }
+        
+        $evenementModel = $this->model('Evenement');
+        $userId = $_SESSION['user_id'];
+        
+        if (!$this->queryFindParticipation($eventId, $userId)) {
+            $this->queryAddParticipation($eventId, $userId);
+            $this->setFlash('success', 'Participation request sent successfully.');
+        } else {
+            $this->setFlash('error', 'You have already requested participation.');
+        }
         $this->redirect('student/evenements');
     }
 
-    /**
-     * Student cancels a pending participation.
-     */
-    public function cancelParticipation($id) {
-        if (!$this->isLoggedIn()) {
-            $this->redirect('login');
-            return;
-        }
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            $this->redirect('student/evenements');
-            return;
-        }
-
-        $eventId   = (int) $id;
-        $studentId = (int) $_SESSION['user_id'];
-
-        $existing = $this->queryFindParticipation($eventId, $studentId);
-        if (!$existing || $existing['details'] !== 'pending') {
-            $this->setFlash('error', 'Only pending participation requests can be cancelled.');
-            $this->redirect('student/evenements');
-            return;
-        }
-
-        if ($this->queryCancelParticipation($eventId, $studentId)) {
-            $this->setFlash('success', 'Participation request cancelled.');
-        } else {
-            $this->setFlash('error', 'Failed to cancel participation.');
-        }
-
+    public function cancelParticipation($eventId) {
+        if (!$this->isLoggedIn()) { $this->redirect('login'); return; }
+        
+        $evenementModel = $this->model('Evenement');
+        $this->queryRemoveParticipation($eventId, $_SESSION['user_id']);
+        $this->setFlash('success', 'Participation request cancelled.');
         $this->redirect('student/evenements');
     }
 
-    // =========================================================================
-    // PRIVATE DB QUERY METHODS — Participation (via evenement_ressources)
-    // =========================================================================
-
-    /**
-     * Returns [evenement_id => status] map for the student.
-     * Uses type='participation', details=status in evenement_ressources.
-     */
-    private function queryParticipationMap(int $studentId): array {
-        $st = $this->getDb()->prepare(
-            "SELECT evenement_id, details as status
-             FROM evenement_ressources
-             WHERE type = 'participation' AND created_by = ?"
-        );
-        $st->execute([$studentId]);
-        $map = [];
-        foreach ($st->fetchAll() as $row) {
-            $map[(int)$row['evenement_id']] = $row['status'];
+    public function downloadTicket($participationId) {
+        if (!$this->isLoggedIn()) { $this->redirect('login'); return; }
+        
+        $evenementModel = $this->model('Evenement');
+        $participation = $this->queryApprovedParticipationTicket($participationId, $_SESSION['user_id']);
+        
+        if (!$participation) {
+            $this->setFlash('error', 'Valid ticket not found.');
+            $this->redirect('student/evenements');
+            return;
         }
-        return $map;
+        
+        $id = $participationId;
+        $studentName = $participation['student_name'] ?? 'Student';
+        $eventTitle = $participation['event_title'] ?? 'Event';
+        
+        $dateVal = !empty($participation['date_debut']) ? $participation['date_debut'] : null;
+        $date = $dateVal ? date('M d, Y', strtotime($dateVal)) : 'TBA';
+        if (!empty($participation['heure_debut'])) {
+            $date .= ' ' . substr((string)$participation['heure_debut'], 0, 5);
+        }
+        $location = !empty($participation['lieu']) ? $participation['lieu'] : 'TBA';
+
+        // Simple HTML output that automatically prints using window.print() or just views the ticket
+        echo "
+        <html>
+        <head>
+            <title>Ticket: " . htmlspecialchars($eventTitle) . "</title>
+            <style>
+                @media print { 
+                    body { background: white !important; margin: 0; padding: 0; display: flex; justify-content: center; align-items: flex-start; } 
+                    .ticket-container { box-shadow: none !important; border: 2px solid #000 !important; margin-top: 20px; } 
+                }
+            </style>
+        </head>
+        <body style='background-color: #f1f5f9; margin: 0; padding: 20px; font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh;'>
+            <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                <tr>
+                    <td align='center'>
+                        <table class='ticket-container' width='600' cellpadding='0' cellspacing='0' border='0' style='background-color: #ffffff; border-radius: 16px; overflow: hidden; border-collapse: collapse; box-shadow: 0 10px 25px rgba(0,0,0,0.1);'>
+                            <tr>
+                                <!-- LEFT SIDE -->
+                                <td width='420' valign='top' style='padding: 30px; border-right: 2px dashed #e2e8f0;'>
+                                    <div style='color: #548CA8; font-weight: bold; font-size: 16px; margin-bottom: 20px;'>APPOLIOS</div>
+                                    <div style='background-color: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 15px;'>Official Event Pass</div>
+                                    <h1 style='color: #1e293b; font-size: 24px; margin: 0 0 25px 0; line-height: 1.3;'>" . htmlspecialchars($eventTitle) . "</h1>
+                                    
+                                    <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                                        <tr>
+                                            <td width='50%' valign='top' style='padding-bottom: 20px;'>
+                                                <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Attendee</div>
+                                                <div style='font-size: 14px; color: #334155; font-weight: bold;'>" . htmlspecialchars($studentName) . "</div>
+                                            </td>
+                                            <td width='50%' valign='top' style='padding-bottom: 20px;'>
+                                                <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Date & Time</div>
+                                                <div style='font-size: 14px; color: #334155; font-weight: bold;'>{$date}</div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td width='50%' valign='top'>
+                                                <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Location</div>
+                                                <div style='font-size: 14px; color: #334155; font-weight: bold;'>" . htmlspecialchars($location) . "</div>
+                                            </td>
+                                            <td width='50%' valign='top'>
+                                                <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Ticket Type</div>
+                                                <div style='font-size: 14px; color: #334155; font-weight: bold;'>Student Pass</div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                                <!-- RIGHT SIDE -->
+                                <td width='180' valign='middle' align='center' style='background-color: #2B4865; padding: 20px;'>
+                                    <div style='background-color: #ffffff; padding: 10px; border-radius: 8px; display: inline-block; margin-bottom: 10px;'>
+                                        <img src='https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=TICKET-{$id}-" . urlencode($studentName) . "' width='120' height='120' style='display: block; border: 0;' alt='QR Code'>
+                                    </div>
+                                    <div style='font-size: 10px; font-weight: bold; color: #94a3b8; letter-spacing: 1px; margin-bottom: 20px;'>SCAN TO VALIDATE</div>
+                                    <div style='color: #10b981; font-weight: bold; font-size: 16px; border: 2px solid #10b981; padding: 6px 12px; border-radius: 6px; text-transform: uppercase; display: inline-block;'>APPROVED</div>
+                                    <div style='font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 30px;'>#ID-" . str_pad((string)$id, 6, '0', STR_PAD_LEFT) . "</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            <script>window.onload = function() { window.print(); }</script>
+        </body>
+        </html>
+        ";
     }
 
-    private function queryApprovedEventById(int $id): array|false {
+    public function recommendEvents() {
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'message' => 'Please login']);
+            return;
+        }
+
+        header('Content-Type: application/json');
+        
+        $evenementModel = $this->model('Evenement');
+        $allEvents = $this->queryApprovedUpcoming();
+        $participations = $this->queryParticipationsByUser($_SESSION['user_id']);
+        
+        if (empty($allEvents)) {
+            echo json_encode(['success' => true, 'recommendations' => []]);
+            return;
+        }
+        
+        $participatedIds = array_column($participations, 'evenement_id');
+        $availableEvents = array_values(array_filter($allEvents, fn($e) => !in_array($e['id'], $participatedIds)));
+        
+        if (empty($availableEvents)) {
+            echo json_encode(['success' => true, 'recommendations' => []]);
+            return;
+        }
+
+        // Format data for AI prompt
+        $eventsList = array_map(function($e) {
+            return [
+                'id' => $e['id'],
+                'title' => $e['titre'] ?: $e['title'],
+                'description' => $e['description'],
+                'type' => $e['type'],
+                'date' => $e['date_debut'] ?? $e['event_date']
+            ];
+        }, $availableEvents);
+
+        $historyList = array_map(function($p) {
+            return [
+                'title' => $p['titre'] ?: $p['title'],
+                'type' => $p['type']
+            ];
+        }, $participations);
+
+        $prompt = "You are an AI event recommender for students.
+Based on the user's past participation history, recommend the top 3 events they should attend from the available events list.
+Return ONLY a valid JSON array of objects with these keys: 'id' (the event ID), 'title' (event title), 'reason' (a 1-sentence personalized reason), and 'match_score' (integer 0-100).
+
+Available Events:
+" . json_encode($eventsList) . "
+
+User History:
+" . json_encode($historyList);
+
+        $apiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : (getenv('GEMINI_API_KEY') ?: '');
+        
+        if (empty($apiKey)) {
+            // Fallback if no API key
+            $recommendations = array_slice(array_map(function($e) {
+                return [
+                    'id' => $e['id'],
+                    'title' => $e['title'],
+                    'reason' => 'Great event matching your profile.',
+                    'match_score' => rand(80, 99)
+                ];
+            }, $eventsList), 0, 3);
+            
+            echo json_encode(['success' => true, 'recommendations' => $recommendations]);
+            return;
+        }
+
+        $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+        $data = [
+            'contents' => [
+                ['parts' => [['text' => $prompt]]]
+            ],
+            'generationConfig' => [
+                'responseMimeType' => 'application/json'
+            ]
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        
+        $response = curl_exec($ch);
+        $err = curl_error($ch);
+        curl_close($ch);
+
+        if ($err || !$response) {
+            echo json_encode(['success' => false, 'message' => 'API Request failed']);
+            return;
+        }
+
+        $result = json_decode($response, true);
+
+        // Check if Gemini API returned an error
+        if (isset($result['error'])) {
+            $apiErrorMsg = isset($result['error']['message']) ? $result['error']['message'] : 'Unknown API error';
+            echo json_encode(['success' => false, 'message' => 'API Error: ' . $apiErrorMsg, 'response' => $result]);
+            return;
+        }
+
+        if (isset($result['candidates'][0]['content']['parts'][0]['text'])) {
+            $jsonText = $result['candidates'][0]['content']['parts'][0]['text'];
+            
+            // Clean up potential markdown formatting from AI response
+            $jsonText = preg_replace('/```json\s*/i', '', $jsonText);
+            $jsonText = preg_replace('/```\s*/i', '', $jsonText);
+            $jsonText = trim($jsonText);
+
+            $recommendations = json_decode($jsonText, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($recommendations)) {
+                echo json_encode(['success' => true, 'recommendations' => $recommendations]);
+                return;
+            } else {
+                echo json_encode(['success' => false, 'message' => 'JSON parse error: ' . json_last_error_msg(), 'raw' => $jsonText]);
+                return;
+            }
+        }
+
+        echo json_encode(['success' => false, 'message' => 'Invalid AI response format', 'response' => $result]);
+    }
+
+    // ==========================================
+    // DATABASE METHODS (Moved from Model)
+    // ==========================================
+
+    private function queryApprovedUpcoming(): array {
+        return $this->getDb()->query(
+            "SELECT e.*, u.name as creator_name
+             FROM evenements e
+             JOIN users u ON e.created_by = u.id
+             WHERE e.approval_status = 'approved'
+             ORDER BY COALESCE(CONCAT(e.date_debut,' ',e.heure_debut), e.event_date) ASC"
+        )->fetchAll();
+    }
+
+    private function queryEventByIdWithCreator(int $id): array|false {
         $st = $this->getDb()->prepare(
-            "SELECT * FROM evenements WHERE id = ? AND approval_status = 'approved' LIMIT 1"
+            "SELECT e.*, u.name as creator_name, u.role as creator_role
+             FROM evenements e
+             JOIN users u ON u.id = e.created_by
+             WHERE e.id = ? LIMIT 1"
         );
         $st->execute([$id]);
         return $st->fetch();
     }
 
-    private function queryFindParticipation(int $eventId, int $studentId): array|false {
+    private function queryParticipationsByUser(int $userId): array {
         $st = $this->getDb()->prepare(
-            "SELECT * FROM evenement_ressources
-             WHERE evenement_id = ? AND created_by = ? AND type = 'participation' LIMIT 1"
+            "SELECT r.id as p_id, r.details as p_status, r.updated_at as p_update_date, r.rejection_reason,
+                    e.*
+             FROM evenement_ressources r
+             JOIN evenements e ON r.evenement_id = e.id
+             WHERE r.created_by = ? AND r.type = 'participation'
+             ORDER BY r.created_at DESC"
         );
-        $st->execute([$eventId, $studentId]);
-        return $st->fetch();
-    }
-
-    private function queryCreateParticipation(int $eventId, int $studentId): bool {
-        try {
-            $stUser = $this->getDb()->prepare("SELECT name FROM users WHERE id = ? LIMIT 1");
-            $stUser->execute([$studentId]);
-            $user = $stUser->fetch();
-            $studentName = $user['name'] ?? 'Student';
-
-            $st = $this->getDb()->prepare(
-                "INSERT INTO evenement_ressources (evenement_id, type, title, details, created_by, created_at)
-                 VALUES (?, 'participation', ?, 'pending', ?, NOW())"
-            );
-            return $st->execute([$eventId, $studentName, $studentId]);
-        } catch (PDOException $e) { return false; }
-    }
-
-    private function queryCancelParticipation(int $eventId, int $studentId): bool {
-        $st = $this->getDb()->prepare(
-            "DELETE FROM evenement_ressources
-             WHERE evenement_id = ? AND created_by = ? AND type = 'participation' AND details = 'pending'"
-        );
-        return $st->execute([$eventId, $studentId]);
-    }
-
-    /**
-     * Fetch events where the student has a participation record.
-     */
-    private function queryMyParticipations(int $studentId): array {
-        $st = $this->getDb()->prepare(
-            "SELECT e.*, er.id as p_id, er.details as p_status, er.rejection_reason, er.created_at as p_date, er.updated_at as p_update_date, u.name as creator_name
-             FROM evenements e
-             JOIN evenement_ressources er ON e.id = er.evenement_id
-             JOIN users u ON e.created_by = u.id
-             WHERE er.type = 'participation' AND er.created_by = ?
-             ORDER BY er.created_at DESC"
-        );
-        $st->execute([$studentId]);
+        $st->execute([$userId]);
         return $st->fetchAll();
     }
 
-    public function downloadTicket($pId) {
-        if (!$this->isLoggedIn()) { $this->redirect('auth/login'); return; }
-        $pId = (int)$pId;
-        $studentId = $_SESSION['user_id'];
+    private function queryParticipationMap(int $userId): array {
         $st = $this->getDb()->prepare(
-            "SELECT er.*, e.title as event_title, e.location as event_location, 
-                    COALESCE(CONCAT(e.date_debut, ' ', e.heure_debut), e.event_date) as event_full_date,
-                    u.name as student_name, u.email as student_email
-             FROM evenement_ressources er
-             JOIN evenements e ON er.evenement_id = e.id
-             JOIN users u ON er.created_by = u.id
-             WHERE er.id = ? AND er.created_by = ? AND er.type = 'participation' AND er.details = 'approved'
-             LIMIT 1"
+            "SELECT evenement_id, details as p_status
+             FROM evenement_ressources
+             WHERE created_by = ? AND type = 'participation'"
         );
-        $st->execute([$pId, $studentId]);
-        $ticket = $st->fetch();
-        if (!$ticket) {
-            $this->setFlash('error', 'Ticket not found or not approved yet.');
-            $this->redirect('student/my-participations');
-            return;
+        $st->execute([$userId]);
+        $map = [];
+        foreach ($st->fetchAll() as $row) {
+            $map[$row['evenement_id']] = strtolower($row['p_status']);
         }
-
-        // Create QR Data
-        $qrData = "Ticket ID: " . str_pad($ticket['id'], 6, '0', STR_PAD_LEFT) . "\n"
-                . "Event: " . $ticket['event_title'] . "\n"
-                . "Attendee: " . $ticket['student_name'] . "\n"
-                . "Status: Approved by Appolios";
-        $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($qrData);
-
-        header('Content-Type: text/html; charset=utf-8');
-        ?>
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Event Ticket - <?= htmlspecialchars($ticket['event_title']) ?></title>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-                * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-                body { background: #f1f5f9; padding: 40px; display: flex; justify-content: center; min-height: 100vh; align-items: center; }
-                .ticket-container { background: white; width: 700px; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.1); display: flex; position: relative; }
-                .ticket-left { flex: 1; padding: 40px; border-right: 2px dashed #e2e8f0; }
-                .ticket-right { width: 220px; background: #2B4865; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
-                .brand { color: #548CA8; font-weight: 800; font-size: 1.2rem; margin-bottom: 30px; display: block; }
-                .event-badge { background: #e0f2fe; color: #0369a1; padding: 6px 14px; border-radius: 100px; font-size: 0.75rem; font-weight: 700; margin-bottom: 15px; display: inline-block; }
-                h1 { font-size: 2rem; color: #1e293b; line-height: 1.2; margin-bottom: 25px; }
-                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 30px; }
-                .info-item label { display: block; font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 5px; }
-                .info-item span { display: block; font-size: 1rem; color: #334155; font-weight: 600; }
-                .qr-box { width: 140px; height: 140px; background: white; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 6px solid #355C7D; }
-                .qr-box img { width: 100%; height: 100%; object-fit: contain; }
-                .status-approved { color: #10b981; font-weight: 800; font-size: 1.2rem; transform: rotate(-15deg); border: 3px solid #10b981; padding: 5px 15px; border-radius: 8px; margin-top: 20px; text-transform: uppercase; }
-                .ticket-id { font-size: 0.6rem; color: rgba(255,255,255,0.5); margin-top: auto; font-family: monospace; }
-                .ticket-container::before, .ticket-container::after { content: ''; position: absolute; width: 30px; height: 30px; background: #f1f5f9; border-radius: 50%; left: 465px; }
-                .ticket-container::before { top: -15px; }
-                .ticket-container::after { bottom: -15px; }
-                .loading-msg { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #2B4865; color: white; padding: 12px 24px; border-radius: 12px; font-weight: 700; box-shadow: 0 10px 20px rgba(0,0,0,0.1); z-index: 100; transition: opacity 0.3s; }
-            </style>
-        </head>
-        <body>
-            <div id="loadingMsg" class="loading-msg">Téléchargement du PDF en cours...</div>
-            <div id="ticket-content" class="ticket-container">
-                <div class="ticket-left">
-                    <span class="brand">APPOLIOS</span>
-                    <div class="event-badge">Official Event Pass</div>
-                    <h1><?= htmlspecialchars($ticket['event_title']) ?></h1>
-                    <div class="info-grid">
-                        <div class="info-item" style="grid-column: 1 / -1;"><label>Event</label><span><?= htmlspecialchars($ticket['event_title']) ?></span></div>
-                        <div class="info-item"><label>Attendee</label><span><?= htmlspecialchars($ticket['student_name']) ?></span></div>
-                        <div class="info-item"><label>Date & Time</label><span><?= date('M d, Y - H:i', strtotime($ticket['event_full_date'])) ?></span></div>
-                        <div class="info-item"><label>Location</label><span><?= htmlspecialchars($ticket['event_location'] ?: 'To be announced') ?></span></div>
-                        <div class="info-item"><label>Ticket Type</label><span>Student Pass</span></div>
-                    </div>
-                </div>
-                <div class="ticket-right">
-                    <div class="qr-box">
-                        <img src="<?= $qrUrl ?>" alt="Ticket QR Code">
-                    </div>
-                    <div style="font-size: 0.65rem; font-weight: 700; letter-spacing: 1px; color: #94a3b8; margin-top: -10px;">SCAN TO VALIDATE</div>
-                    <div class="status-approved">Approved</div>
-                    <div class="ticket-id">#ID-<?= str_pad($ticket['id'], 6, '0', STR_PAD_LEFT) ?></div>
-                </div>
-            </div>
-            <script>
-                window.onload = function() {
-                    const element = document.getElementById('ticket-content');
-                    const opt = {
-                        margin:       0.5,
-                        filename:     'ticket_event_<?= (int)$ticket['evenement_id'] ?>.pdf',
-                        image:        { type: 'jpeg', quality: 0.98 },
-                        html2canvas:  { scale: 2, useCORS: true },
-                        jsPDF:        { unit: 'in', format: 'letter', orientation: 'landscape' }
-                    };
-                    
-                    // Generate PDF
-                    html2pdf().set(opt).from(element).save().then(function() {
-                        document.getElementById('loadingMsg').innerText = "Téléchargement terminé. Vous pouvez fermer cet onglet.";
-                        setTimeout(() => window.close(), 3000); // Attempt to close window after 3s
-                    });
-                };
-            </script>
-        </body>
-        </html>
-        <?php
-        exit;
+        return $map;
     }
 
-    /**
-     * AI Recommendation for events based on student profile/history
-     */
-    public function recommendEvents() {
-        header('Content-Type: application/json');
-        if (!$this->isLoggedIn()) {
-            echo json_encode(['success' => false, 'message' => 'Not logged in.']);
-            exit;
+    private function queryFindParticipation(int $eventId, int $userId): array|false {
+        $st = $this->getDb()->prepare(
+            "SELECT * FROM evenement_ressources 
+             WHERE evenement_id = ? AND created_by = ? AND type = 'participation'"
+        );
+        $st->execute([$eventId, $userId]);
+        return $st->fetch();
+    }
+
+    private function queryAddParticipation(int $eventId, int $userId): bool {
+        $st = $this->getDb()->prepare(
+            "INSERT INTO evenement_ressources (evenement_id, created_by, type, details, title, created_at) 
+             VALUES (?, ?, 'participation', 'pending', 'Student Participation', NOW())"
+        );
+        return $st->execute([$eventId, $userId]);
+    }
+
+    private function queryRemoveParticipation(int $eventId, int $userId): bool {
+        $st = $this->getDb()->prepare(
+            "DELETE FROM evenement_ressources 
+             WHERE evenement_id = ? AND created_by = ? AND type = 'participation'"
+        );
+        return $st->execute([$eventId, $userId]);
+    }
+
+    private function queryApprovedParticipationTicket(int $participationId, int $userId): array|false {
+        $st = $this->getDb()->prepare(
+            "SELECT r.*, e.title as event_title, e.date_debut, e.heure_debut, e.lieu, u.name as student_name 
+             FROM evenement_ressources r 
+             JOIN evenements e ON r.evenement_id = e.id 
+             JOIN users u ON r.created_by = u.id 
+             WHERE r.id = ? AND r.created_by = ? AND r.type = 'participation' AND r.details = 'approved'"
+        );
+        $st->execute([$participationId, $userId]);
+        return $st->fetch();
+    }
+
+    private function queryGroupedRessources(int $evenementId): array {
+        $st = $this->getDb()->prepare(
+            "SELECT r.*, u.name as creator_name
+             FROM evenement_ressources r
+             JOIN users u ON r.created_by = u.id
+             WHERE r.evenement_id = ? AND r.type IN ('rule', 'materiel', 'plan')
+             ORDER BY r.created_at DESC"
+        );
+        $st->execute([$evenementId]);
+        
+        $rules = [];
+        $materiels = [];
+        $plans = [];
+        
+        foreach ($st->fetchAll() as $row) {
+            if ($row['type'] === 'rule') $rules[] = $row;
+            if ($row['type'] === 'materiel') $materiels[] = $row;
+            if ($row['type'] === 'plan') $plans[] = $row;
         }
-
-        try {
-            $studentId = (int)$_SESSION['user_id'];
-            $studentName = $_SESSION['user_name'];
-            
-            // Get available events
-            $events = $this->queryApprovedEvenements();
-            
-            // Get student's past/current participations for context
-            $myParticipations = $this->queryMyParticipations($studentId);
-            
-            if (empty($events)) {
-                echo json_encode(['success' => false, 'message' => 'No events available for recommendation.']);
-                exit;
-            }
-
-            // Prepare context
-            $pastEventTitles = array_map(fn($p) => $p['title'] ?? ($p['titre'] ?? 'Event'), $myParticipations);
-            
-            $promptEvents = [];
-            foreach ($events as $e) {
-                $promptEvents[] = [
-                    'id' => $e['id'],
-                    'title' => ($e['titre'] ?? '') ?: ($e['title'] ?? 'Event'),
-                    'type' => $e['type'] ?? 'General',
-                    'description' => substr(strip_tags((string)($e['description'] ?? '')), 0, 150)
-                ];
-            }
-
-            $prompt = "As an AI career and education counselor at APPOLIOS, recommend the best 3 events for a student named {$studentName}.\n\n";
-            if (!empty($pastEventTitles)) {
-                $prompt .= "The student has previously shown interest or participated in: " . implode(', ', array_unique($pastEventTitles)) . ".\n\n";
-            }
-            $prompt .= "Available Events Data:\n" . json_encode($promptEvents) . "\n\n";
-            $prompt .= "Return ONLY a valid JSON array containing exactly 3 recommendation objects. Each object MUST have:\n";
-            $prompt .= "- 'id' (integer: the event ID from data)\n";
-            $prompt .= "- 'title' (string: exact title)\n";
-            $prompt .= "- 'reason' (string: 1-sentence personalized reason why this fits the student)\n";
-            $prompt .= "- 'match_score' (integer: 0-100 percentage of match)\n";
-            $prompt .= "Do not include markdown blocks like ```json. Return raw JSON directly.";
-
-            // Get API Key
-            $apiKey = defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ''; 
-            if (empty($apiKey)) {
-                $envPath = __DIR__ . '/../.env';
-                if (file_exists($envPath)) {
-                    $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-                    foreach ($lines as $line) {
-                        if (strpos(trim($line), 'GEMINI_API_KEY=') === 0) {
-                            $apiKey = trim(explode('=', $line, 2)[1]);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (empty($apiKey)) {
-                throw new Exception("Gemini API Key is not configured.");
-            }
-
-            $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
-
-            $postData = [
-                "contents" => [["parts" => [["text" => $prompt]]]],
-                "generationConfig" => ["temperature" => 0.7, "responseMimeType" => "application/json"]
-            ];
-
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($httpCode !== 200) {
-                $err = json_decode($response, true);
-                $errMsg = $err['error']['message'] ?? 'Unknown Error';
-                throw new Exception("Gemini API failed ($httpCode): " . $errMsg);
-            }
-
-            $responseData = json_decode($response, true);
-            $aiText = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? '[]';
-            $aiText = trim(str_replace(['```json', '```'], '', $aiText));
-            $recommendations = json_decode($aiText, true);
-
-            echo json_encode([
-                'success' => true,
-                'recommendations' => $recommendations
-            ]);
-
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-        }
-        exit;
+        
+        return [
+            'rules' => $rules,
+            'materiels' => $materiels,
+            'plans' => $plans
+        ];
     }
 }

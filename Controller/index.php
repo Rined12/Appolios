@@ -13,27 +13,36 @@ function toCamelCaseAction(string $value): string
 
 function resolveRoutePath(): string
 {
+    // 1. Priorité au paramètre ?url= (utilisé par .htaccess)
     $queryRoute = trim((string) ($_GET['url'] ?? ''), '/');
     if ($queryRoute !== '') {
         return $queryRoute;
     }
 
+    // 2. Fallback sur PATH_INFO (ex: index.php/controller/action)
+    if (!empty($_SERVER['PATH_INFO'])) {
+        return trim($_SERVER['PATH_INFO'], '/');
+    }
+
+    // 3. Détection via REQUEST_URI (pour serveur interne PHP ou Nginx)
     $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '';
     $requestPath = trim((string) $requestPath);
 
-    $scriptDir = str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '')));
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    $scriptDir = str_replace('\\', '/', dirname($scriptName));
     $scriptDir = rtrim($scriptDir, '/');
 
-    if ($scriptDir !== '' && $scriptDir !== '/' && strncmp($requestPath, $scriptDir, strlen($scriptDir)) === 0) {
+    // Retirer le dossier de base si présent
+    if ($scriptDir !== '' && $scriptDir !== '/' && strpos($requestPath, $scriptDir) === 0) {
         $requestPath = substr($requestPath, strlen($scriptDir));
     }
 
     $requestPath = trim($requestPath, '/');
 
+    // Retirer index.php si présent au début
     if ($requestPath === 'index.php') {
         return '';
     }
-
     if (strncmp($requestPath, 'index.php/', 10) === 0) {
         return substr($requestPath, 10);
     }
@@ -55,15 +64,43 @@ if (!empty($segments)) {
     if (in_array($first, ['login', 'register', 'signup', 'logout', 'authenticate', 'admin'], true) && strtolower($second) === 'login') {
         $controller = 'AuthController';
         $action = 'login';
+    } elseif ($first === 'auth' && $second === 'face-login-admin') {
+        $controller = 'AuthController';
+        $action = 'faceLoginAdmin';
+    } elseif ($first === 'auth' && $second === 'save-face-descriptor') {
+        $controller = 'AuthController';
+        $action = 'saveFaceDescriptor';
+    } elseif ($first === 'auth' && $second === 'check-face-unique') {
+        $controller = 'AuthController';
+        $action = 'checkFaceUnique';
+    } elseif ($first === 'auth' && $second === 'face-login') {
+        $controller = 'AuthController';
+        $action = 'faceLogin';
     } elseif (in_array($first, ['login', 'register', 'signup', 'logout', 'authenticate'], true)) {
         $controller = 'AuthController';
-        $action = [
+        $actionMap = [
             'login' => 'login',
             'register' => 'register',
             'signup' => 'signup',
             'logout' => 'logout',
             'authenticate' => 'authenticate',
-        ][$first];
+        ];
+        $action = $actionMap[$first] ?? 'login';
+    } elseif ($first === 'forgot-password') {
+        $controller = 'AuthController';
+        $action = 'forgotPassword';
+    } elseif ($first === 'request-password-reset') {
+        $controller = 'AuthController';
+        $action = 'requestPasswordReset';
+    } elseif ($first === 'verify-reset-code') {
+        $controller = 'AuthController';
+        $action = 'verifyResetCode';
+    } elseif ($first === 'reset-password') {
+        $controller = 'AuthController';
+        $action = 'resetPassword';
+    } elseif ($first === 'process-reset-password') {
+        $controller = 'AuthController';
+        $action = 'processResetPassword';
     } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home', 'event', 'ressource'], true)) {
         $controller = ucfirst($first) . 'Controller';
         $action = $second !== '' ? toCamelCaseAction($second) : ($first === 'auth' ? 'login' : 'index');
