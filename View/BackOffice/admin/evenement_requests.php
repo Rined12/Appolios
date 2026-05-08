@@ -105,19 +105,11 @@
                                         Approve
                                     </button>
                                 </form>
-                                <form action="<?= APP_ENTRY ?>?url=admin/reject-evenement/<?= (int) $event['id'] ?>" method="POST" style="flex: 1; display: flex; flex-direction: column; gap: 8px;" novalidate>
-                                    <div style="display: flex; gap: 8px; width: 100%;">
-                                        <input type="text" name="rejection_reason" placeholder="Rejection reason..." style="flex: 1; background: <?= isset($errors['rejection_reason_' . $event['id']]) ? '#fef2f2' : '#fdfdfd' ?>; border: 1.5px solid <?= isset($errors['rejection_reason_' . $event['id']]) ? '#ef4444' : '#e2e8f0' ?>; border-radius: 8px; padding: 0 1rem; height: 42px; color: #1e293b; font-size: 0.9rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='<?= isset($errors['rejection_reason_' . $event['id']]) ? '#ef4444' : '#E19864' ?>'" onblur="this.style.borderColor='<?= isset($errors['rejection_reason_' . $event['id']]) ? '#ef4444' : '#e2e8f0' ?>'">
-                                        <button type="submit" style="background: #fff; border: 1.5px solid #e2e8f0; color: #64748b; height: 42px; padding: 0 1.2rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.borderColor='#ef4444'; this.style.color='#ef4444'; this.style.background='#fef2f2'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'; this.style.background='#fff'">
-                                            Reject
-                                        </button>
-                                    </div>
-                                    <?php if (isset($errors['rejection_reason_' . $event['id']])): ?>
-                                        <div style="color: #ef4444; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-top: -2px;">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                                            <?= htmlspecialchars($errors['rejection_reason_' . $event['id']]) ?>
-                                        </div>
-                                    <?php endif; ?>
+                                <form action="<?= APP_ENTRY ?>?url=admin/reject-evenement/<?= (int) $event['id'] ?>" method="POST" style="flex: 1; display: flex; gap: 8px;">
+                                    <input type="text" name="rejection_reason" placeholder="Rejection reason..." required style="flex: 1; background: #fdfdfd; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 0 1rem; height: 42px; color: #1e293b; font-size: 0.9rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#E19864'" onblur="this.style.borderColor='#e2e8f0'">
+                                    <button type="submit" style="background: #fff; border: 1.5px solid #e2e8f0; color: #64748b; height: 42px; padding: 0 1.2rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.borderColor='#ef4444'; this.style.color='#ef4444'; this.style.background='#fef2f2'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'; this.style.background='#fff'">
+                                        Reject
+                                    </button>
                                 </form>
                             </div>
                         </div>

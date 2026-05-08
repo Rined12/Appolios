@@ -5,22 +5,26 @@
 ?>
 
 <div class="dashboard">
-    <div class="container">
-        <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h1>Manage Courses</h1>
-                <p>Add, edit, or delete courses from the platform</p>
-            </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <a href="javascript:history.back()" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; background: #6c757d;">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="transform: rotate(180deg);">
-                        <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
-                    </svg>
-                    Back
-                </a>
-                <a href="<?= APP_ENTRY ?>?url=admin/add-course" class="btn btn-yellow">Add New Course</a>
-            </div>
-        </div>
+    <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
+        <div class="admin-layout">
+            <?php $adminSidebarActive = 'courses'; require __DIR__ . '/partials/sidebar.php'; ?>
+
+            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
+                <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1>Manage Courses</h1>
+                        <p>Add, edit, or delete courses from the platform</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <a href="javascript:history.back()" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; background: #6c757d;">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="transform: rotate(180deg);">
+                                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                            </svg>
+                            Back
+                        </a>
+                        <a href="<?= APP_ENTRY ?>?url=admin/add-course" class="btn btn-yellow">Add New Course</a>
+                    </div>
+                </div>
 
         <div class="table-container">
             <div class="table-header">
@@ -60,6 +64,7 @@
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
             </div>
         </div>
     </div>

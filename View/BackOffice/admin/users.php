@@ -1,287 +1,212 @@
 <?php
 /**
- * APPOLIOS - Admin Users Management
+ * APPOLIOS - Gestion des Utilisateurs (Neo Admin Pro)
  */
 ?>
 
-<div class="dashboard">
-    <div class="container">
-        <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <h1>Manage Users</h1>
-                <p>View and manage platform users</p>
-            </div>
-            <a href="javascript:history.back()" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; background: #6c757d;">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="transform: rotate(180deg);">
-                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
-                </svg>
-                Back
-            </a>
+<div style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end;">
+    <div>
+        <h1 style="font-size: 1.8rem; font-weight: 800; color: #1e293b; margin: 0 0 0.5rem 0;">Gestion des Utilisateurs</h1>
+        <p style="color: #64748b; margin: 0;">Consultez et gérez tous les comptes enregistrés sur la plateforme.</p>
+    </div>
+    <div style="display: flex; gap: 12px;">
+        <a href="<?= APP_ENTRY ?>?url=admin/export-users-pdf" class="btn-admin" style="background: white; border: 1px solid #e2e8f0; color: #475569;">
+            <i class="bi bi-file-earmark-pdf-fill"></i> Exporter PDF
+        </a>
+    </div>
+</div>
+
+<!-- Search Panel (Dynamic) -->
+<div id="search-panel-pro" class="admin-card" style="margin-bottom: 2rem; border-left: 4px solid var(--admin-primary); padding: 1.2rem;">
+    <div style="display: flex; gap: 120px; align-items: center;">
+
+
+        <div style="width: 450px; position: relative;">
+            <i class="bi bi-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+            <input type="text" id="user-search-input" placeholder="Rechercher par nom ou email..." 
+                   onkeyup="filterUsersPro()" 
+                   style="width: 100%; padding: 10px 12px 10px 45px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 0.95rem; outline: none; transition: all 0.2s; background: #f8fafc;">
         </div>
 
-        <div style="margin-bottom: 20px; text-align: right;">
-            <a href="<?= APP_ENTRY ?>?url=admin/export-users-pdf" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px;">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                </svg>
-                Export Users to PDF
-            </a>
-        </div>
-
-        <!-- Search & Sort Toggle Section -->
-        <div style="background: white; border-radius: 16px; padding: 1.5rem; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); border: 1px solid #eef2f6;">
-            <div style="display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;">
-                <!-- Search Toggle -->
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="font-weight: 600; color: #2B4865; font-size: 0.95rem;">🔍 Search</span>
-                    <label class="switch">
-                        <input type="checkbox" id="searchToggle" onchange="toggleSearch()">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-
-                <!-- Sort Toggle -->
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="font-weight: 600; color: #2B4865; font-size: 0.95rem;">📊 Sort</span>
-                    <label class="switch">
-                        <input type="checkbox" id="sortToggle" onchange="toggleSort()">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Search Input (Hidden by default) -->
-            <div id="searchPanel" style="display: none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #eef2f6;">
-                <div style="display: flex; gap: 1rem; align-items: center;">
-                    <div style="flex: 1; position: relative;">
-                        <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="m21 21-4.35-4.35"></path>
-                        </svg>
-                        <input type="text" id="userSearchInput" placeholder="Search by name, email or role..." onkeyup="filterUsers()" style="width: 100%; padding: 12px 12px 12px 44px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; transition: all 0.2s;">
-                    </div>
-                    <button onclick="clearSearch()" style="padding: 12px 20px; background: #f1f5f9; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; color: #64748b; transition: all 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
-                        Clear
-                    </button>
-                </div>
-                <p id="searchResults" style="margin: 0.5rem 0 0 0; font-size: 0.85rem; color: #64748b;"></p>
-            </div>
-
-            <!-- Sort Panel (Hidden by default) -->
-            <div id="sortPanel" style="display: none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #eef2f6;">
-                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                    <select id="sortBy" onchange="sortUsers()" style="padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 0.95rem; background: white; cursor: pointer;">
-                        <option value="">Sort by...</option>
-                        <option value="name">Name (A-Z)</option>
-                        <option value="nameDesc">Name (Z-A)</option>
-                        <option value="email">Email (A-Z)</option>
-                        <option value="role">Role</option>
-                        <option value="dateNew">Date (Newest)</option>
-                        <option value="dateOld">Date (Oldest)</option>
-                    </select>
-
-                    <div id="sortStats" style="font-size: 0.9rem; color: #64748b;"></div>
-                </div>
-            </div>
-        </div>
-
-        <style>
-            /* Toggle Switch Styles */
-            .switch {
-                position: relative;
-                display: inline-block;
-                width: 50px;
-                height: 26px;
-            }
-            .switch input {
-                opacity: 0;
-                width: 0;
-                height: 0;
-            }
-            .slider {
-                position: absolute;
-                cursor: pointer;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-color: #ccc;
-                transition: .3s;
-                border-radius: 26px;
-            }
-            .slider:before {
-                position: absolute;
-                content: "";
-                height: 20px;
-                width: 20px;
-                left: 3px;
-                bottom: 3px;
-                background-color: white;
-                transition: .3s;
-                border-radius: 50%;
-            }
-            .switch input:checked + .slider {
-                background: linear-gradient(135deg, #548CA8 0%, #E19864 100%);
-            }
-            .switch input:checked + .slider:before {
-                transform: translateX(24px);
-            }
-            #userSearchInput:focus {
-                border-color: #E19864 !important;
-                outline: none;
-            }
-            #sortBy:focus {
-                border-color: #E19864 !important;
-                outline: none;
-            }
-        </style>
-
-        <script>
-            // Toggle Search Panel
-            function toggleSearch() {
-                const panel = document.getElementById('searchPanel');
-                const toggle = document.getElementById('searchToggle');
-                panel.style.display = toggle.checked ? 'block' : 'none';
-                if (toggle.checked) {
-                    setTimeout(() => document.getElementById('userSearchInput').focus(), 100);
-                }
-            }
-
-            // Toggle Sort Panel
-            function toggleSort() {
-                const panel = document.getElementById('sortPanel');
-                const toggle = document.getElementById('sortToggle');
-                panel.style.display = toggle.checked ? 'block' : 'none';
-            }
-
-            // Filter Users
-            function filterUsers() {
-                const searchTerm = document.getElementById('userSearchInput').value.toLowerCase();
-                const rows = document.querySelectorAll('table tbody tr');
-                let visibleCount = 0;
-
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    if (text.includes(searchTerm)) {
-                        row.style.display = '';
-                        visibleCount++;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-
-                document.getElementById('searchResults').textContent =
-                    searchTerm ? `Found ${visibleCount} user${visibleCount !== 1 ? 's' : ''}` : '';
-            }
-
-            // Clear Search
-            function clearSearch() {
-                document.getElementById('userSearchInput').value = '';
-                filterUsers();
-                document.getElementById('userSearchInput').focus();
-            }
-
-            // Sort Users
-            function sortUsers() {
-                const sortBy = document.getElementById('sortBy').value;
-                if (!sortBy) return;
-
-                const tbody = document.querySelector('table tbody');
-                const rows = Array.from(tbody.querySelectorAll('tr'));
-
-                rows.sort((a, b) => {
-                    let aVal, bVal;
-
-                    switch(sortBy) {
-                        case 'name':
-                            aVal = a.cells[1].textContent.trim().toLowerCase();
-                            bVal = b.cells[1].textContent.trim().toLowerCase();
-                            return aVal.localeCompare(bVal);
-                        case 'nameDesc':
-                            aVal = a.cells[1].textContent.trim().toLowerCase();
-                            bVal = b.cells[1].textContent.trim().toLowerCase();
-                            return bVal.localeCompare(aVal);
-                        case 'email':
-                            aVal = a.cells[2].textContent.trim().toLowerCase();
-                            bVal = b.cells[2].textContent.trim().toLowerCase();
-                            return aVal.localeCompare(bVal);
-                        case 'role':
-                            aVal = a.cells[3].textContent.trim().toLowerCase();
-                            bVal = b.cells[3].textContent.trim().toLowerCase();
-                            return aVal.localeCompare(bVal);
-                        case 'dateNew':
-                            aVal = new Date(a.cells[4].textContent);
-                            bVal = new Date(b.cells[4].textContent);
-                            return bVal - aVal;
-                        case 'dateOld':
-                            aVal = new Date(a.cells[4].textContent);
-                            bVal = new Date(b.cells[4].textContent);
-                            return aVal - bVal;
-                        default:
-                            return 0;
-                    }
-                });
-
-                rows.forEach(row => tbody.appendChild(row));
-
-                document.getElementById('sortStats').textContent =
-                    `Sorted by: ${document.getElementById('sortBy').options[document.getElementById('sortBy').selectedIndex].text}`;
-            }
-        </script>
-
-        <div class="table-container">
-            <div class="table-header">
-                <h3 style="margin: 0;">All Users</h3>
-            </div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Registered</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (!empty($users)): ?>
-                            <?php foreach ($users as $user): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($user['id']) ?></td>
-                                    <td><?= htmlspecialchars($user['name']) ?></td>
-                                    <td><?= htmlspecialchars($user['email']) ?></td>
-                                    <td>
-                                        <span style="padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; background: <?= $user['role'] === 'admin' ? 'var(--yellow)' : 'var(--secondary-color)' ?>; color: white;">
-                                            <?= ucfirst(htmlspecialchars($user['role'])) ?>
-                                        </span>
-                                        <?php if ($user['is_blocked'] ?? 0): ?>
-                                            <span style="padding: 4px 8px; border-radius: 20px; font-size: 0.7rem; background: #dc3545; color: white; margin-left: 5px;">BLOCKED</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?= date('M d, Y', strtotime($user['created_at'])) ?></td>
-                                    <td>
-                                        <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                                            <?php if ($user['is_blocked'] ?? 0): ?>
-                                                <a href="<?= APP_ENTRY ?>?url=admin/unblock-user/<?= $user['id'] ?>" class="btn action-btn" style="padding: 5px 10px; font-size: 0.8rem; background: #28a745; color: white;" onclick="return confirm('Are you sure you want to unblock this user?')">Unblock</a>
-                                            <?php else: ?>
-                                                <a href="<?= APP_ENTRY ?>?url=admin/block-user/<?= $user['id'] ?>" class="btn action-btn danger" style="padding: 5px 10px; font-size: 0.8rem;" onclick="return confirm('Are you sure you want to block this user? They will not be able to access the site.')">Block</a>
-                                            <?php endif; ?>
-                                        <?php else: ?>
-                                            <span style="color: var(--gray-dark); font-size: 0.85rem;">Current User</span>
-                                        <?php endif; ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" style="text-align: center; padding: 30px;">No users found.</td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+        <div style="width: 180px;">
+            <select id="sort-filter" onchange="filterUsersPro()" style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: white; color: #475569; font-size: 0.9rem; outline: none; cursor: pointer;">
+                <option value="newest">🕒 Plus récents</option>
+                <option value="oldest">⌛ Plus anciens</option>
+                <option value="name-asc">🔤 Nom (A-Z)</option>
+                <option value="name-desc">🔤 Nom (Z-A)</option>
+            </select>
         </div>
     </div>
 </div>
+
+
+
+<div class="admin-card" style="padding: 0; overflow: hidden;">
+    <div style="overflow-x: auto;">
+        <table class="admin-table-pro" id="users-table">
+            <thead>
+                <tr>
+                    <th>Utilisateur</th>
+                    <th>Email</th>
+                    <th>Rôle</th>
+                    <th>Inscription</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (!empty($users)): ?>
+                    <?php foreach ($users as $user): ?>
+                        <tr class="user-row" 
+                            data-role="<?= strtolower($user['role']) ?>" 
+                            data-name="<?= htmlspecialchars(strtolower($user['name'])) ?>" 
+                            data-date="<?= strtotime($user['created_at']) ?>">
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="width: 38px; height: 38px; border-radius: 10px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--admin-primary); border: 1px solid #e2e8f0;">
+                                        <?= strtoupper(substr($user['name'], 0, 1)) ?>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 700; color: #1e293b;"><?= htmlspecialchars($user['name']) ?></div>
+                                        <div style="font-size: 0.75rem; color: #94a3b8;">ID: #<?= $user['id'] ?></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="color: #64748b; font-size: 0.9rem;"><?= htmlspecialchars($user['email']) ?></td>
+                            <td>
+                                <?php 
+                                $roleClass = 'admin-badge-info';
+                                if ($user['role'] === 'admin') $roleClass = 'admin-badge-warning';
+                                if ($user['role'] === 'teacher') $roleClass = 'admin-badge-primary';
+                                ?>
+                                <span class="admin-badge <?= $roleClass ?>"><?= ucfirst(htmlspecialchars($user['role'])) ?></span>
+                                
+                                <?php if ($user['is_blocked'] ?? 0): ?>
+                                    <span class="admin-badge admin-badge-danger" style="margin-left: 4px;">Bloqué</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="color: #64748b; font-size: 0.9rem;"><?= date('d M, Y', strtotime($user['created_at'])) ?></td>
+                            <td style="text-align: right;">
+                                <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                                    <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                                        <?php if ($user['is_blocked'] ?? 0): ?>
+                                            <button onclick="unblockUser(<?= $user['id'] ?>, '<?= addslashes($user['name']) ?>')" class="btn-admin" style="background: #dcfce7; color: #15803d; border: none; padding: 6px 12px;">
+                                                Débloquer
+                                            </button>
+                                        <?php else: ?>
+                                            <select id="ban-duration-<?= $user['id'] ?>" class="admin-select-small">
+                                                <option value="permanent">Permanent</option>
+                                                <option value="2h">2 Heures</option>
+                                                <option value="10h">10 Heures</option>
+                                                <option value="1d">1 Jour</option>
+                                            </select>
+                                            <button onclick="banUser(<?= $user['id'] ?>, '<?= addslashes($user['name']) ?>')" class="btn-admin" style="background: #fee2e2; color: #b91c1c; border: none; padding: 6px 12px;">
+                                                Bannir
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Vous</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <tr><td colspan="5" style="text-align:center; padding: 3rem; color: #94a3b8;">Aucun utilisateur trouvé.</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.admin-select-small {
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    background: white;
+    outline: none;
+}
+.admin-select-small:focus { border-color: var(--admin-primary); }
+</style>
+
+<script>
+function toggleSearchPanel() {
+    const p = document.getElementById('search-panel-pro');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    if (p.style.display === 'block') document.getElementById('user-search-input').focus();
+}
+
+function filterUsersPro() {
+    const q = document.getElementById('user-search-input').value.toLowerCase();
+    const s = document.getElementById('sort-filter').value;
+    const table = document.getElementById('users-table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('.user-row'));
+
+    // 1. Filter
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const matchesQuery = text.includes(q);
+        row.style.display = matchesQuery ? '' : 'none';
+    });
+
+
+    // 2. Sort
+    rows.sort((a, b) => {
+        if (s === 'name-asc') return a.dataset.name.localeCompare(b.dataset.name);
+        if (s === 'name-desc') return b.dataset.name.localeCompare(a.dataset.name);
+        if (s === 'newest') return b.dataset.date - a.dataset.date;
+        if (s === 'oldest') return a.dataset.date - b.dataset.date;
+        return 0;
+    });
+
+    // 3. Re-append
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+
+function banUser(userId, userName) {
+    const duration = document.getElementById('ban-duration-' + userId).value;
+    const labels = { 'permanent': 'définitivement', '2h': 'pendant 2 heures', '10h': 'pendant 10 heures', '1d': 'pendant 1 jour' };
+
+    Swal.fire({
+        title: 'Confirmer le bannissement',
+        text: `Voulez-vous vraiment bannir ${userName} ${labels[duration]} ?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Oui, bannir',
+        cancelButtonText: 'Annuler'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '<?= APP_ENTRY ?>?url=admin/ban-user/' + userId;
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = 'ban_duration'; input.value = duration;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
+function unblockUser(userId, userName) {
+    Swal.fire({
+        title: 'Débloquer l\'utilisateur',
+        text: `Voulez-vous vraiment débloquer ${userName} ?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#22c55e',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Oui, débloquer',
+        cancelButtonText: 'Annuler'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = '<?= APP_ENTRY ?>?url=admin/unblock-user/' + userId;
+        }
+    });
+}
+</script>

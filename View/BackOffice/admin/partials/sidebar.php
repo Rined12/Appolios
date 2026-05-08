@@ -117,13 +117,66 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             </span>
             <span>Messages</span>
             <?php
-            // Show unread messages count badge
-            require_once __DIR__ . '/../../../../Model/ContactMessage.php';
-            $contactModel = new ContactMessage();
-            $unreadMessages = $contactModel->getUnreadCount();
-            if ($unreadMessages > 0): ?>
-                <span style="margin-left: auto; background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><?= $unreadMessages ?></span>
+            // Show unread messages count badge - uses variable from controller
+            if (isset($unreadCount) && $unreadCount > 0): ?>
+                <span style="margin-left: auto; background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"><?= $unreadCount ?></span>
             <?php endif; ?>
         </a>
+
+        <a href="<?= APP_ENTRY ?>?url=admin/activity-log" class="admin-side-link <?= $adminSidebarActive === 'activity-log' ? 'active' : '' ?>">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </span>
+            <span>Activity Log</span>
+        </a>
+
+        <a href="<?= APP_ENTRY ?>?url=admin/activity-map" class="admin-side-link <?= $adminSidebarActive === 'activity-map' ? 'active' : '' ?>">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                    <line x1="8" y1="2" x2="8" y2="18"></line>
+                    <line x1="16" y1="6" x2="16" y2="22"></line>
+                </svg>
+            </span>
+            <span>Carte d'Activité</span>
+        </a>
+
+        <a href="<?= APP_ENTRY ?>?url=admin/statistics" class="admin-side-link <?= $adminSidebarActive === 'statistics' ? 'active' : '' ?>">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+                    <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+                </svg>
+            </span>
+            <span>Statistique</span>
+        </a>
+
+        <div class="sidebar-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 15px 20px;"></div>
+        <p style="padding-left: 20px; font-size: 0.7rem; color: rgba(255,255,255,0.5); text-transform: uppercase; margin-bottom: 5px;">Aperçu des Espaces</p>
+
+        <a href="<?= APP_ENTRY ?>?url=student/dashboard" class="admin-side-link">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"></path>
+                    <path d="M12 14c-4.42 0-8 2.24-8 5v2h16v-2c0-2.76-3.58-5-8-5z"></path>
+                    <polyline points="12 4 4 8 12 12 20 8 12 4"></polyline>
+                </svg>
+            </span>
+            <span>Etudiant</span>
+        </a>
+
+        <a href="<?= APP_ENTRY ?>?url=teacher/dashboard" class="admin-side-link">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                </svg>
+            </span>
+            <span>Teacher</span>
+        </a>
+
     </nav>
 </aside>

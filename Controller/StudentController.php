@@ -9,8 +9,11 @@ require_once __DIR__ . '/../Model/Course.php';
 require_once __DIR__ . '/../Model/Enrollment.php';
 require_once __DIR__ . '/../Model/Evenement.php';
 require_once __DIR__ . '/../Model/EvenementRessource.php';
+require_once __DIR__ . '/../Controller/ActivityLogger.php';
+require_once __DIR__ . '/AvatarGenerator.php';
 
 class StudentController extends BaseController {
+    use ActivityLogger;
 
     /**
      * Route alias for /student/evenement/{id}
@@ -126,8 +129,8 @@ class StudentController extends BaseController {
             return;
         }
 
-        // Only students can access this page
-        if ($_SESSION['role'] !== 'student') {
+        // Only students or admins can access this page
+        if ($_SESSION['role'] !== 'student' && !$this->isAdmin()) {
             $this->setFlash('error', 'Access denied.');
             $this->redirect('login');
             return;
@@ -250,9 +253,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/User.php';
-        $userModel = $this->model('User');
-        $user = $userModel->findById($_SESSION['user_id']);
+        $user = $this->findUserById($_SESSION['user_id']);
 
         $data = [
             'title' => 'My Profile - APPOLIOS',
@@ -274,9 +275,7 @@ class StudentController extends BaseController {
             return;
         }
 
-        require_once __DIR__ . '/../Model/User.php';
-        $userModel = $this->model('User');
-        $user = $userModel->findById($_SESSION['user_id']);
+        $user = $this->findUserById($_SESSION['user_id']);
 
         $data = [
             'title' => 'Edit Profile - APPOLIOS',
@@ -323,13 +322,11 @@ class StudentController extends BaseController {
             $errors[] = 'Please enter a valid email address.';
         }
 
-        require_once __DIR__ . '/../Model/User.php';
-        $userModel = $this->model('User');
-        $currentUser = $userModel->findById($_SESSION['user_id']);
+        $currentUser = $this->findUserById($_SESSION['user_id']);
 
         // Check if email is taken by another user
         if ($email !== $currentUser['email']) {
-            if ($userModel->emailExists($email)) {
+            if ($this->emailExists($email)) {
                 $errors[] = 'This email is already taken.';
             }
         }
@@ -366,7 +363,7 @@ class StudentController extends BaseController {
             $updateData['password'] = password_hash($newPassword, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
         }
 
-        if ($userModel->update($_SESSION['user_id'], $updateData)) {
+        if ($this->updateUser($_SESSION['user_id'], $updateData)) {
             // Update session data
             $_SESSION['user_name'] = $name;
             $_SESSION['user_email'] = $email;
@@ -377,5 +374,245 @@ class StudentController extends BaseController {
         }
 
         $this->redirect('student/profile');
+    }
+
+    /**
+     * Upload avatar image
+     */
+    public function uploadAvatar() {
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            return;
+        }
+
+        if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No file uploaded or upload error']);
+            return;
+        }
+
+        $file = $_FILES['avatar'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+        // Check file type
+        if (!in_array($file['type'], $allowedTypes)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, GIF, and WEBP are allowed.']);
+            return;
+        }
+
+        // Check file size (max 10MB)
+        if ($file['size'] > 10 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'error' => 'File size must be less than 10MB']);
+            return;
+        }
+
+        // Generate unique filename
+        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = uniqid() . '.' . $extension;
+        $uploadDir = __DIR__ . '/../uploads/avatars/';
+
+        // Create directory if it doesn't exist
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        // Move uploaded file
+        if (move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+            // Update user avatar in database
+            // Delete old avatar if exists
+            $currentUser = $this->findUserById($_SESSION['user_id']);
+            if (!empty($currentUser['avatar']) && file_exists($uploadDir . $currentUser['avatar'])) {
+                unlink($uploadDir . $currentUser['avatar']);
+            }
+
+            if ($this->updateUser($_SESSION['user_id'], ['avatar' => $filename])) {
+                echo json_encode(['success' => true, 'avatar' => $filename]);
+            } else {
+                unlink($uploadDir . $filename);
+                echo json_encode(['success' => false, 'error' => 'Failed to save avatar']);
+            }
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to upload file']);
+        }
+    }
+
+    // ==========================================
+    // DATABASE METHODS - For User operations
+    // ==========================================
+
+    public function findUserById($id)
+    {
+        $sql = "SELECT * FROM users WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch();
+    }
+
+    public function getUsersWithFaceDescriptors()
+    {
+        $sql = "SELECT id, name, email, face_descriptor FROM users WHERE face_descriptor IS NOT NULL AND face_descriptor != ''";
+        $stmt = $this->getDb()->query($sql);
+        return $stmt ? $stmt->fetchAll() : [];
+    }
+
+    public function emailExists($email)
+    {
+        $sql = "SELECT id FROM users WHERE email = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$email]);
+        return $stmt->fetch() !== false;
+    }
+
+    public function updateUser($id, $data)
+    {
+        // Get old data for audit trail
+        $oldUser = $this->findUserById($id);
+
+        $fields = [];
+        $values = [];
+        foreach ($data as $key => $value) {
+            $fields[] = "{$key} = ?";
+            $values[] = $value;
+        }
+        $values[] = $id;
+        $sql = "UPDATE users SET " . implode(', ', $fields) . " WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        
+        $result = $stmt->execute($values);
+        
+        if ($result && $oldUser) {
+            $this->logDiff('update_user', $oldUser, $data, "User updated profile:");
+        }
+
+        return $result;
+    }
+
+    /**
+     * Update Face ID descriptor
+     */
+    public function updateFaceId() {
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            return;
+        }
+
+        $data = json_decode(file_get_contents('php://input'), true);
+        $faceDescriptor = $data['face_descriptor'] ?? null;
+
+        if (!$faceDescriptor) {
+            echo json_encode(['success' => false, 'error' => 'No face descriptor provided']);
+            return;
+        }
+
+        $sql = "UPDATE users SET face_descriptor = ? WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        
+        if ($stmt->execute([$faceDescriptor, $_SESSION['user_id']])) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to update face descriptor']);
+        }
+    }
+
+    /**
+     * Remove Face ID descriptor
+     */
+    public function removeFaceId() {
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            return;
+        }
+
+        $sql = "UPDATE users SET face_descriptor = NULL WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        
+        if ($stmt->execute([$_SESSION['user_id']])) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Failed to remove face descriptor']);
+        }
+    }
+
+    /**
+     * Check if face is unique - returns other users with face descriptors
+     */
+    public function checkFaceUnique() {
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        $users = $this->getUsersWithFaceDescriptors();
+
+        // Filter out current user
+        $otherUsers = array_filter($users, function($user) {
+            return $user['id'] != $_SESSION['user_id'];
+        });
+
+        echo json_encode(['success' => true, 'users' => array_values($otherUsers)]);
+    }
+
+    /**
+     * Generate avatar from face photo
+     */
+    public function generateAvatar() {
+        // Set JSON header
+        header('Content-Type: application/json');
+
+        if (!$this->isLoggedIn()) {
+            echo json_encode(['success' => false, 'error' => 'Please login']);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            return;
+        }
+
+        if (!isset($_FILES['faceImage']) || $_FILES['faceImage']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'No image uploaded or upload error']);
+            return;
+        }
+
+        $file = $_FILES['faceImage'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+        // Check file type
+        if (!in_array($file['type'], $allowedTypes)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, and WEBP are allowed.']);
+            return;
+        }
+
+        // Check file size (max 10MB)
+        if ($file['size'] > 10 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'error' => 'File size must be less than 10MB']);
+            return;
+        }
+
+        // Get face data from POST
+        $faceData = json_decode($_POST['faceData'] ?? '{}', true);
+
+        try {
+            // Generate avatar
+            $generator = new AvatarGenerator();
+            $result = $generator->generateAvatar($faceData, $_SESSION['user_id']);
+            echo json_encode($result);
+        } catch (Throwable $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
     }
 }

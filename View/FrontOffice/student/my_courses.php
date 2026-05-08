@@ -2,17 +2,23 @@
 /**
  * APPOLIOS - Student My Courses Page
  */
+
+$studentSidebarActive = 'my-courses';
 ?>
 
-<div class="dashboard">
-    <div class="container">
-        <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h1>My Courses</h1>
-                <p>Track your enrolled courses and progress</p>
-            </div>
-            <a href="<?= APP_ENTRY ?>?url=courses" class="btn btn-primary">Browse More Courses</a>
-        </div>
+<div class="dashboard student-courses-page">
+    <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
+        <div class="admin-layout">
+            <?php require __DIR__ . '/partials/sidebar.php'; ?>
+
+            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
+                <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1>My Courses</h1>
+                        <p>Track your enrolled courses and progress</p>
+                    </div>
+                    <a href="<?= APP_ENTRY ?>?url=courses" class="btn btn-primary">Browse More Courses</a>
+                </div>
 
         <?php if (!empty($enrollments)): ?>
             <div class="cards-grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
@@ -59,5 +65,7 @@
                 </div>
             </div>
         <?php endif; ?>
+            </div>
+        </div>
     </div>
 </div>

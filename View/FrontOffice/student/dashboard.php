@@ -22,7 +22,7 @@ if (!empty($enrollments)) {
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
 
-            <div class="admin-main">
+            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
                 
                 <!-- Welcome Banner -->
                 <section class="student-events-hero-top" style="margin-bottom: 2rem;">

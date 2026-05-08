@@ -14,17 +14,7 @@ class HomeController extends BaseController {
      * Redirects logged-in users to their respective dashboards
      */
     public function index() {
-        // If user is logged in, redirect admin/teacher to their dashboards.
-        // Students can access the public home page design.
-        if ($this->isLoggedIn()) {
-            if ($_SESSION['role'] === 'admin') {
-                $this->redirect('admin/dashboard');
-                return;
-            } elseif ($_SESSION['role'] === 'teacher') {
-                $this->redirect('teacher/dashboard');
-                return;
-            }
-        }
+        // Public landing page for everyone
 
         // Public landing page for non-logged users
         $data = [
@@ -98,15 +88,7 @@ class HomeController extends BaseController {
         }
 
         // Save to database
-        require_once __DIR__ . '/../Model/ContactMessage.php';
-        $contactModel = $this->model('ContactMessage');
-
-        $result = $contactModel->createMessage([
-            'name' => $name,
-            'email' => $email,
-            'subject' => $subject,
-            'message' => $message
-        ]);
+        $result = $this->createContactMessage($name, $email, $subject, $message);
 
         if ($result) {
             $this->setFlash('success', 'Thank you! Your message has been sent successfully. We will get back to you soon.');
@@ -146,17 +128,7 @@ class HomeController extends BaseController {
      * Admin and Teacher are redirected to their dashboards
      */
     public function courses() {
-        // Redirect admin and teacher to their dashboards
-        if ($this->isLoggedIn()) {
-            if ($_SESSION['role'] === 'admin') {
-                $this->redirect('admin/dashboard');
-                return;
-            } elseif ($_SESSION['role'] === 'teacher') {
-                $this->redirect('teacher/dashboard');
-                return;
-            }
-            // Students can view courses
-        }
+        // View courses
 
         $courseModel = $this->model('Course');
         $courses = $courseModel->getAllWithCreator();
@@ -181,5 +153,15 @@ class HomeController extends BaseController {
         ];
 
         $this->view('FrontOffice/errors/404', $data);
+    }
+
+    /**
+     * Create a new contact message - Database operation moved from Model
+     */
+    public function createContactMessage(string $name, string $email, string $subject, string $message): bool {
+        $sql = "INSERT INTO contact_messages (name, email, subject, message, is_read, created_at)
+                VALUES (?, ?, ?, ?, 0, NOW())";
+        $stmt = $this->getDb()->prepare($sql);
+        return $stmt->execute([$name, $email, $subject, $message]);
     }
 }

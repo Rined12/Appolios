@@ -480,18 +480,18 @@ class Evenement extends BaseModel {
     }
 
     /**
-     * Move event back to pending only when it was approved or rejected before.
+     * Move event back to pending only when it was approved before.
      * @param int $id
      * @return bool
      */
-    public function markPendingIfNotPending($id) {
+    public function markPendingIfApproved($id) {
         $sql = "UPDATE {$this->table}
                 SET approval_status = 'pending',
                     approved_by = NULL,
                     approved_at = NULL,
                     rejection_reason = NULL,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND approval_status != 'pending'";
+                WHERE id = ? AND approval_status = 'approved'";
 
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([(int) $id]);

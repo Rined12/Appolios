@@ -787,6 +787,140 @@ body.theme-home-lite .app-actions .btn.btn-outline {
     min-width: 50px;
 }
 
+/* --- Modern "Floating Rows" Table Style --- */
+.neo-table-modern {
+    border-collapse: separate !important;
+    border-spacing: 0 12px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+}
+
+.neo-table-modern thead th {
+    background: transparent !important;
+    color: #64748b !important;
+    border: none !important;
+    padding: 0 20px 10px 20px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.05em !important;
+}
+
+.neo-table-modern tbody tr {
+    transition: all 0.25s ease !important;
+}
+
+.neo-table-modern tbody tr:hover {
+    transform: translateY(-4px) !important;
+}
+
+.neo-table-modern tbody td {
+    border: none !important;
+    padding: 18px 20px !important;
+    background: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(43, 72, 101, 0.04) !important;
+    vertical-align: middle !important;
+}
+
+.neo-table-modern tbody td:first-child {
+    border-top-left-radius: 15px !important;
+    border-bottom-left-radius: 15px !important;
+}
+
+.neo-table-modern tbody td:last-child {
+    border-top-right-radius: 15px !important;
+    border-bottom-right-radius: 15px !important;
+}
+
+.neo-table-modern tbody tr:hover td {
+    background: #ffffff !important;
+    box-shadow: 0 15px 30px rgba(43, 72, 101, 0.12) !important;
+}
+
+/* Professional Global Table Styles (Fallback) */
+.admin-layout table:not(.neo-table-modern), 
+.dashboard table:not(.neo-table-modern), 
+.table-container table:not(.neo-table-modern) {
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    background: #ffffff !important;
+    border-radius: 12px !important;
+    border: 1px solid #e2e8f0 !important;
+    margin: 1rem 0 !important;
+    overflow: hidden !important;
+}
+
+/* --- Premium Card Style for Table Containers --- */
+.table-container {
+    background: #ffffff !important;
+    border-radius: 20px !important;
+    box-shadow: 0 15px 35px rgba(43, 72, 101, 0.1) !important;
+    border: 1px solid #eef2f6 !important;
+    margin-top: 2rem !important;
+    overflow: hidden !important;
+}
+
+.table-header {
+    padding: 1.8rem 2rem !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    background: #fff !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+.table-header h3 {
+    color: #2B4865 !important;
+    font-family: 'Poppins', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 1.4rem !important;
+    margin: 0 !important;
+}
+
+.table-responsive {
+    padding: 0.5rem 1.5rem 1.5rem 1.5rem !important;
+}
+
+.admin-layout table tr:hover td, 
+.table-container table tr:hover td,
+.events-wide-table tbody tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+.admin-layout table tr:last-child td, 
+.table-container table tr:last-child td,
+.events-wide-table tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+/* Dark Mode support for tables */
+body.neo-dark-ui .admin-layout table,
+body.neo-dark-ui .table-container table {
+    background: #0f172a !important;
+    border-color: rgba(148, 163, 184, 0.1) !important;
+}
+
+body.neo-dark-ui .admin-layout table th,
+body.neo-dark-ui .table-container table th {
+    background: #1e293b !important;
+    color: #94a3b8 !important;
+}
+
+body.neo-dark-ui .admin-layout table td,
+body.neo-dark-ui .table-container table td {
+    background: #0f172a !important;
+    color: #e5e7eb !important;
+    border-bottom-color: rgba(148, 163, 184, 0.05) !important;
+}
+
+body.neo-dark-ui .admin-layout table tr:hover td,
+body.neo-dark-ui .table-container table tr:hover td {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
 @media (max-width: 900px) {
     .events-wide-table thead th {
         padding: 8px 10px;
