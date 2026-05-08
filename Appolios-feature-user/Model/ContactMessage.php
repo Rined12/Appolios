@@ -69,17 +69,4 @@ class ContactMessage extends BaseModel {
 
     public function getCreatedAt(): ?string { return $this->created_at; }
     public function setCreatedAt(?string $created_at): self { $this->created_at = $created_at; return $this; }
-    
-    // Delegate methods for backward compatibility
-    public function getUnreadCount() {
-        require_once __DIR__ . '/../Controller/ContactMessageController.php';
-        $ctrl = new ContactMessageController();
-        return $ctrl->getUnreadCount();
-    }
-    
-    public function getAll() {
-        require_once __DIR__ . '/../Controller/ContactMessageController.php';
-        $ctrl = new ContactMessageController();
-        return $ctrl->getAll();
-    }
 }

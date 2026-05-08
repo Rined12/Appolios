@@ -5,7 +5,7 @@
  */
 
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/ai.php';
+require_once __DIR__ . '/../config/config.php';
 
 class ChatbotService {
     private $db;
@@ -13,7 +13,13 @@ class ChatbotService {
     
     public function __construct() {
         $this->db = getConnection();
-        $this->aiConfig = require __DIR__ . '/../config/ai.php';
+        
+        $configPath = __DIR__ . '/../config/ai.php';
+        $aiConfigFile = require $configPath;
+        $this->aiConfig = is_array($aiConfigFile) ? $aiConfigFile : [];
+        
+        error_log("Chatbot construct - Config loaded from: $configPath");
+        error_log("Chatbot construct - aiConfig: " . json_encode($this->aiConfig));
     }
     
     public function chat($userId, $sessionId, $message) {
@@ -98,24 +104,17 @@ class ChatbotService {
     }
     
     private function getAIResponse($userMessage, $context, $history) {
-        $provider = $this->aiConfig['provider'] ?? 'groq';
-        $groqKey = $this->aiConfig['groq']['api_key'] ?? getenv('GROQ_API_KEY') ?: '';
+        $provider = $this->aiConfig['provider'] ?? 'openrouter';
         $openrouterKey = $this->aiConfig['openrouter']['api_key'] ?? getenv('OPENROUTER_API_KEY') ?: '';
         
-        if (empty($groqKey) && empty($openrouterKey)) {
-            return "I'm not configured yet. Please ask the administrator to set up an AI API key in the config/ai.php file.";
-        }
+        error_log("AI Response - Provider: $provider, Key: " . (empty($openrouterKey) ? 'EMPTY' : 'SET'));
         
-        if ($provider === 'groq' && !empty($groqKey)) {
-            return $this->callGroqAPI($userMessage, $context, $history);
+        if (empty($openrouterKey)) {
+            return "I'm not configured yet. Please ask the administrator to set up an AI API key in the config/ai.php file.";
         }
         
         if (!empty($openrouterKey)) {
             return $this->callOpenRouterAPI($userMessage, $context, $history);
-        }
-        
-        if (!empty($groqKey)) {
-            return $this->callGroqAPI($userMessage, $context, $history);
         }
         
         return "I'm having trouble connecting. Please contact the administrator.";
@@ -124,6 +123,8 @@ class ChatbotService {
     private function callOpenRouterAPI($userMessage, $context, $history) {
         $config = $this->aiConfig['openrouter'] ?? [];
         $apiKey = $config['api_key'] ?? getenv('OPENROUTER_API_KEY') ?: '';
+        
+        error_log("Chatbot API Key check: " . (empty($apiKey) ? 'EMPTY' : 'SET') . " - Config: " . json_encode($config));
         
         if (empty($apiKey)) {
             return "Sorry, I'm having trouble connecting right now. Please try again later.";

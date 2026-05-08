@@ -4,6 +4,24 @@
  * Main application configuration settings
  */
 
+// Load .env file
+$envFile = __DIR__ . '/../.env';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        if (strpos($line, '=') === false) continue;
+        list($key, $value) = array_pad(explode('=', $line, 2), 2, '');
+        $key = trim($key);
+        $value = trim($value);
+        if (!defined($key)) {
+            define($key, $value);
+        }
+        $_ENV[$key] = $value;
+        putenv("$key=$value");
+    }
+}
+
 // Application Settings
 define('APP_NAME', 'APPOLIOS');
 define('APP_VERSION', '1.0.0');
@@ -37,14 +55,14 @@ define('HASH_COST', 12);
 // Debug Mode (Set to false in production)
 define('DEBUG_MODE', true);
 
-// API Keys
-define('OPENROUTER_API_KEY', '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');
+// API Keys (load from environment or use empty default)
+define('OPENROUTER_API_KEY', $_ENV['OPENROUTER_API_KEY'] ?? getenv('OPENROUTER_API_KEY') ?: '');
 define('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1');
 define('OPENROUTER_MODEL', 'meta-llama/llama-3.1-8b-instruct');
 
 // Stripe
-define('STRIPE_SECRET_KEY', 'sk_test_51TSzdc4BXwgkHYpR2tFlRqJMpyQR2YnNEQzl5MFrYqRGYOVJ0uBDM80N8j4RHfl1fMMWpJb2S5Apye7ysRZipaYs00y7Woc3Lw');
-define('STRIPE_PUBLISHABLE_KEY', 'pk_test_51TSzdc4BXwgkHYpRPmNplrXhsqEXTquOrN4gU23D033OfrXCZBv9d7OPhmnMqZYi8XeKlMAC6UXVIcBwApOqNBTa00Knh5852v');
+define('STRIPE_SECRET_KEY', $_ENV['STRIPE_SECRET_KEY'] ?? getenv('STRIPE_SECRET_KEY') ?: '');
+define('STRIPE_PUBLISHABLE_KEY', $_ENV['STRIPE_PUBLISHABLE_KEY'] ?? getenv('STRIPE_PUBLISHABLE_KEY') ?: '');
 
 // Timezone
 date_default_timezone_set('UTC');
