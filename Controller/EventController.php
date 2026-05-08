@@ -1,0 +1,1045 @@
+<?php
+/**
+ * APPOLIOS Event Controller
+ * SQL + business logic here. Model = getters/setters only.
+ */
+require_once __DIR__ . '/../Controller/BaseController.php';
+require_once __DIR__ . '/../Model/Evenement.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
+require_once __DIR__ . '/../libs/PHPMailer/Exception.php';
+require_once __DIR__ . '/../libs/PHPMailer/PHPMailer.php';
+require_once __DIR__ . '/../libs/PHPMailer/SMTP.php';
+
+class EventController extends BaseController {
+    /** From address shown to recipients */
+    private static string $fromEmail = MAIL_FROM_EMAIL;
+    private static string $fromName = MAIL_FROM_NAME;
+
+    protected function getDb(): PDO {
+        static $pdo = null;
+        if ($pdo === null) {
+            $pdo = new PDO(
+                'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET,
+                DB_USER, DB_PASS,
+                [PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+        }
+        return $pdo;
+    }
+
+    private function queryAllEvenements(): array {
+        return $this->getDb()->query(
+            "SELECT e.*, u.name as creator_name, u.role as creator_role, COUNT(r.id) as resource_count
+             FROM evenements e
+             JOIN users u ON e.created_by = u.id
+             LEFT JOIN evenement_ressources r ON r.evenement_id = e.id
+             GROUP BY e.id
+             ORDER BY COALESCE(CONCAT(e.date_debut,' ',e.heure_debut), e.event_date) ASC"
+        )->fetchAll();
+    }
+
+    private function queryFindById(int $id): array|false {
+        $st = $this->getDb()->prepare("SELECT * FROM evenements WHERE id = ? LIMIT 1");
+        $st->execute([$id]);
+        return $st->fetch();
+    }
+
+    private function queryCreate(array $d): int|false {
+        try {
+            $st = $this->getDb()->prepare(
+                "INSERT INTO evenements
+                 (title,titre,description,date_debut,date_fin,heure_debut,heure_fin,
+                  lieu,capacite_max,type,statut,approval_status,location,event_date,created_by,created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())"
+            );
+            $st->execute([
+                $d['title'],$d['titre'],$d['description'],$d['date_debut'],$d['date_fin'],
+                $d['heure_debut'],$d['heure_fin'],$d['lieu'],$d['capacite_max'],
+                $d['type'],$d['statut'],$d['approval_status']??'approved',
+                $d['location'],$d['event_date'],$d['created_by']
+            ]);
+            return (int)$this->getDb()->lastInsertId();
+        } catch (PDOException $e) { return false; }
+    }
+
+    private function queryUpdate(int $id, array $d): bool {
+        $st = $this->getDb()->prepare(
+            "UPDATE evenements
+             SET title=?,titre=?,description=?,date_debut=?,date_fin=?,
+                 heure_debut=?,heure_fin=?,lieu=?,capacite_max=?,type=?,
+                 statut=?,location=?,event_date=?,updated_at=CURRENT_TIMESTAMP
+             WHERE id=?"
+        );
+        return $st->execute([
+            $d['title'],$d['titre'],$d['description'],$d['date_debut'],$d['date_fin'],
+            $d['heure_debut'],$d['heure_fin'],$d['lieu'],$d['capacite_max'],
+            $d['type'],$d['statut'],$d['location'],$d['event_date'],$id
+        ]);
+    }
+
+    private function queryDelete(int $id): bool {
+        $st = $this->getDb()->prepare("DELETE FROM evenements WHERE id=?");
+        return $st->execute([$id]);
+    }
+
+    private function queryPendingRequests(): array {
+        return $this->getDb()->query(
+            "SELECT e.*,u.name as creator_name,u.email as creator_email
+             FROM evenements e JOIN users u ON u.id=e.created_by
+             WHERE e.approval_status='pending' AND u.role='teacher'
+             ORDER BY e.created_at DESC"
+        )->fetchAll();
+    }
+
+    private function queryRejectedRequests(): array {
+        return $this->getDb()->query(
+            "SELECT e.*,u.name as creator_name,u.email as creator_email
+             FROM evenements e JOIN users u ON u.id=e.created_by
+             WHERE e.approval_status='rejected' AND u.role='teacher'
+             ORDER BY e.updated_at DESC"
+        )->fetchAll();
+    }
+
+    private function queryRessourcesByEvent(int $id): array {
+        $st = $this->getDb()->prepare(
+            "SELECT type, title, details FROM evenement_ressources
+             WHERE evenement_id = ? AND type IN ('rule','materiel','plan')
+             ORDER BY type, created_at ASC"
+        );
+        $st->execute([$id]);
+        $rows = $st->fetchAll();
+        $grouped = ['rule' => [], 'materiel' => [], 'plan' => []];
+        foreach ($rows as $r) {
+            $grouped[$r['type']][] = ['title' => $r['title'], 'details' => $r['details'] ?? ''];
+        }
+        return $grouped;
+    }
+
+    private function queryUpdateApproval(int $id, string $status, ?int $adminId, ?string $reason): bool {
+        $s = strtolower($status) === 'approved' ? 'approved' : 'rejected';
+        $st = $this->getDb()->prepare(
+            "UPDATE evenements
+             SET approval_status=?,approved_by=?,approved_at=NOW(),
+                 rejection_reason=?,updated_at=CURRENT_TIMESTAMP
+             WHERE id=?"
+        );
+        return $st->execute([$s, $adminId, $s==='rejected'?$reason:null, $id]);
+    }
+
+    private function queryAllParticipations(): array {
+        $st = $this->getDb()->query(
+            "SELECT r.id, r.evenement_id, r.created_by as student_id,
+                    r.title as student_name, r.details as status, r.created_at,
+                    e.title as event_title, e.date_debut, e.heure_debut,
+                    u.name as student_name_full, u.email as student_email,
+                    u.role as student_role, u.created_at as student_registered_at
+             FROM evenement_ressources r
+             JOIN evenements e ON r.evenement_id = e.id
+             JOIN users u ON r.created_by = u.id
+             WHERE r.type = 'participation'
+             ORDER BY r.created_at DESC"
+        );
+        return $st->fetchAll();
+    }
+
+    private function queryFindParticipationById(int $id): array|false {
+        $st = $this->getDb()->prepare(
+            "SELECT * FROM evenement_ressources WHERE id = ? AND type = 'participation' LIMIT 1"
+        );
+        $st->execute([$id]);
+        return $st->fetch();
+    }
+
+    private function queryUpdateParticipationStatus(int $id, string $status, string $reason = null): bool {
+        $st = $this->getDb()->prepare(
+            "UPDATE evenement_ressources
+             SET details = ?, rejection_reason = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND type = 'participation'"
+        );
+        return $st->execute([$status, $reason, $id]);
+    }
+
+    // ─── ACTIONS ──────────────────────────────────────────────────────────────
+
+    public function evenements() {
+        if (!$this->isAdmin()) { $this->setFlash('error','Access denied.'); $this->redirect('admin/login'); return; }
+        
+        $allParticipations = $this->queryAllParticipations();
+        $participationsByEvent = [];
+        foreach ($allParticipations as $p) {
+            $eventId = (int)$p['evenement_id'];
+            if (!isset($participationsByEvent[$eventId])) {
+                $participationsByEvent[$eventId] = [];
+            }
+            $participationsByEvent[$eventId][] = $p;
+        }
+
+        $this->view('BackOffice/admin/evenements', [
+            'title'      => 'Manage Evenements - APPOLIOS',
+            'description'=> 'Evenement management panel',
+            'evenements' => $this->queryAllEvenements(),
+            'participationsByEvent' => $participationsByEvent,
+            'flash'      => $this->getFlash(),
+        ]);
+    }
+
+    public function addEvenement() {
+        if (!$this->isAdmin()) { $this->setFlash('error','Access denied.'); $this->redirect('admin/login'); return; }
+        $this->view('BackOffice/admin/add_evenement', [
+            'title'      => 'Add Evenement - APPOLIOS',
+            'description'=> 'Create a new evenement',
+            'flash'      => $this->getFlash(),
+        ]);
+    }
+
+    public function storeEvenement() {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { $this->redirect('event/evenements'); return; }
+
+        $title       = $this->sanitize($_POST['title'] ?? '');
+        $description = $this->sanitize($_POST['description'] ?? '');
+        $dateDebut   = $this->sanitize($_POST['date_debut'] ?? '');
+        $dateFin     = $this->sanitize($_POST['date_fin'] ?? '');
+        $heureDebut  = $this->sanitize($_POST['heure_debut'] ?? '');
+        $heureFin    = $this->sanitize($_POST['heure_fin'] ?? '');
+        $lieu        = $this->sanitize($_POST['lieu'] ?? '');
+        $capaciteMax = (int)($_POST['capacite_max'] ?? 0);
+        $type        = $this->sanitize($_POST['type'] ?? 'general');
+        $statut      = $this->sanitize($_POST['statut'] ?? 'planifie');
+        $errors      = [];
+        $minDate     = date('Y-m-d', strtotime('+1 day'));
+
+        if (empty($title))       $errors['title']        = 'Event title is required';
+        if (empty($description)) $errors['description']  = 'Event description is required';
+        if (empty($dateDebut) || !strtotime($dateDebut)) $errors['date_debut'] = 'Valid start date required';
+        if (!empty($dateDebut) && strtotime($dateDebut) && $dateDebut < $minDate)
+                                 $errors['date_debut']   = 'Start date must be at least tomorrow';
+        if (empty($heureDebut))  $errors['heure_debut']  = 'Start time is required';
+        if (!empty($dateFin) && strtotime($dateFin) && !empty($dateDebut) && strtotime($dateFin) < strtotime($dateDebut))
+                                 $errors['date_fin']     = 'End date cannot be before start date';
+        if ($capaciteMax < 0)    $errors['capacite_max'] = 'Capacity must be positive';
+
+        if (!empty($errors)) {
+            $this->setErrors($errors); $_SESSION['old'] = $_POST;
+            $this->redirect('event/add-evenement'); return;
+        }
+
+        $result = $this->queryCreate([
+            'title'=>$title, 'titre'=>$title, 'description'=>$description,
+            'date_debut'=>$dateDebut, 'date_fin'=>$dateFin?:null,
+            'heure_debut'=>$heureDebut?:null, 'heure_fin'=>$heureFin?:null,
+            'lieu'=>$lieu, 'capacite_max'=>$capaciteMax>0?$capaciteMax:null,
+            'type'=>$type, 'statut'=>$statut, 'location'=>$lieu,
+            'event_date'=>$dateDebut.' '.($heureDebut?:'00:00').':00',
+            'created_by'=>$_SESSION['user_id'],
+        ]);
+
+        if ($result) {
+            $this->setFlash('success','Evenement created successfully!');
+            if (isset($_POST['action']) && $_POST['action']==='save_and_resources')
+                $this->redirect('ressource/evenement-ressources&evenement_id='.$result);
+            else $this->redirect('event/evenements');
+        } else {
+            $this->setFlash('error','Failed to create evenement.');
+            $this->redirect('event/add-evenement');
+        }
+    }
+
+    public function editEvenement($id) {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        $evenement = $this->queryFindById((int)$id);
+        if (!$evenement) { $this->setFlash('error','Evenement not found.'); $this->redirect('event/evenements'); return; }
+        $this->view('BackOffice/admin/edit_evenement', [
+            'title'=>'Edit Evenement - APPOLIOS','description'=>'Update evenement details',
+            'evenement'=>$evenement,'flash'=>$this->getFlash(),
+        ]);
+    }
+
+    public function updateEvenement($id) {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { $this->redirect('event/evenements'); return; }
+
+        $title       = $this->sanitize($_POST['title'] ?? '');
+        $description = $this->sanitize($_POST['description'] ?? '');
+        $dateDebut   = $this->sanitize($_POST['date_debut'] ?? '');
+        $dateFin     = $this->sanitize($_POST['date_fin'] ?? '');
+        $heureDebut  = $this->sanitize($_POST['heure_debut'] ?? '');
+        $heureFin    = $this->sanitize($_POST['heure_fin'] ?? '');
+        $lieu        = $this->sanitize($_POST['lieu'] ?? '');
+        $capaciteMax = (int)($_POST['capacite_max'] ?? 0);
+        $type        = $this->sanitize($_POST['type'] ?? 'general');
+        $statut      = $this->sanitize($_POST['statut'] ?? 'planifie');
+        $errors      = [];
+        $minDate     = date('Y-m-d', strtotime('+1 day'));
+
+        if (empty($title))       $errors['title']        = 'Event title is required';
+        if (empty($description)) $errors['description']  = 'Event description is required';
+        if (empty($dateDebut) || !strtotime($dateDebut)) $errors['date_debut'] = 'Valid start date required';
+        if (!empty($dateDebut) && strtotime($dateDebut) && $dateDebut < $minDate)
+                                 $errors['date_debut']   = 'Start date must be at least tomorrow';
+        if (empty($heureDebut))  $errors['heure_debut']  = 'Start time is required';
+        if (!empty($dateFin) && strtotime($dateFin) && !empty($dateDebut) && strtotime($dateFin) < strtotime($dateDebut))
+                                 $errors['date_fin']     = 'End date cannot be before start date';
+        if ($capaciteMax < 0)    $errors['capacite_max'] = 'Capacity must be positive';
+
+        if (!empty($errors)) {
+            $this->setErrors($errors); $_SESSION['old'] = $_POST;
+            $this->redirect('event/edit-evenement/'.(int)$id); return;
+        }
+
+        $result = $this->queryUpdate((int)$id, [
+            'title'=>$title,'titre'=>$title,'description'=>$description,
+            'date_debut'=>$dateDebut,'date_fin'=>$dateFin?:null,
+            'heure_debut'=>$heureDebut?:null,'heure_fin'=>$heureFin?:null,
+            'lieu'=>$lieu,'capacite_max'=>$capaciteMax>0?$capaciteMax:null,
+            'type'=>$type,'statut'=>$statut,'location'=>$lieu,
+            'event_date'=>$dateDebut.' '.($heureDebut?:'00:00').':00',
+        ]);
+
+        if ($result) { $this->setFlash('success','Evenement updated!'); $this->redirect('event/evenements'); }
+        else { $this->setFlash('error','Failed to update.'); $this->redirect('event/edit-evenement/'.(int)$id); }
+    }
+
+    public function deleteEvenement($id) {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        $ev = $this->queryFindById((int)$id);
+        if (!$ev) { $this->setFlash('error','Not found.'); $this->redirect('event/evenements'); return; }
+        if ($ev['created_by'] != $_SESSION['user_id']) {
+            $this->setFlash('error','You can only delete events you created.');
+            $this->redirect('event/evenements'); return;
+        }
+        $this->queryDelete((int)$id)
+            ? $this->setFlash('success','Evenement deleted!')
+            : $this->setFlash('error','Failed to delete.');
+        $this->redirect('event/evenements');
+    }
+
+    public function statsEvenements() {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+
+        // Get basic participation stats for the radar/line charts
+        $st = $this->getDb()->query(
+            "SELECT e.title, e.capacite_max, e.event_date, e.date_debut,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as participant_count,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'rejected') as refused_count,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'pending') as pending_count
+             FROM evenements e
+             ORDER BY COALESCE(e.date_debut, e.event_date, e.created_at) ASC"
+        );
+        $eventStats = $st->fetchAll();
+
+        // Get type counts for pie/doughnut/bar
+        $stTypes = $this->getDb()->query("SELECT type, COUNT(*) as count FROM evenements GROUP BY type");
+        $typeStats = $stTypes->fetchAll();
+
+        // Get participants per event type
+        $stPartTypes = $this->getDb()->query("SELECT e.type, COUNT(r.id) as participant_count FROM evenements e JOIN evenement_ressources r ON e.id = r.evenement_id WHERE r.type = 'participation' AND r.details = 'approved' GROUP BY e.type");
+        $participantTypeStats = $stPartTypes->fetchAll();
+
+        $data = [
+            'title' => 'Event Statistics - APPOLIOS',
+            'description' => 'Dashboard for event statistics, participation and insights',
+            'eventStats' => $eventStats,
+            'typeStats' => $typeStats,
+            'participantTypeStats' => $participantTypeStats
+        ];
+
+        $this->view('BackOffice/admin/stat_evenement', $data);
+    }
+
+    public function exportStatsPdf() {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        // Get Event Stats
+        $st = $this->getDb()->query(
+            "SELECT e.title, e.capacite_max, e.event_date, e.date_debut,
+                    (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as participant_count
+             FROM evenements e
+             ORDER BY COALESCE(e.date_debut, e.event_date, e.created_at) ASC"
+        );
+        $eventStats = $st->fetchAll();
+
+        // Get Type Stats
+        $stTypes = $this->getDb()->query("SELECT type, COUNT(*) as count FROM evenements GROUP BY type");
+        $typeStats = $stTypes->fetchAll();
+
+        // Generate Simple PDF/Printable HTML
+        header('Content-Type: text/html; charset=utf-8');
+        ?>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Event Statistics Export - APPOLIOS</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #333;
+                    padding: 40px;
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 40px;
+                    padding-bottom: 20px;
+                    border-bottom: 3px solid #548CA8;
+                }
+                .header h1 {
+                    color: #2B4865;
+                    font-size: 28px;
+                    margin-bottom: 10px;
+                }
+                .header p {
+                    color: #666;
+                }
+                h2 {
+                    color: #548CA8;
+                    font-size: 20px;
+                    margin-top: 30px;
+                    margin-bottom: 15px;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 30px;
+                }
+                th, td {
+                    border: 1px solid #ccc;
+                    padding: 12px;
+                    text-align: left;
+                }
+                th {
+                    background-color: #f8fafc;
+                    color: #2B4865;
+                    font-weight: bold;
+                }
+                tr:nth-child(even) {
+                    background-color: #fafafa;
+                }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                .footer {
+                    text-align: center;
+                    margin-top: 50px;
+                    font-size: 12px;
+                    color: #999;
+                    border-top: 1px solid #eee;
+                    padding-top: 20px;
+                }
+                @media print {
+                    body { padding: 0; }
+                    .no-print { display: none; }
+                }
+            </style>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        </head>
+        <body>
+            <div class="no-print" style="margin-bottom: 20px; text-align: center;">
+                <p style="font-size: 16px; color: #548CA8; font-weight: bold;">Generating your PDF, please wait...</p>
+                <p style="font-size: 12px; color: #666;">This tab will automatically close once the download begins.</p>
+            </div>
+
+            <div id="pdf-content" style="padding: 20px;">
+                <div class="header">
+                    <h1>APPOLIOS - Event Statistics Export</h1>
+                    <p>Generated on <?= date('Y-m-d H:i:s') ?></p>
+                </div>
+
+                <h2>1. Participation by Scheduled Event</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Event Title</th>
+                            <th>Date</th>
+                            <th class="text-right">Max Capacity</th>
+                            <th class="text-right">Total Participants</th>
+                            <th class="text-right">Fill Rate (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($eventStats)): ?>
+                            <tr><td colspan="5" class="text-center">No event data available.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($eventStats as $stat): 
+                                $date = !empty($stat['event_date']) ? $stat['event_date'] : $stat['date_debut'];
+                                $capMax = (int)$stat['capacite_max'];
+                                $parts = (int)$stat['participant_count'];
+                                $fillRate = $capMax > 0 ? round(($parts / $capMax) * 100, 2) : 0;
+                            ?>
+                            <tr>
+                                <td><strong><?= htmlspecialchars($stat['title']) ?></strong></td>
+                                <td><?= $date ? date('M d, Y', strtotime($date)) : 'N/A' ?></td>
+                                <td class="text-right"><?= $capMax > 0 ? $capMax : 'Unlimited' ?></td>
+                                <td class="text-right"><?= $parts ?></td>
+                                <td class="text-right">
+                                    <?php if ($fillRate >= 100): ?>
+                                        <span style="color: #dc3545; font-weight: bold;"><?= $fillRate ?>% (Full)</span>
+                                    <?php elseif ($fillRate >= 75): ?>
+                                        <span style="color: #fd7e14;"><?= $fillRate ?>%</span>
+                                    <?php else: ?>
+                                        <span style="color: #28a745;"><?= $fillRate ?>%</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <h2>2. Events Distribution by Category (Type)</h2>
+                <table style="width: 50%;">
+                    <thead>
+                        <tr>
+                            <th>Event Type</th>
+                            <th class="text-right">Total Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($typeStats)): ?>
+                            <tr><td colspan="2" class="text-center">No data available.</td></tr>
+                        <?php else: ?>
+                            <?php foreach ($typeStats as $ts): ?>
+                            <tr>
+                                <td><?= htmlspecialchars(ucfirst($ts['type'])) ?></td>
+                                <td class="text-right"><?= (int)$ts['count'] ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+
+                <div class="footer">
+                    &copy; <?= date('Y') ?> APPOLIOS Educational Platform. All rights reserved.
+                </div>
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var element = document.getElementById('pdf-content');
+                    var opt = {
+                        margin:       0.5,
+                        filename:     'APPOLIOS_Event_Statistics.pdf',
+                        image:        { type: 'jpeg', quality: 0.98 },
+                        html2canvas:  { scale: 2 },
+                        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+                    };
+
+                    // Generate PDF and then close the window
+                    html2pdf().set(opt).from(element).save().then(function() {
+                        setTimeout(function() {
+                            window.close();
+                        }, 1000);
+                    });
+                });
+            </script>
+        </body>
+        </html>
+        <?php
+    }
+
+    public function evenementRequests() {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+
+        $pending  = $this->queryPendingRequests();
+        $rejected = $this->queryRejectedRequests();
+
+        // Attach resources to each event
+        foreach ($pending  as &$ev) { $ev['ressources'] = $this->queryRessourcesByEvent((int)$ev['id']); }
+        foreach ($rejected as &$ev) { $ev['ressources'] = $this->queryRessourcesByEvent((int)$ev['id']); }
+        unset($ev);
+
+        $this->view('BackOffice/admin/evenement_requests', [
+            'title'           =>'Evenement Requests - APPOLIOS',
+            'description'     =>'Review pending evenement requests from teachers',
+            'requests'        => $pending,
+            'rejectedRequests'=> $rejected,
+            'flash'           => $this->getFlash(),
+        ]);
+    }
+
+    public function approveEvenement($id) {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        if ($_SERVER['REQUEST_METHOD']!=='POST') { $this->redirect('event/evenement-requests'); return; }
+        if (!$this->queryFindById((int)$id)) {
+            $this->setFlash('error','Not found.'); $this->redirect('event/evenement-requests'); return;
+        }
+        $this->queryUpdateApproval((int)$id,'approved',(int)$_SESSION['user_id'],null)
+            ? $this->setFlash('success','Request approved.')
+            : $this->setFlash('error','Failed to approve.');
+        $this->redirect('event/evenement-requests');
+    }
+
+    public function rejectEvenement($id) {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        if ($_SERVER['REQUEST_METHOD']!=='POST') { $this->redirect('event/evenement-requests'); return; }
+        $reason = $this->sanitize($_POST['rejection_reason'] ?? '');
+        if (empty($reason)) {
+            $this->setErrors(['rejection_reason_'.$id=>'Veuillez renseigner ce champ.']);
+            $this->redirect('event/evenement-requests'); return;
+        }
+        if (!$this->queryFindById((int)$id)) {
+            $this->setFlash('error','Not found.'); $this->redirect('event/evenement-requests'); return;
+        }
+        $this->queryUpdateApproval((int)$id,'rejected',(int)$_SESSION['user_id'],$reason)
+            ? $this->setFlash('success','Request rejected.')
+            : $this->setFlash('error','Failed to reject.');
+        $this->redirect('event/evenement-requests');
+    }
+
+    public function approveParticipation($id) {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { $this->redirect('event/evenements'); return; }
+
+        $participation = $this->queryFindParticipationById((int) $id);
+        if (!$participation) {
+            $this->setFlash('error', 'Participation not found.');
+        } else {
+            $this->queryUpdateParticipationStatus((int) $id, 'approved');
+            $this->setFlash('success', 'Participation approved. A ticket has been sent to the student.');
+
+            // ---- SEND TICKET VIA EMAIL ----
+            $stUser = $this->getDb()->prepare('SELECT name, email FROM users WHERE id = ?');
+            $stUser->execute([(int)$participation['created_by']]);
+            $student = $stUser->fetch();
+
+            $stEvent = $this->getDb()->prepare('SELECT id, title, date_debut, event_date, lieu FROM evenements WHERE id = ?');
+            $stEvent->execute([(int)$participation['evenement_id']]);
+            $event = $stEvent->fetch();
+
+            if ($student && $event && !empty($student['email'])) {
+                $to = $student['email'];
+                $subject = "Your Official Ticket: " . $event['title'];
+                
+                $dateVal = !empty($event['event_date']) ? $event['event_date'] : (!empty($event['date_debut']) ? $event['date_debut'] : null);
+                $date = $dateVal ? date('M d, Y', strtotime($dateVal)) : 'TBA';
+                $location = !empty($event['lieu']) ? $event['lieu'] : 'TBA';
+                
+                $message = "
+                <html>
+                <body style='background-color: #f1f5f9; margin: 0; padding: 20px; font-family: Arial, sans-serif;'>
+                    <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                        <tr>
+                            <td align='center'>
+                                <table width='600' cellpadding='0' cellspacing='0' border='0' style='background-color: #ffffff; border-radius: 16px; overflow: hidden; border-collapse: collapse; box-shadow: 0 10px 25px rgba(0,0,0,0.1);'>
+                                    <tr>
+                                        <!-- LEFT SIDE -->
+                                        <td width='420' valign='top' style='padding: 30px; border-right: 2px dashed #e2e8f0;'>
+                                            <div style='color: #548CA8; font-weight: bold; font-size: 16px; margin-bottom: 20px;'>APPOLIOS</div>
+                                            <div style='background-color: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-bottom: 15px;'>Official Event Pass</div>
+                                            <h1 style='color: #1e293b; font-size: 24px; margin: 0 0 25px 0; line-height: 1.3;'>" . htmlspecialchars($event['title']) . "</h1>
+                                            
+                                            <table width='100%' cellpadding='0' cellspacing='0' border='0'>
+                                                <tr>
+                                                    <td width='50%' valign='top' style='padding-bottom: 20px;'>
+                                                        <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Attendee</div>
+                                                        <div style='font-size: 14px; color: #334155; font-weight: bold;'>" . htmlspecialchars($student['name']) . "</div>
+                                                    </td>
+                                                    <td width='50%' valign='top' style='padding-bottom: 20px;'>
+                                                        <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Date & Time</div>
+                                                        <div style='font-size: 14px; color: #334155; font-weight: bold;'>{$date}</div>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td width='50%' valign='top'>
+                                                        <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Location</div>
+                                                        <div style='font-size: 14px; color: #334155; font-weight: bold;'>" . htmlspecialchars($location) . "</div>
+                                                    </td>
+                                                    <td width='50%' valign='top'>
+                                                        <div style='font-size: 10px; color: #94a3b8; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;'>Ticket Type</div>
+                                                        <div style='font-size: 14px; color: #334155; font-weight: bold;'>Student Pass</div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                        <!-- RIGHT SIDE -->
+                                        <td width='180' valign='middle' align='center' style='background-color: #2B4865; padding: 20px;'>
+                                            <div style='background-color: #ffffff; padding: 10px; border-radius: 8px; display: inline-block; margin-bottom: 10px;'>
+                                                <img src='https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=TICKET-{$id}-" . urlencode($student['name']) . "' width='120' height='120' style='display: block; border: 0;' alt='QR Code'>
+                                            </div>
+                                            <div style='font-size: 10px; font-weight: bold; color: #94a3b8; letter-spacing: 1px; margin-bottom: 20px;'>SCAN TO VALIDATE</div>
+                                            <div style='color: #10b981; font-weight: bold; font-size: 16px; border: 2px solid #10b981; padding: 6px 12px; border-radius: 6px; text-transform: uppercase; display: inline-block;'>APPROVED</div>
+                                            <div style='font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 30px;'>#ID-" . str_pad($id, 6, '0', STR_PAD_LEFT) . "</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>";
+
+                // ---- SEND EMAIL ----
+                $this->sendEmail($to, $subject, $message);
+                // -------------------------------
+            }
+        }
+        $this->redirect('event/evenements');
+    }
+
+    /**
+     * Send an HTML email using PHPMailer
+     */
+    private function sendEmail($to, $subject, $message) {
+        self::sendRaw($to, $subject, $message);
+    }
+
+    // ─────────────────────────────────────────────
+    //  MAILSERVICE FUNCTIONS MOVED HERE
+    // ─────────────────────────────────────────────
+
+    public static function sendTeacherApproved(string $toEmail, string $toName, string $adminNotes = ''): bool
+    {
+        $subject = '🎉 Your Teacher Application Has Been Approved — ' . APP_NAME;
+
+        $notesBlock = '';
+        if (!empty(trim($adminNotes))) {
+            $notesBlock = '
+            <div style="margin:24px 0;padding:16px 20px;background:#f0fdf4;border-left:4px solid #22c55e;border-radius:8px;">
+                <p style="margin:0;font-size:14px;color:#166534;font-weight:600;">Message from Admin:</p>
+                <p style="margin:6px 0 0;font-size:14px;color:#166534;">' . htmlspecialchars($adminNotes) . '</p>
+            </div>';
+        }
+
+        $body = self::wrapTemplate(
+            toName: $toName,
+            accentColor: '#22c55e',
+            iconEmoji: '🎓',
+            headingText: 'Your Application Was Approved!',
+            bodyHtml: '
+            <p style="color:#374151;font-size:15px;line-height:1.7;">
+                Congratulations, <strong>' . htmlspecialchars($toName) . '</strong>! We are thrilled to inform you that
+                your teacher application to <strong>' . APP_NAME . '</strong> has been <span style="color:#16a34a;font-weight:700;">approved</span>.
+            </p>
+            ' . $notesBlock . '
+            <p style="color:#374151;font-size:15px;line-height:1.7;">
+                You can now log in using your registered email and password. Your account is fully active and you have
+                access to all teacher features on the platform.
+            </p>
+            <div style="text-align:center;margin:28px 0;">
+                <a href="' . APP_ENTRY . '?url=login"
+                   style="display:inline-block;padding:13px 32px;background:linear-gradient(135deg,#2B4865,#548CA8);
+                          color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;
+                          letter-spacing:.3px;box-shadow:0 4px 14px rgba(43,72,101,0.35);">
+                    Login to APPOLIOS →
+                </a>
+            </div>
+            <p style="color:#6b7280;font-size:13px;line-height:1.6;">
+                If you registered a Face ID during sign-up, you can also use it to log in instantly.
+            </p>'
+        );
+
+        return self::send($toEmail, $toName, $subject, $body);
+    }
+
+    public static function sendTeacherRejected(string $toEmail, string $toName, string $reason = ''): bool
+    {
+        $subject = 'Update on Your Teacher Application — ' . APP_NAME;
+
+        $reasonBlock = '';
+        if (!empty(trim($reason))) {
+            $reasonBlock = '
+            <div style="margin:24px 0;padding:16px 20px;background:#fff7ed;border-left:4px solid #f97316;border-radius:8px;">
+                <p style="margin:0;font-size:14px;color:#9a3412;font-weight:600;">Reason provided:</p>
+                <p style="margin:6px 0 0;font-size:14px;color:#9a3412;">' . htmlspecialchars($reason) . '</p>
+            </div>';
+        }
+
+        $body = self::wrapTemplate(
+            toName: $toName,
+            accentColor: '#f97316',
+            iconEmoji: '📋',
+            headingText: 'Application Not Approved',
+            bodyHtml: '
+            <p style="color:#374151;font-size:15px;line-height:1.7;">
+                Dear <strong>' . htmlspecialchars($toName) . '</strong>, thank you for your interest in joining
+                <strong>' . APP_NAME . '</strong> as a teacher.
+            </p>
+            <p style="color:#374151;font-size:15px;line-height:1.7;">
+                After careful review, we regret to inform you that your application has <span style="color:#dc2626;font-weight:700;">not been approved</span> at this time.
+            </p>
+            ' . $reasonBlock . '
+            <p style="color:#374151;font-size:15px;line-height:1.7;">
+                You are welcome to re-apply in the future with an updated CV. If you have any questions, please contact our support team.
+            </p>
+            <div style="text-align:center;margin:28px 0;">
+                <a href="' . APP_ENTRY . '?url=home/index"
+                   style="display:inline-block;padding:13px 32px;background:linear-gradient(135deg,#64748b,#94a3b8);
+                          color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;
+                          letter-spacing:.3px;box-shadow:0 4px 14px rgba(100,116,139,0.35);">
+                    Visit APPOLIOS
+                </a>
+            </div>'
+        );
+
+        return self::send($toEmail, $toName, $subject, $body);
+    }
+
+    public static function sendVerificationCode(string $toEmail, string $toName, string $code): bool
+    {
+        $subject = 'Your Verification Code — ' . APP_NAME;
+
+        $body = self::wrapTemplate(
+            toName: $toName,
+            accentColor: '#548CA8',
+            iconEmoji: '🔐',
+            headingText: 'Verification Code',
+            bodyHtml: '
+            <p style="color:#374151;font-size:15px;line-height:1.7;">
+                You requested a password reset for your <strong>' . htmlspecialchars($toName) . '</strong> account.
+            </p>
+            <p style="color:#374151;font-size:15px;line-height:1.7;">
+                Use the following 4-digit verification code:
+            </p>
+            <div style="text-align:center;margin:28px 0;">
+                <div style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#2B4865,#548CA8);
+                          color:#fff;border-radius:10px;font-weight:800;font-size:28px;
+                          letter-spacing:8px;box-shadow:0 4px 14px rgba(43,72,101,0.35);">
+                    ' . htmlspecialchars($code) . '
+                </div>
+            </div>
+            <p style="color:#6b7280;font-size:13px;line-height:1.6;">
+                This code expires in 10 minutes. If you didn\'t request this, you can safely ignore this email.
+            </p>'
+        );
+
+        return self::send($toEmail, $toName, $subject, $body);
+    }
+
+    private static function wrapTemplate(string $toName, string $accentColor, string $iconEmoji, string $headingText, string $bodyHtml): string {
+        $year = date('Y');
+        $appName = APP_NAME;
+        $statusIcon = ($accentColor === '#22c55e') ? '✅' : '❌';
+
+        return '<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>' . htmlspecialchars($headingText) . '</title></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:\'Segoe UI\',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
+            <div style="font-size:36px;margin-bottom:10px;">' . $iconEmoji . '</div>
+            <div style="color:#fff;font-size:22px;font-weight:800;letter-spacing:-.3px;">' . htmlspecialchars($headingText) . '</div>
+            <div style="color:rgba(255,255,255,.55);font-size:13px;margin-top:6px;">' . $statusIcon . ' Application Status Update &middot; ' . htmlspecialchars($appName) . '</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#fff;padding:36px 40px;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;">' . $bodyHtml . '</td>
+        </tr>
+        <tr>
+          <td style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center;">
+            <p style="margin:0;color:#94a3b8;font-size:12px;line-height:1.6;">This email was sent automatically by the <strong style="color:#64748b;">' . htmlspecialchars($appName) . '</strong> platform.<br>&copy; ' . $year . ' APPOLIOS. All rights reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>';
+    }
+
+    public static function sendRaw(string $toEmail, string $subject, string $body): bool
+    {
+        return self::send($toEmail, '', $subject, $body);
+    }
+
+    private static function send(string $toEmail, string $toName, string $subject, string $body): bool
+    {
+        $mail = new PHPMailer(true);
+        try {
+            $envPath = __DIR__ . '/../.env';
+            if (file_exists($envPath)) {
+                $envVars = parse_ini_file($envPath);
+                $smtpUser = $envVars['GMAIL_EMAIL'] ?? '';
+                $smtpPass = $envVars['GMAIL_APP_PASSWORD'] ?? '';
+            } else {
+                $smtpUser = ''; $smtpPass = '';
+            }
+
+            if (empty($smtpUser) || empty($smtpPass)) {
+                $headers = "MIME-Version: 1.0\r\n";
+                $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+                $headers .= "From: =?UTF-8?B?" . base64_encode(self::$fromName) . "?= <" . self::$fromEmail . ">\r\n";
+                return @mail($toEmail, "=?UTF-8?B?" . base64_encode($subject) . "?=", $body, $headers);
+            }
+
+            $mail->isSMTP();
+            $mail->Host       = 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $smtpUser;
+            $mail->Password   = $smtpPass;
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = 587;
+            $mail->CharSet = 'UTF-8';
+
+            $mail->setFrom($smtpUser, self::$fromName);
+            $mail->addAddress($toEmail, $toName);
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $body;
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    public function rejectParticipation($id) {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { $this->redirect('event/evenements'); return; }
+
+        $reason = $this->sanitize($_POST['reason'] ?? 'No specific reason provided.');
+        $participation = $this->queryFindParticipationById((int) $id);
+        if (!$participation) {
+            $this->setFlash('error', 'Participation not found.');
+        } else {
+            $this->queryUpdateParticipationStatus((int) $id, 'rejected', $reason);
+            $this->setFlash('success', 'Participation rejected.');
+        }
+        $this->redirect('event/evenements');
+    }
+
+    /**
+     * API Endpoint to predict Top 3 Events with the most participants using AI.
+     */
+    public function predictTopEvents() {
+        header('Content-Type: application/json');
+        try {
+            $db = $this->getDb();
+            // If the user requesting is a teacher, limit to their own events.
+            $role = $_GET['role'] ?? 'admin';
+            $where = "WHERE e.approval_status = 'approved'";
+            $params = [];
+            
+            if ($role === 'teacher' && isset($_SESSION['user_id'])) {
+                $where .= " AND e.created_by = ?";
+                $params[] = $_SESSION['user_id'];
+            }
+
+            $st = $db->prepare("
+                SELECT e.id, e.title, e.capacite_max, e.event_date, e.date_debut, e.description,
+                       (SELECT COUNT(*) FROM evenement_ressources r WHERE r.evenement_id = e.id AND r.type = 'participation' AND r.details = 'approved') as current_participants
+                FROM evenements e
+                $where
+                ORDER BY COALESCE(e.date_debut, e.event_date, e.created_at) ASC
+            ");
+            $st->execute($params);
+            $events = $st->fetchAll();
+
+            if(empty($events) || count($events) < 1) {
+                echo json_encode(['success' => false, 'message' => 'Not enough events to generate prediction.']);
+                exit;
+            }
+
+            // PREPARE DATA FOR GEMINI
+            $promptEvents = [];
+            foreach ($events as $e) {
+                $promptEvents[] = [
+                    'title' => $e['title'],
+                    'capacity' => (int)$e['capacite_max'] > 0 ? (int)$e['capacite_max'] : 'Unlimited',
+                    'current_participants' => (int)$e['current_participants'],
+                    'date' => !empty($e['event_date']) ? $e['event_date'] : $e['date_debut'],
+                    'description' => substr(strip_tags((string)$e['description']), 0, 150) // truncate to save tokens
+                ];
+            }
+
+            $prompt = "As an AI event analyst, predict the top 3 events that will have the highest final attendance based on momentum, topic, and capacity.\n\n";
+            $prompt .= "Events Data:\n" . json_encode($promptEvents) . "\n\n";
+            $prompt .= "Return ONLY a valid JSON array containing exactly 3 objects. Each object MUST have the following keys strictly named:\n";
+            $prompt .= "- 'title' (string: exact title from the data)\n";
+            $prompt .= "- 'predicted' (integer: predicted final participant count, must be >= current and <= capacity if not Unlimited)\n";
+            $prompt .= "- 'capacity' (string/integer: exactly as given in the data)\n";
+            $prompt .= "- 'current' (integer: exactly as given in the data)\n";
+            $prompt .= "- 'reason' (string: professional 1-sentence reasoning for why this event will perform so well)\n";
+            $prompt .= "Do not include markdown blocks like ```json. Return raw JSON directly.";
+
+            // LOAD API KEY FROM .ENV IF AVAILABLE
+            $envPath = __DIR__ . '/../.env';
+            if (file_exists($envPath)) {
+                $envVars = parse_ini_file($envPath);
+                $apiKey = isset($envVars['GEMINI_API_KEY']) ? $envVars['GEMINI_API_KEY'] : '';
+            } else {
+                $apiKey = ''; // fallback
+            }
+
+            if (empty($apiKey)) {
+                throw new Exception("API Key not configured in .env file.");
+            }
+
+            // Using gemini-flash-latest which is the most reliable model for free tier quotas
+            $url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . $apiKey;
+
+            $data = [
+                "contents" => [
+                    ["parts" => [ ["text" => $prompt] ]]
+                ],
+                "generationConfig" => [
+                    "temperature" => 0.7,
+                    "responseMimeType" => "application/json"
+                ]
+            ];
+
+            $ch = curl_init($url);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_POST, 1);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode !== 200 || !$response) {
+                // Fallback decode to see the error message from google
+                $err = json_decode($response, true);
+                $errMsg = $err['error']['message'] ?? 'Unknown Error';
+                throw new Exception("Gemini API failed ($httpCode): " . $errMsg);
+            }
+
+            $responseData = json_decode($response, true);
+            if (!isset($responseData['candidates'][0]['content']['parts'][0]['text'])) {
+                throw new Exception("Unexpected response format from Gemini API.");
+            }
+
+            $aiText = $responseData['candidates'][0]['content']['parts'][0]['text'];
+            
+            // Clean up possible markdown tags just in case
+            $aiText = trim(str_replace(['```json', '```'], '', $aiText));
+            $predictedEvents = json_decode($aiText, true);
+
+            if (!is_array($predictedEvents) || empty($predictedEvents)) {
+                throw new Exception("Failed to parse Gemini AI JSON response.");
+            }
+
+            $results = [];
+            foreach ($predictedEvents as $index => $pe) {
+                if ($index >= 3) break;
+                $results[] = [
+                    'rank' => $index + 1,
+                    'title' => $pe['title'] ?? 'Unknown Event',
+                    'predicted' => (int)($pe['predicted'] ?? 0),
+                    'capacity' => $pe['capacity'] ?? 'Unlimited',
+                    'current' => (int)($pe['current'] ?? 0),
+                    'reason' => $pe['reason'] ?? 'AI predicted high engagement based on historical data.'
+                ];
+            }
+
+            echo json_encode(['success' => true, 'events' => $results]);
+            exit;
+
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'API Error: ' . $e->getMessage()]);
+            exit;
+        }
+    }
+}

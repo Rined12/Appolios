@@ -78,6 +78,11 @@
                 <!-- Google reCAPTCHA v2 -->
                 <div class="g-recaptcha" data-sitekey="<?= RECAPTCHA_SITE_KEY ?>" style="margin: 1rem 0;"></div>
 
+                <div class="neo-field" style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="remember" name="remember" style="width: auto; margin: 0; cursor: pointer;">
+                    <label for="remember" style="margin: 0; cursor: pointer; font-size: 0.9rem; color: #64748b; font-weight: normal;">Remember Me for 30 days</label>
+                </div>
+
                 <button type="submit" class="neo-btn neo-btn-primary" style="margin-top: 0.95rem; width: 100%;">Sign
                     In</button>
             </form>
@@ -144,25 +149,28 @@
             }
 
             function validateRecaptcha() {
-                var response = grecaptcha.getResponse();
-                if (response.length == 0) {
-                    Swal.fire({
-                        icon: "warning",
-                        title: "reCAPTCHA",
-                        text: "Veuillez cocher la case 'Je ne suis pas un robot' avant de continuer.",
-                        draggable: true
-                    });
-                    return false;
+                <?php if (empty(RECAPTCHA_SITE_KEY)): ?>
+                return true; // Bypass if recaptcha is not configured
+                <?php endif; ?>
+                
+                try {
+                    var response = grecaptcha.getResponse();
+                    if (response.length == 0) {
+                        Swal.fire({
+                            icon: "warning",
+                            title: "reCAPTCHA",
+                            text: "Veuillez cocher la case 'Je ne suis pas un robot' avant de continuer.",
+                            draggable: true
+                        });
+                        return false;
+                    }
+                    return true;
+                } catch(e) {
+                    return true; // Bypass if grecaptcha is not loaded
                 }
-                return true;
             }
         </script>
     </div>
-</section>
-
-<!-- Google reCAPTCHA v2 Script -->
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
-
 <!-- Forgot Password Modal -->
 <div id="forgot-modal"
     style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,15,30,.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;">

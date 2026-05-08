@@ -33,9 +33,9 @@ class AdminController extends BaseController
             'totalStudents' => $this->countStudents(),
             'totalCourses' => $courseModel->count(),
             'totalEnrollments' => $enrollmentModel->countAll(),
-            'totalEvenements' => $evenementModel->count(),
+            'totalEvenements' => $this->countEvenements(),
             'recentCourses' => $courseModel->getAllWithCreator(),
-            'recentEvenements' => $evenementModel->getRecent(3),
+            'recentEvenements' => $this->getRecentEvenements(3),
             'recentUsers' => $this->getStudents(),
             'pendingTeacherApps' => $this->countPendingApplications(),
             'unreadCount' => $this->getContactMessageUnreadCount(),
@@ -80,18 +80,27 @@ class AdminController extends BaseController
             return;
         }
 
-        // 1. Get ban categories from activity logs
-        $sqlBans = "SELECT 
-                    SUM(CASE WHEN activity_description LIKE '%2 hours%' THEN 1 ELSE 0 END) as ban_2h,
-                    SUM(CASE WHEN activity_description LIKE '%10 hours%' THEN 1 ELSE 0 END) as ban_10h,
-                    SUM(CASE WHEN activity_description LIKE '%1 day%' THEN 1 ELSE 0 END) as ban_1d,
-                    SUM(CASE WHEN activity_description LIKE '%permanently%' OR activity_description LIKE '%blocked user%' THEN 1 ELSE 0 END) as ban_perm
-                FROM activity_log 
-                WHERE activity_type IN ('ban_user', 'block_user')";
-        
-        $stmtBans = $this->getDb()->prepare($sqlBans);
-        $stmtBans->execute();
-        $stats = $stmtBans->fetch(PDO::FETCH_ASSOC);
+        // 1. Get ban categories from LIVE user data (current blocked/banned state)
+        $sqlBans = "SELECT
+                    SUM(CASE WHEN is_blocked = 1 AND ban_until IS NULL THEN 1 ELSE 0 END) as ban_perm,
+                    SUM(CASE WHEN is_blocked = 1 AND ban_until IS NOT NULL
+                              AND TIMESTAMPDIFF(HOUR, NOW(), ban_until) <= 2 THEN 1 ELSE 0 END) as ban_2h,
+                    SUM(CASE WHEN is_blocked = 1 AND ban_until IS NOT NULL
+                              AND TIMESTAMPDIFF(HOUR, NOW(), ban_until) > 2
+                              AND TIMESTAMPDIFF(HOUR, NOW(), ban_until) <= 10 THEN 1 ELSE 0 END) as ban_10h,
+                    SUM(CASE WHEN is_blocked = 1 AND ban_until IS NOT NULL
+                              AND TIMESTAMPDIFF(HOUR, NOW(), ban_until) > 10 THEN 1 ELSE 0 END) as ban_1d
+                FROM users
+                WHERE is_blocked = 1";
+
+        try {
+            $stmtBans = $this->getDb()->prepare($sqlBans);
+            $stmtBans->execute();
+            $stats = $stmtBans->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (PDOException $e) {
+            // Fallback if is_blocked column doesn't exist yet
+            $stats = ['ban_perm' => 0, 'ban_2h' => 0, 'ban_10h' => 0, 'ban_1d' => 0];
+        }
 
         // 2. Get user distribution (Students vs Teachers) using direct SQL
         $sqlUsers = "SELECT role, COUNT(*) as count FROM users WHERE role IN ('student', 'teacher') GROUP BY role";
@@ -148,15 +157,15 @@ class AdminController extends BaseController
         }
 
         $data = [
-            'title' => 'Admin Statistics - APPOLIOS',
-            'description' => 'Platform activity and ban analytics',
+            'title'              => 'Admin Statistics - APPOLIOS',
+            'description'        => 'Platform activity and ban analytics',
             'adminSidebarActive' => 'statistics',
-            'stats' => $stats,
-            'totalStudents' => $totalStudents,
-            'totalTeachers' => $totalTeachers,
-            'forecast' => $forecast,
-            'unreadCount' => $this->getContactMessageUnreadCount(),
-            'flash' => $this->getFlash()
+            'stats'              => $stats,
+            'totalStudents'      => $totalStudents,
+            'totalTeachers'      => $totalTeachers,
+            'forecast'           => $forecast,
+            'unreadCount'        => $this->getContactMessageUnreadCount(),
+            'flash'              => $this->getFlash()
         ];
 
         $this->view('BackOffice/admin/statistics', $data);
@@ -209,9 +218,19 @@ class AdminController extends BaseController
 
     private function getUsers()
     {
-        $sql = "SELECT id, name, email, role, is_blocked, created_at FROM users ORDER BY created_at DESC";
-        $stmt = $this->getDb()->query($sql);
-        return $stmt->fetchAll();
+        try {
+            $sql = "SELECT id, name, email, role, is_blocked, created_at FROM users ORDER BY created_at DESC";
+            $stmt = $this->getDb()->query($sql);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            $sql = "SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC";
+            $stmt = $this->getDb()->query($sql);
+            $results = $stmt->fetchAll();
+            foreach ($results as &$r) {
+                $r['is_blocked'] = 0;
+            }
+            return $results;
+        }
     }
 
     /**
@@ -528,6 +547,69 @@ class AdminController extends BaseController
     }
 
     /**
+     * Store new teacher — handles form POST from add_teacher.php
+     */
+    public function storeTeacher()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/add-teacher');
+            return;
+        }
+
+        $name     = trim($_POST['name']     ?? '');
+        $email    = trim($_POST['email']    ?? '');
+        $password = trim($_POST['password'] ?? '');
+
+        $errors = [];
+
+        if (empty($name)) {
+            $errors['name'] = 'Full name is required.';
+        }
+
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'A valid email address is required.';
+        }
+
+        if (empty($password) || strlen($password) < 6) {
+            $errors['password'] = 'Password must be at least 6 characters.';
+        }
+
+        if (empty($errors) && $this->emailExists($email)) {
+            $errors['email'] = 'This email address is already registered.';
+        }
+
+        if (!empty($errors)) {
+            $this->setErrors($errors);
+            $_SESSION['old'] = $_POST;
+            $this->redirect('admin/add-teacher');
+            return;
+        }
+
+        $newId = $this->createUser([
+            'name'     => $this->sanitize($name),
+            'email'    => $this->sanitize($email),
+            'password' => $password,
+            'role'     => 'teacher',
+        ]);
+
+        if ($newId) {
+            $this->logActivity('create_teacher', "Admin created teacher account: {$name} ({$email})");
+            $this->setFlash('success', "Teacher account for \"{$name}\" created successfully.");
+            $this->redirect('admin/teachers');
+        } else {
+            $this->setFlash('error', 'Failed to create teacher account. Please try again.');
+            $_SESSION['old'] = $_POST;
+            $this->redirect('admin/add-teacher');
+        }
+    }
+
+    /**
      * Edit course page
      */
     public function editCourse($id)
@@ -583,6 +665,55 @@ class AdminController extends BaseController
         $this->view('BackOffice/admin/teachers', $data);
     }
 
+    private function getAllEvenements(): array {
+        return $this->getDb()->query(
+            "SELECT e.*, u.name as creator_name, u.role as creator_role, COUNT(r.id) as resource_count
+             FROM evenements e
+             JOIN users u ON e.created_by = u.id
+             LEFT JOIN evenement_ressources r ON r.evenement_id = e.id
+             GROUP BY e.id
+             ORDER BY COALESCE(CONCAT(e.date_debut,' ',e.heure_debut), e.event_date) ASC"
+        )->fetchAll();
+    }
+
+    private function getAllParticipations(): array {
+        $st = $this->getDb()->query(
+            "SELECT r.id, r.evenement_id, r.created_by as student_id,
+                    r.title as student_name, r.details as status, r.created_at,
+                    e.title as event_title, e.date_debut, e.heure_debut,
+                    u.name as student_name_full, u.email as student_email,
+                    u.role as student_role, u.created_at as student_registered_at
+             FROM evenement_ressources r
+             JOIN evenements e ON r.evenement_id = e.id
+             JOIN users u ON r.created_by = u.id
+             WHERE r.type = 'participation'
+             ORDER BY r.created_at DESC"
+        );
+        return $st->fetchAll();
+    }
+
+    public function evenements() {
+        if (!$this->isAdmin()) { $this->setFlash('error','Access denied.'); $this->redirect('admin/login'); return; }
+        
+        $allParticipations = $this->getAllParticipations();
+        $participationsByEvent = [];
+        foreach ($allParticipations as $p) {
+            $eventId = (int)$p['evenement_id'];
+            if (!isset($participationsByEvent[$eventId])) {
+                $participationsByEvent[$eventId] = [];
+            }
+            $participationsByEvent[$eventId][] = $p;
+        }
+
+        $this->view('BackOffice/admin/evenements', [
+            'title'      => 'Manage Evenements - APPOLIOS',
+            'description'=> 'Evenement management panel',
+            'evenements' => $this->getAllEvenements(),
+            'participationsByEvent' => $participationsByEvent,
+            'flash'      => $this->getFlash(),
+        ]);
+    }
+
     /**
      * Edit evenement page
      */
@@ -594,7 +725,7 @@ class AdminController extends BaseController
         }
 
         $evenementModel = $this->model('Evenement');
-        $evenement = $evenementModel->findById($id);
+        $evenement = $this->findEvenementById($id);
 
         if (!$evenement) {
             $this->setFlash('error', 'Evenement not found.');
@@ -679,7 +810,7 @@ class AdminController extends BaseController
         $eventDate = $dateDebut . ' ' . (!empty($heureDebut) ? $heureDebut : '00:00') . ':00';
 
         $evenementModel = $this->model('Evenement');
-        $result = $evenementModel->update($id, [
+        $result = $this->updateEvenementRecord($id, [
             'title' => $title,
             'titre' => $title,
             'description' => $description,
@@ -715,7 +846,7 @@ class AdminController extends BaseController
         }
 
         $evenementModel = $this->model('Evenement');
-        $evenement = $evenementModel->findById($id);
+        $evenement = $this->findEvenementById($id);
 
         if (!$evenement) {
             $this->setFlash('error', 'Evenement not found.');
@@ -729,7 +860,7 @@ class AdminController extends BaseController
             return;
         }
 
-        $result = $evenementModel->delete($id);
+        $result = $this->deleteEvenementRecord($id);
 
         if ($result) {
             $this->setFlash('success', 'Evenement deleted successfully!');
@@ -761,7 +892,7 @@ class AdminController extends BaseController
             return;
         }
 
-        $selectedEvenement = $evenementModel->findById($selectedEvenementId);
+        $selectedEvenement = $this->findEvenementById($selectedEvenementId);
         if (!$selectedEvenement) {
             $this->setFlash('error', 'Selected evenement was not found.');
             $this->redirect('admin/evenements');
@@ -771,15 +902,15 @@ class AdminController extends BaseController
         $editId = (int) ($_GET['edit_id'] ?? 0);
         $editResource = null;
         if ($editId > 0) {
-            $candidate = $ressourceModel->findById($editId);
+            $candidate = $this->findRessourceById($editId);
             if ($candidate && (int) $candidate['evenement_id'] === $selectedEvenementId) {
                 $editResource = $candidate;
             }
         }
 
-        $rules = $ressourceModel->getByTypeAndEvenement('rule', $selectedEvenementId);
-        $materials = $ressourceModel->getByTypeAndEvenement('materiel', $selectedEvenementId);
-        $plans = $ressourceModel->getByTypeAndEvenement('plan', $selectedEvenementId);
+        $rules = $this->getRessourcesByTypeAndEvenement('rule', $selectedEvenementId);
+        $materials = $this->getRessourcesByTypeAndEvenement('materiel', $selectedEvenementId);
+        $plans = $this->getRessourcesByTypeAndEvenement('plan', $selectedEvenementId);
 
         $data = [
             'title' => 'Evenement Resources - APPOLIOS',
@@ -832,7 +963,7 @@ class AdminController extends BaseController
             $errors[] = 'Please select an evenement.';
         } else {
             $evenementModel = $this->model('Evenement');
-            if (!$evenementModel->findById($evenementId)) {
+            if (!$this->findEvenementById($evenementId)) {
                 $errors[] = 'Selected evenement was not found.';
             }
         }
@@ -854,7 +985,7 @@ class AdminController extends BaseController
         }
 
         $ressourceModel = $this->model('EvenementRessource');
-        $createdId = $ressourceModel->create([
+        $createdId = $this->createRessource([
             'evenement_id' => $evenementId,
             'type' => $type,
             'title' => $title,
@@ -929,7 +1060,7 @@ class AdminController extends BaseController
         }
 
         $ressourceModel = $this->model('EvenementRessource');
-        $resource = $ressourceModel->findById($id);
+        $resource = $this->findRessourceById($id);
 
         if (!$resource || (int) $resource['evenement_id'] !== $evenementId) {
             $this->setFlash('error', 'Resource not found for this evenement.');
@@ -937,7 +1068,7 @@ class AdminController extends BaseController
             return;
         }
 
-        $result = $ressourceModel->update($id, [
+        $result = $this->updateRessource($id, [
             'title' => $title,
             'details' => $details,
             'evenement_id' => $evenementId
@@ -1000,8 +1131,8 @@ class AdminController extends BaseController
         $data = [
             'title' => 'Evenement Requests - APPOLIOS',
             'description' => 'Review pending evenement requests from teachers',
-            'requests' => $evenementModel->getPendingTeacherRequests(),
-            'rejectedRequests' => $evenementModel->getRejectedTeacherRequests(),
+            'requests' => $this->getPendingTeacherRequests(),
+            'rejectedRequests' => $this->getRejectedTeacherRequests(),
             'flash' => $this->getFlash()
         ];
 
@@ -1024,14 +1155,14 @@ class AdminController extends BaseController
         }
 
         $evenementModel = $this->model('Evenement');
-        $event = $evenementModel->findById((int) $id);
+        $event = $this->findEvenementById((int) $id);
         if (!$event) {
             $this->setFlash('error', 'Evenement request not found.');
             $this->redirect('admin/evenement-requests');
             return;
         }
 
-        $result = $evenementModel->updateApprovalStatus((int) $id, 'approved', (int) $_SESSION['user_id']);
+        $result = $this->updateEvenementStatus((int) $id, 'approved', (int) $_SESSION['user_id']);
         if ($result) {
             $this->setFlash('success', 'Evenement request approved successfully.');
         } else {
@@ -1058,14 +1189,14 @@ class AdminController extends BaseController
 
         $reason = $this->sanitize($_POST['rejection_reason'] ?? '');
         $evenementModel = $this->model('Evenement');
-        $event = $evenementModel->findById((int) $id);
+        $event = $this->findEvenementById((int) $id);
         if (!$event) {
             $this->setFlash('error', 'Evenement request not found.');
             $this->redirect('admin/evenement-requests');
             return;
         }
 
-        $result = $evenementModel->updateApprovalStatus((int) $id, 'rejected', (int) $_SESSION['user_id'], $reason ?: null);
+        $result = $this->updateEvenementStatus((int) $id, 'rejected', (int) $_SESSION['user_id'], $reason ?: null);
         if ($result) {
             $this->setFlash('success', 'Evenement request rejected.');
         } else {
@@ -1131,8 +1262,8 @@ class AdminController extends BaseController
             // User already exists, just update application status and send email
             $this->approveApplication($applicationId, (int) $_SESSION['user_id'], $adminNotes);
 
-            require_once __DIR__ . '/MailService.php';
-            $emailSent = MailService::sendTeacherApproved(
+            require_once __DIR__ . '/EventController.php';
+            $emailSent = EventController::sendTeacherApproved(
                 $application['email'],
                 $application['name'],
                 $adminNotes
@@ -1151,6 +1282,7 @@ class AdminController extends BaseController
         $userId = $this->createUserWithHashedPassword([
             'name' => $application['name'],
             'email' => $application['email'],
+            'phone' => $application['phone'] ?? null,
             'password' => $application['password'], // Already hashed in teacher_applications
             'role' => 'teacher'
         ]);
@@ -1175,8 +1307,8 @@ class AdminController extends BaseController
             );
 
             // Send approval email
-            require_once __DIR__ . '/MailService.php';
-            $emailSent = MailService::sendTeacherApproved(
+            require_once __DIR__ . '/EventController.php';
+            $emailSent = EventController::sendTeacherApproved(
                 $application['email'],
                 $application['name'],
                 $adminNotes
@@ -1247,8 +1379,8 @@ class AdminController extends BaseController
             );
 
             // Send rejection email
-            require_once __DIR__ . '/MailService.php';
-            $emailSent = MailService::sendTeacherRejected(
+            require_once __DIR__ . '/EventController.php';
+            $emailSent = EventController::sendTeacherRejected(
                 $application['email'],
                 $application['name'],
                 $adminNotes
@@ -1373,10 +1505,22 @@ class AdminController extends BaseController
             $stmt = $this->getDb()->query($sql);
             return $stmt->fetchAll();
         } catch (PDOException $e) {
-            // Fallback if ban_until column doesn't exist yet
-            $sql = "SELECT id, name, email, role, is_blocked, created_at FROM users WHERE role = 'student' ORDER BY created_at DESC";
-            $stmt = $this->getDb()->query($sql);
-            return $stmt->fetchAll();
+            try {
+                // Fallback if ban_until column doesn't exist yet
+                $sql = "SELECT id, name, email, role, is_blocked, created_at FROM users WHERE role = 'student' ORDER BY created_at DESC";
+                $stmt = $this->getDb()->query($sql);
+                return $stmt->fetchAll();
+            } catch (PDOException $e2) {
+                // Fallback if is_blocked also doesn't exist
+                $sql = "SELECT id, name, email, role, created_at FROM users WHERE role = 'student' ORDER BY created_at DESC";
+                $stmt = $this->getDb()->query($sql);
+                $results = $stmt->fetchAll();
+                foreach ($results as &$r) {
+                    $r['is_blocked'] = 0;
+                    $r['ban_until'] = null;
+                }
+                return $results;
+            }
         }
     }
 
@@ -1411,12 +1555,13 @@ class AdminController extends BaseController
 
     public function createUser($data)
     {
-        $sql = "INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
+        $sql = "INSERT INTO users (name, email, phone, password, role, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
         try {
             $stmt = $this->getDb()->prepare($sql);
             $stmt->execute([
                 $data['name'],
                 $data['email'],
+                $data['phone'] ?? null,
                 password_hash($data['password'], PASSWORD_DEFAULT, ['cost' => 12]),
                 $data['role'] ?? 'student'
             ]);
@@ -1428,12 +1573,13 @@ class AdminController extends BaseController
 
     public function createUserWithHashedPassword($data)
     {
-        $sql = "INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
+        $sql = "INSERT INTO users (name, email, phone, password, role, created_at) VALUES (?, ?, ?, ?, ?, NOW())";
         try {
             $stmt = $this->getDb()->prepare($sql);
             $stmt->execute([
                 $data['name'],
                 $data['email'],
+                $data['phone'] ?? null,
                 $data['password'],
                 $data['role'] ?? 'teacher'
             ]);
@@ -1792,5 +1938,177 @@ class AdminController extends BaseController
         ];
 
         return $labels[$type] ?? ucfirst($type);
+    }
+
+    // ==========================================
+    // DATABASE METHODS (Moved from Models)
+    // ==========================================
+
+    private function countEvenements(): int {
+        return (int) $this->getDb()->query("SELECT COUNT(*) FROM evenements")->fetchColumn();
+    }
+
+    private function getRecentEvenements(int $limit): array {
+        $st = $this->getDb()->prepare("SELECT * FROM evenements ORDER BY created_at DESC LIMIT ?");
+        $st->bindValue(1, $limit, PDO::PARAM_INT);
+        $st->execute();
+        return $st->fetchAll();
+    }
+
+    private function findEvenementById(int $id): array|false {
+        $st = $this->getDb()->prepare("SELECT * FROM evenements WHERE id = ? LIMIT 1");
+        $st->execute([$id]);
+        return $st->fetch();
+    }
+
+    private function updateEvenementRecord(int $id, array $data): bool {
+        $st = $this->getDb()->prepare(
+            "UPDATE evenements
+             SET title=?, titre=?, description=?, date_debut=?, date_fin=?,
+                 heure_debut=?, heure_fin=?, lieu=?, capacite_max=?, type=?,
+                 statut=?, location=?, event_date=?, updated_at=NOW()
+             WHERE id=?"
+        );
+        return $st->execute([
+            $data['title'], $data['titre'], $data['description'], $data['date_debut'], $data['date_fin'],
+            $data['heure_debut'], $data['heure_fin'], $data['lieu'], $data['capacite_max'], $data['type'],
+            $data['statut'], $data['location'], $data['event_date'], $id
+        ]);
+    }
+
+    private function updateEvenementStatus(int $id, string $status, int $adminId, ?string $reason = null): bool {
+        $st = $this->getDb()->prepare(
+            "UPDATE evenements 
+             SET approval_status = ?, reviewed_by = ?, rejection_reason = ?, updated_at = NOW() 
+             WHERE id = ?"
+        );
+        return $st->execute([$status, $adminId, $reason, $id]);
+    }
+
+    private function deleteEvenementRecord(int $id): bool {
+        $st = $this->getDb()->prepare("DELETE FROM evenements WHERE id = ?");
+        return $st->execute([$id]);
+    }
+
+    private function getPendingTeacherRequests(): array {
+        return $this->getDb()->query(
+            "SELECT e.*, u.name as creator_name, u.email as creator_email
+             FROM evenements e
+             JOIN users u ON u.id = e.created_by
+             WHERE e.approval_status = 'pending' AND u.role = 'teacher'
+             ORDER BY e.created_at DESC"
+        )->fetchAll();
+    }
+
+    private function getRejectedTeacherRequests(): array {
+        return $this->getDb()->query(
+            "SELECT e.*, u.name as creator_name, u.email as creator_email
+             FROM evenements e
+             JOIN users u ON u.id = e.created_by
+             WHERE e.approval_status = 'rejected' AND u.role = 'teacher'
+             ORDER BY e.updated_at DESC"
+        )->fetchAll();
+    }
+
+    private function findRessourceById(int $id): array|false {
+        $st = $this->getDb()->prepare("SELECT * FROM evenement_ressources WHERE id = ? LIMIT 1");
+        $st->execute([$id]);
+        return $st->fetch();
+    }
+
+    private function getRessourcesByTypeAndEvenement(string $type, int $evenementId): array {
+        $st = $this->getDb()->prepare(
+            "SELECT r.*, u.name as creator_name
+             FROM evenement_ressources r
+             JOIN users u ON r.created_by = u.id
+             WHERE r.type = ? AND r.evenement_id = ?
+             ORDER BY r.created_at DESC"
+        );
+        $st->execute([$type, $evenementId]);
+        return $st->fetchAll();
+    }
+
+    private function createRessource(array $data): bool {
+        $st = $this->getDb()->prepare(
+            "INSERT INTO evenement_ressources (evenement_id, type, title, details, created_by, created_at)
+             VALUES (?, ?, ?, ?, ?, NOW())"
+        );
+        return $st->execute([$data['evenement_id'] ?? 0, $data['type'] ?? '', $data['title'] ?? '', $data['details'] ?? '', $data['created_by'] ?? 0]);
+    }
+
+    private function updateRessource(int $id, array $data): bool {
+        $st = $this->getDb()->prepare(
+            "UPDATE evenement_ressources SET title = ?, details = ?, updated_at = NOW() WHERE id = ?"
+        );
+        return $st->execute([$data['title'] ?? '', $data['details'] ?? '', $id]);
+    }
+
+    private function deleteRessource(int $id): bool {
+        $st = $this->getDb()->prepare("DELETE FROM evenement_ressources WHERE id = ?");
+        return $st->execute([$id]);
+    }
+
+    // ==========================================
+    // EVENT STATISTICS
+    // ==========================================
+
+    /**
+     * Admin event statistics page
+     */
+    public function statEvenements()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $db = $this->getDb();
+
+        // Per-event participation counts from evenement_ressources
+        $eventStats = $db->query(
+            "SELECT e.id, e.title, e.capacite_max, e.statut, e.type,
+                    COUNT(r.id) AS participant_count
+             FROM evenements e
+             LEFT JOIN evenement_ressources r
+                    ON r.evenement_id = e.id AND r.type = 'participation'
+             GROUP BY e.id, e.title, e.capacite_max, e.statut, e.type
+             ORDER BY e.created_at DESC"
+        )->fetchAll();
+
+        // Event type distribution
+        $typeStats = $db->query(
+            "SELECT COALESCE(type, 'Autre') AS type, COUNT(*) AS count
+             FROM evenements
+             GROUP BY type
+             ORDER BY count DESC"
+        )->fetchAll();
+
+        // Participations grouped by event type
+        $participantTypeStats = $db->query(
+            "SELECT COALESCE(e.type, 'Autre') AS type,
+                    COUNT(r.id) AS participant_count
+             FROM evenement_ressources r
+             JOIN evenements e ON e.id = r.evenement_id
+             WHERE r.type = 'participation'
+             GROUP BY e.type
+             ORDER BY participant_count DESC"
+        )->fetchAll();
+
+        // Event status distribution
+        $statusStats = $db->query(
+            "SELECT statut, COUNT(*) AS count FROM evenements GROUP BY statut"
+        )->fetchAll();
+
+        $this->view('BackOffice/admin/stat_evenement', [
+            'title'               => 'Event Statistics - APPOLIOS',
+            'adminSidebarActive'  => 'stat_evenements',
+            'eventStats'          => $eventStats,
+            'typeStats'           => $typeStats,
+            'participantTypeStats'=> $participantTypeStats,
+            'statusStats'         => $statusStats,
+            'unreadCount'         => $this->getContactMessageUnreadCount(),
+            'flash'               => $this->getFlash(),
+        ]);
     }
 }

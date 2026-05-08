@@ -63,10 +63,17 @@ if (file_exists(__DIR__ . '/credentials.php')) {
 }
 
 // Google reCAPTCHA Configuration
+if (!defined('RECAPTCHA_SITE_KEY')) define('RECAPTCHA_SITE_KEY', $_ENV['RECAPTCHA_SITE_KEY'] ?? '');
+if (!defined('RECAPTCHA_SECRET_KEY')) define('RECAPTCHA_SECRET_KEY', $_ENV['RECAPTCHA_SECRET_KEY'] ?? '');
 define('RECAPTCHA_VERIFY_URL', 'https://www.google.com/recaptcha/api/siteverify');
-define('RECAPTCHA_MIN_SCORE', 0.5); // Minimum score threshold (0.1 - 0.9)
+define('RECAPTCHA_MIN_SCORE', 0.5);
+
+// Gemini AI Configuration
+if (!defined('GEMINI_API_KEY')) define('GEMINI_API_KEY', $_ENV['GEMINI_API_KEY'] ?? '');
 
 // Google OAuth Configuration
+if (!defined('GOOGLE_CLIENT_ID')) define('GOOGLE_CLIENT_ID', $_ENV['GOOGLE_CLIENT_ID'] ?? '');
+if (!defined('GOOGLE_CLIENT_SECRET')) define('GOOGLE_CLIENT_SECRET', $_ENV['GOOGLE_CLIENT_SECRET'] ?? '');
 define('GOOGLE_REDIRECT_URL', APP_ENTRY . '?url=auth/google-callback');
 
 // Twilio SMS Configuration (from .env file)

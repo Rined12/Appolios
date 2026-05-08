@@ -114,9 +114,38 @@ $teacherSidebarActive = 'evenements';
                                     <?php endif; ?>
                                 </div>
 
-                                <div class="neo-form-group">
-                                    <label for="lieu">Lieu</label>
-                                    <input type="text" id="lieu" name="lieu" placeholder="Online / Room A / Main Hall" value="<?= htmlspecialchars($form['lieu']) ?>" class="neo-input <?= isset($errors['lieu']) ? 'neo-error-input' : '' ?>">
+                                <!-- Location Picker - spans full width -->
+                                <div class="neo-form-group col-span-2" id="location-picker-group">
+                                    <label>Lieu <span style="color:#94a3b8; font-weight:500; font-size:0.85rem;">(click on map or search)</span></label>
+
+                                    <!-- Search bar -->
+                                    <div style="position: relative; margin-bottom: 10px;">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:14px; top:14px; z-index:1; pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                        <input
+                                            type="text"
+                                            id="location-search"
+                                            placeholder="Search for a place..."
+                                            autocomplete="off"
+                                            class="neo-input"
+                                            style="padding-left: 44px;"
+                                        >
+                                        <div id="nominatim-results"></div>
+                                    </div>
+
+                                    <!-- Map container -->
+                                    <div id="event-map" style="width:100%; height:320px; border-radius:12px; border:1.5px solid #e2e8f0; overflow:hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);"></div>
+
+                                    <!-- Selected address display -->
+                                    <div id="selected-address-box" style="margin-top:10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 16px; display:<?= !empty($form['lieu']) ? 'flex' : 'none' ?>; align-items:center; gap:10px;">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        <span id="selected-address-text" style="color:#15803d; font-weight:600; font-size:0.95rem;"><?= htmlspecialchars($form['lieu']) ?></span>
+                                    </div>
+
+                                    <!-- Hidden inputs submitted with form -->
+                                    <input type="hidden" id="lieu" name="lieu" value="<?= htmlspecialchars($form['lieu']) ?>">
+                                    <input type="hidden" id="map_lat" name="map_lat" value="<?= htmlspecialchars($evenement['map_lat'] ?? '') ?>">
+                                    <input type="hidden" id="map_lng" name="map_lng" value="<?= htmlspecialchars($evenement['map_lng'] ?? '') ?>">
+
                                     <?php if (isset($errors['lieu'])): ?>
                                         <div class="neo-error-text"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg><?= htmlspecialchars($errors['lieu']) ?></div>
                                     <?php endif; ?>
@@ -249,3 +278,171 @@ $teacherSidebarActive = 'evenements';
         }
     }
 </style>
+
+<!-- ===================== Leaflet + OpenStreetMap Location Picker ===================== -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+    #nominatim-results {
+        position: absolute;
+        top: 100%;
+        left: 0; right: 0;
+        background: white;
+        border: 1.5px solid #e2e8f0;
+        border-top: none;
+        border-radius: 0 0 10px 10px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        z-index: 9999;
+        max-height: 220px;
+        overflow-y: auto;
+        display: none;
+    }
+    #nominatim-results .nomi-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        color: #334155;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.15s;
+    }
+    #nominatim-results .nomi-item:last-child { border-bottom: none; }
+    #nominatim-results .nomi-item:hover { background: #f1f5f9; color: #1e293b; }
+    .leaflet-popup-content-wrapper {
+        border-radius: 10px !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12) !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    /* ---- Read existing values ---- */
+    var existingLieu = document.getElementById('lieu').value;
+    var existingLat  = parseFloat(document.getElementById('map_lat').value) || null;
+    var existingLng  = parseFloat(document.getElementById('map_lng').value) || null;
+
+    var defaultLat = 36.8190, defaultLng = 10.1658;
+    var initLat    = existingLat || defaultLat;
+    var initLng    = existingLng || defaultLng;
+    var initZoom   = existingLat ? 15 : 12;
+
+    /* ---- Map init ---- */
+    var map = L.map('event-map', { zoomControl: true }).setView([initLat, initLng], initZoom);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+    }).addTo(map);
+
+    /* ---- Custom orange marker ---- */
+    var orangeIcon = L.divIcon({
+        className: '',
+        html: '<div style="width:22px;height:22px;background:#E19864;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(225,152,100,0.5);"></div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+    });
+
+    var marker = null;
+
+    function placeMarker(lat, lng, address) {
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lng], { icon: orangeIcon }).addTo(map);
+        document.getElementById('lieu').value    = address;
+        document.getElementById('map_lat').value = lat;
+        document.getElementById('map_lng').value = lng;
+        showAddressBox(address);
+    }
+
+    function showAddressBox(address) {
+        var box  = document.getElementById('selected-address-box');
+        var text = document.getElementById('selected-address-text');
+        box.style.display = 'flex';
+        text.textContent  = address;
+    }
+
+    /* ---- Pre-load existing location ---- */
+    if (existingLat && existingLng) {
+        /* Exact coords saved — place marker immediately */
+        placeMarker(existingLat, existingLng, existingLieu);
+    } else if (existingLieu && existingLieu.trim() !== '') {
+        /* Only address string — geocode it */
+        showAddressBox(existingLieu);
+        fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(existingLieu) + '&limit=1', {
+            headers: { 'Accept-Language': 'fr' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(items) {
+            if (items && items[0]) {
+                var lat = parseFloat(items[0].lat), lng = parseFloat(items[0].lon);
+                map.setView([lat, lng], 15);
+                placeMarker(lat, lng, existingLieu);
+            }
+        });
+    }
+
+    /* ---- Click on map -> reverse geocode (Nominatim) ---- */
+    map.on('click', function(e) {
+        var lat = e.latlng.lat, lng = e.latlng.lng;
+        fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' + lat + '&lon=' + lng, {
+            headers: { 'Accept-Language': 'fr' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var addr = data.display_name || (lat.toFixed(5) + ', ' + lng.toFixed(5));
+            placeMarker(lat, lng, addr);
+        })
+        .catch(function() {
+            placeMarker(lat, lng, lat.toFixed(5) + ', ' + lng.toFixed(5));
+        });
+    });
+
+    /* ---- Search autocomplete (Nominatim) ---- */
+    var searchInput   = document.getElementById('location-search');
+    var resultsBox    = document.getElementById('nominatim-results');
+    var searchTimeout = null;
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        var q = this.value.trim();
+        if (q.length < 3) { resultsBox.style.display = 'none'; return; }
+
+        searchTimeout = setTimeout(function() {
+            fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(q) + '&limit=5&addressdetails=1', {
+                headers: { 'Accept-Language': 'fr' }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(items) {
+                resultsBox.innerHTML = '';
+                if (!items.length) { resultsBox.style.display = 'none'; return; }
+                items.forEach(function(item) {
+                    var div = document.createElement('div');
+                    div.className = 'nomi-item';
+                    div.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E19864" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+                        '<span>' + item.display_name + '</span>';
+                    div.addEventListener('click', function() {
+                        var lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+                        map.setView([lat, lng], 16);
+                        placeMarker(lat, lng, item.display_name);
+                        searchInput.value = '';
+                        resultsBox.style.display = 'none';
+                    });
+                    resultsBox.appendChild(div);
+                });
+                resultsBox.style.display = 'block';
+            })
+            .catch(function() { resultsBox.style.display = 'none'; });
+        }, 400);
+    });
+
+    /* Close dropdown on outside click */
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !resultsBox.contains(e.target)) {
+            resultsBox.style.display = 'none';
+        }
+    });
+
+});
+</script>

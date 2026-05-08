@@ -56,6 +56,9 @@ $bodyClassAttr = implode(' ', $bodyClasses);
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/dark-mode.css">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <?php if ($isAuthPage && !empty(RECAPTCHA_SITE_KEY)): ?>
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    <?php endif; ?>
 </head>
 <body class="<?= htmlspecialchars($bodyClassAttr) ?>">
 <?php if (!$isAuthPage): ?>
@@ -311,6 +314,20 @@ body.dark-mode .dark-mode-toggle {
                 </svg>
             </button>
             <?php if (!empty($_SESSION['logged_in'])): ?>
+                <div class="user-profile-header" style="display: flex; align-items: center; gap: 12px; margin-right: 12px; padding: 4px 12px; background: rgba(225, 152, 100, 0.08); border-radius: 50px;">
+                    <a href="<?= APP_ENTRY ?>?url=<?= $_SESSION['role'] ?>/profile" style="display: flex; align-items: center; gap: 10px; text-decoration: none;">
+                        <?php if (!empty($_SESSION['user_avatar'])): ?>
+                            <img src="<?= APP_URL ?>/uploads/avatars/<?= htmlspecialchars($_SESSION['user_avatar']) ?>" 
+                                 alt="Avatar" 
+                                 style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #E19864;">
+                        <?php else: ?>
+                            <div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #E19864, #d9804b); color: white; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800;">
+                                <?= strtoupper(substr($_SESSION['user_name'] ?? 'U', 0, 1)) ?>
+                            </div>
+                        <?php endif; ?>
+                        <span style="font-size: 0.9rem; font-weight: 700; color: #2B4865;"><?= htmlspecialchars($_SESSION['user_name'] ?? '') ?></span>
+                    </a>
+                </div>
                 <a class="neo-btn-outline" href="<?= APP_ENTRY ?>?url=logout">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                     Logout

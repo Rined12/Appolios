@@ -13,27 +13,36 @@ function toCamelCaseAction(string $value): string
 
 function resolveRoutePath(): string
 {
+    // 1. Priorité au paramètre ?url= (utilisé par .htaccess)
     $queryRoute = trim((string) ($_GET['url'] ?? ''), '/');
     if ($queryRoute !== '') {
         return $queryRoute;
     }
 
+    // 2. Fallback sur PATH_INFO (ex: index.php/controller/action)
+    if (!empty($_SERVER['PATH_INFO'])) {
+        return trim($_SERVER['PATH_INFO'], '/');
+    }
+
+    // 3. Détection via REQUEST_URI (pour serveur interne PHP ou Nginx)
     $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '';
     $requestPath = trim((string) $requestPath);
 
-    $scriptDir = str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '')));
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    $scriptDir = str_replace('\\', '/', dirname($scriptName));
     $scriptDir = rtrim($scriptDir, '/');
 
-    if ($scriptDir !== '' && $scriptDir !== '/' && strncmp($requestPath, $scriptDir, strlen($scriptDir)) === 0) {
+    // Retirer le dossier de base si présent
+    if ($scriptDir !== '' && $scriptDir !== '/' && strpos($requestPath, $scriptDir) === 0) {
         $requestPath = substr($requestPath, strlen($scriptDir));
     }
 
     $requestPath = trim($requestPath, '/');
 
+    // Retirer index.php si présent au début
     if ($requestPath === 'index.php') {
         return '';
     }
-
     if (strncmp($requestPath, 'index.php/', 10) === 0) {
         return substr($requestPath, 10);
     }
@@ -92,7 +101,7 @@ if (!empty($segments)) {
     } elseif ($first === 'process-reset-password') {
         $controller = 'AuthController';
         $action = 'processResetPassword';
-    } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home'], true)) {
+    } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home', 'event', 'ressource'], true)) {
         $controller = ucfirst($first) . 'Controller';
         $action = $second !== '' ? toCamelCaseAction($second) : ($first === 'auth' ? 'login' : 'index');
         $params = array_slice($segments, 2);

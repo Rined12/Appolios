@@ -104,13 +104,172 @@ $studentSidebarActive = 'profile';
                             <a href="<?= APP_ENTRY ?>?url=student/profile" class="btn btn-outline">Cancel</a>
                         </div>
                     </form>
+
+                    <!-- Face ID Settings -->
+                    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e2e8f0;">
+                        <h4 style="color: #2B4865; font-size: 1.1rem; margin-bottom: 10px; font-weight: 700;">Face ID Login</h4>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">Set up Face ID to login securely without your password.</p>
+                        
+                        <div style="display: flex; flex-direction: column; max-width: 400px; gap: 15px;">
+                            <div id="face-id-status-msg" style="padding: 10px; border-radius: 8px; display: none; font-size: 0.9rem; font-weight: 600;"></div>
+                            
+                            <div id="face-video-container" style="display: none; position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+                                <video id="face-video" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                                <canvas id="face-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+                                <div id="face-ring" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 60%; aspect-ratio: 1/1; border: 3px dashed rgba(255,255,255,0.4); border-radius: 50%; transition: border-color 0.3s; pointer-events: none;"></div>
+                            </div>
+
+                            <button type="button" id="setup-face-btn" class="btn btn-outline" style="border-color: #2B4865; color: #2B4865; width: max-content;">
+                                Setup Face ID
+                            </button>
+                            <button type="button" id="cancel-face-btn" class="btn btn-outline" style="display: none; border-color: #ef4444; color: #ef4444; width: max-content;">
+                                Cancel Setup
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings / Account Deletion -->
+                    <div style="margin-top: 40px; padding-top: 30px; border-top: 1px solid #e2e8f0;">
+                        <h4 style="color: #ef4444; font-size: 1.1rem; margin-bottom: 10px; font-weight: 700;">Danger Zone</h4>
+                        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 20px;">Deleting your account cannot be undone. All your progress will be lost permanently.</p>
+                        <form action="<?= APP_ENTRY ?>?url=student/delete-account" method="POST" onsubmit="return confirm('Are you absolutely sure you want to permanently delete your account? This action cannot be reversed.');">
+                            <button type="submit" style="padding: 10px 20px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#ffe4e6'" onmouseout="this.style.background='#fff1f2'">
+                                Delete My Account
+                            </button>
+                        </form>
+                    </div>
+
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const setupBtn = document.getElementById('setup-face-btn');
+    const cancelBtn = document.getElementById('cancel-face-btn');
+    const container = document.getElementById('face-video-container');
+    const msg = document.getElementById('face-id-status-msg');
+    
+    let stream = null, loop = null, modelsLoaded = false, detecting = false;
+
+    function showMsg(text, type = 'info') {
+        msg.style.display = 'block';
+        msg.textContent = text;
+        msg.style.backgroundColor = type === 'error' ? '#fee2e2' : (type === 'success' ? '#dcfce7' : '#f1f5f9');
+        msg.style.color = type === 'error' ? '#dc2626' : (type === 'success' ? '#16a34a' : '#1e293b');
+    }
+
+    async function loadModels() {
+        if (modelsLoaded) return;
+        showMsg('Loading AI models...', 'info');
+        const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+        await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        modelsLoaded = true;
+    }
+
+    function stopCam() {
+        if (loop) clearInterval(loop);
+        if (stream) stream.getTracks().forEach(t => t.stop());
+        const v = document.getElementById('face-video');
+        if (v) v.srcObject = null;
+        loop = null; stream = null; detecting = false;
+        container.style.display = 'none';
+        setupBtn.style.display = 'block';
+        cancelBtn.style.display = 'none';
+    }
+
+    if (setupBtn) {
+        setupBtn.addEventListener('click', async () => {
+            setupBtn.style.display = 'none';
+            cancelBtn.style.display = 'block';
+            container.style.display = 'block';
+            showMsg('Initializing camera...', 'info');
+            try {
+                await loadModels();
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 360, height: 270 } });
+                const v = document.getElementById('face-video');
+                v.srcObject = stream;
+                await v.play();
+                showMsg('Position your face in the circle...', 'info');
+                startDetection();
+            } catch(e) {
+                showMsg('Camera error: ' + e.message, 'error');
+                stopCam();
+            }
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            stopCam();
+            msg.style.display = 'none';
+        });
+    }
+
+    function startDetection() {
+        const v = document.getElementById('face-video');
+        const c = document.getElementById('face-canvas');
+        const ring = document.getElementById('face-ring');
+        const ctx = c.getContext('2d');
+        let hits = 0;
+        const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 });
+        
+        loop = setInterval(async () => {
+            if (detecting || v.readyState < 2) return;
+            detecting = true;
+            ctx.clearRect(0, 0, c.width, c.height);
+            try {
+                const r = await faceapi.detectSingleFace(v, opts).withFaceLandmarks(true).withFaceDescriptor();
+                if (!r) {
+                    hits = 0;
+                    ring.style.borderColor = 'rgba(255,255,255,0.4)';
+                    showMsg('No face detected, look at the camera.', 'info');
+                } else {
+                    const dims = faceapi.matchDimensions(c, v, true);
+                    faceapi.draw.drawDetections(c, faceapi.resizeResults(r, dims));
+                    ring.style.borderColor = '#16a34a';
+                    hits++;
+                    showMsg('Scanning... Keep still (' + hits + '/3)', 'info');
+                    if (hits >= 3) {
+                        clearInterval(loop);
+                        loop = null;
+                        showMsg('Face captured! Saving...', 'info');
+                        await saveFace(Array.from(r.descriptor));
+                    }
+                }
+            } catch(e) { }
+            detecting = false;
+        }, 800);
+    }
+
+    async function saveFace(descriptor) {
+        try {
+            const res = await fetch('<?= APP_ENTRY ?>?url=auth/save-face-descriptor', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ descriptor })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showMsg(data.message, 'success');
+            } else {
+                showMsg(data.message || 'Failed to save', 'error');
+            }
+        } catch(e) {
+            showMsg('Network error: ' + e.message, 'error');
+        }
+        stopCam();
+        setTimeout(() => msg.style.display = 'none', 5000);
+    }
+});
+
 function uploadAvatar() {
     const fileInput = document.getElementById('avatarInput');
     const file = fileInput.files[0];

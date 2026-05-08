@@ -24,30 +24,36 @@ $teacherSidebarActive = 'evenements';
                     <div class="neo-glass-card" style="width: 100%; background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(43, 72, 101, 0.08); border: 1px solid rgba(233, 241, 250, 0.8); overflow: hidden; display: flex; flex-direction: column;">
                         
                         <!-- Header Area -->
-                        <div style="padding: 3.5rem; background: #fcfcfc; position: relative; overflow: hidden; border-bottom: 1px solid #eef2f6;">
+                        <div style="padding: 3rem 3.5rem; background: #fcfcfc; position: relative; overflow: hidden; border-bottom: 1px solid #eef2f6;">
                             <!-- Decorative blobs -->
                             <div style="position: absolute; top: -50px; left: -50px; width: 200px; height: 200px; background: #e9f1fa; border-radius: 50%; z-index: 0; opacity: 0.7;"></div>
                             <div style="position: absolute; bottom: -50px; right: 10%; width: 300px; height: 300px; background: #fff7ed; border-radius: 50%; z-index: 0; opacity: 0.4;"></div>
-                            
-                            <div style="position: relative; z-index: 2;">
-                                <!-- Back Link -->
-                                <a href="<?= APP_ENTRY ?>?url=teacher/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; color: #E19864; font-weight: 700; text-decoration: none; margin-bottom: 2rem; transition: color 0.2s;" onmouseover="this.style.color='#c88251'" onmouseout="this.style.color='#E19864'">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                                    Back to My Evenements
-                                </a>
 
-                                <h2 style="font-size: 2.8rem; font-weight: 800; color: #2B4865; line-height: 1.15; margin: 0 0 0.5rem 0; letter-spacing: -0.02em;">
-                                    Ressources <span style="color: #E19864;">Evenement</span>
-                                </h2>
-                                <p style="color: #64748b; font-size: 1.1rem; line-height: 1.6; margin: 0 0 1.5rem 0; max-width: 90%;">
-                                    Manage rules, materiel, and day plans for your evenement proposal.
-                                </p>
-                                <div style="display: inline-flex; background: #fff; border: 1px solid #eef2f6; padding: 8px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
-                                    <span style="color: #94a3b8; margin-right: 8px;">Evenement:</span>
-                                    <strong style="color: #2B4865; font-size: 1.05rem;"><?= htmlspecialchars($selectedEvenementTitle) ?></strong>
+                            <div style="position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; flex-wrap: wrap;">
+
+                                <!-- LEFT: Back / Title / Badge -->
+                                <div>
+                                    <a href="<?= APP_ENTRY ?>?url=teacher/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 1rem; color: #E19864; font-weight: 700; text-decoration: none; margin-bottom: 1.5rem; transition: color 0.2s;" onmouseover="this.style.color='#c88251'" onmouseout="this.style.color='#E19864'">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                                        Back to My Evenements
+                                    </a>
+
+                                    <h2 style="font-size: 2.8rem; font-weight: 800; color: #2B4865; line-height: 1.15; margin: 0 0 0.4rem 0; letter-spacing: -0.02em;">
+                                        Ressources <span style="color: #E19864;">Evenement</span>
+                                    </h2>
+                                    <p style="color: #64748b; font-size: 1rem; line-height: 1.6; margin: 0 0 1.2rem 0;">
+                                        Manage rules, materiel, and day plans for your evenement proposal.
+                                    </p>
+                                    <div style="display: inline-flex; background: #fff; border: 1px solid #eef2f6; padding: 7px 16px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); align-items: center; gap: 6px;">
+                                        <span style="color: #94a3b8; font-size: 0.9rem;">Evenement:</span>
+                                        <strong style="color: #2B4865; font-size: 1rem;"><?= htmlspecialchars($selectedEvenementTitle) ?></strong>
+                                    </div>
                                 </div>
+
+                                <!-- RIGHT: Participation button removed -->
                             </div>
                         </div>
+                    </div>
 
                         <!-- Content Area: Forms and Lists -->
                         <div class="ressource-content-grid" style="padding: 2rem; background: #ffffff; display: grid; grid-template-columns: 1fr 1.5fr; gap: 2rem; align-items: start;">
@@ -55,6 +61,24 @@ $teacherSidebarActive = 'evenements';
                             <!-- LEFT: Forms -->
                             <div class="ressource-forms-col" style="display: flex; flex-direction: column; gap: 1.5rem;">
                                 
+                                <!-- AI Generation Box -->
+                                <div style="background: linear-gradient(135deg, #2B4865 0%, #355C7D 100%); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; box-shadow: 0 10px 25px rgba(43, 72, 101, 0.2); position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: default;" onmouseover="this.style.transform='translateY(-8px)'; this.style.boxShadow='0 20px 40px rgba(43, 72, 101, 0.35)'; this.style.borderColor='rgba(225, 152, 100, 0.5)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 10px 25px rgba(43, 72, 101, 0.2)'; this.style.borderColor='rgba(255,255,255,0.1)'">
+                                    <!-- Ambient glow -->
+                                    <div style="position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle, rgba(225, 152, 100, 0.15) 0%, transparent 70%); z-index: 0; pointer-events: none;"></div>
+                                    
+                                    <div style="position: relative; z-index: 1;">
+                                        <h4 style="margin: 0 0 0.4rem 0; color: #ffffff; font-size: 1.15rem; display: flex; align-items: center; gap: 10px; font-weight: 700;">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E19864" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 5px rgba(225, 152, 100, 0.6)); flex-shrink: 0;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                                            Génération par IA
+                                        </h4>
+                                        <p style="margin: 0; font-size: 0.9rem; color: #e2e8f0; opacity: 0.9;">Pré-remplissez automatiquement les ressources grâce à l'intelligence artificielle.</p>
+                                    </div>
+                                    <button type="button" id="generateAiBtn" style="background: linear-gradient(135deg, #E19864 0%, #c47640 100%); color: white; border: none; padding: 11px 24px; border-radius: 12px; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.3s ease; white-space: nowrap; box-shadow: 0 4px 15px rgba(225, 152, 100, 0.3); display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; border: 1px solid rgba(255,255,255,0.15);" onmouseover="this.style.filter='brightness(1.15)'; this.style.boxShadow='0 6px 20px rgba(225, 152, 100, 0.5)'" onmouseout="this.style.filter='none'; this.style.boxShadow='0 4px 15px rgba(225, 152, 100, 0.3)'">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                                        Générer avec IA
+                                    </button>
+                                </div>
+
                                 <!-- Form Card Template -->
                                 <?php
                                 $formCards = [
@@ -74,6 +98,13 @@ $teacherSidebarActive = 'evenements';
                                             <label style="display: block; color: #475569; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem;"><?= htmlspecialchars($fc['titleLabel']) ?></label>
                                             <input type="text" name="title" placeholder="<?= htmlspecialchars($fc['titlePlaceholder']) ?>" value="<?= htmlspecialchars(($old['type'] ?? '') === $fc['type'] ? ($old['title'] ?? '') : '') ?>" required style="width: 100%; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-size: 0.9rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#E19864'" onblur="this.style.borderColor='#cbd5e1'">
                                         </div>
+
+                                        <?php if ($fc['type'] === 'materiel'): ?>
+                                        <div style="margin-bottom: 1rem;">
+                                            <label style="display: block; color: #475569; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem;">Quantité</label>
+                                            <input type="number" name="quantite" placeholder="Ex: 5" value="<?= htmlspecialchars($old['quantite'] ?? '') ?>" style="width: 100%; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 12px; font-size: 0.9rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#E19864'" onblur="this.style.borderColor='#cbd5e1'">
+                                        </div>
+                                        <?php endif; ?>
                                         
                                         <div style="margin-bottom: 1.2rem;">
                                             <label style="display: block; color: #475569; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem;"><?= htmlspecialchars($fc['detailsLabel']) ?></label>
@@ -112,13 +143,28 @@ $teacherSidebarActive = 'evenements';
                                                 <?php foreach ($items as $item): ?>
                                                     <li style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.background='#f1f5f9'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
                                                         <?php if ($editResource && (int) $editResource['id'] === (int) $item['id']): ?>
+                                                            <?php
+                                                            $currentDetails = $item['details'] ?? '';
+                                                            $currentQty = '';
+                                                            if ($groupConfig['type'] === 'materiel') {
+                                                                if (preg_match('/^Quantité: (\d+)(?:\n|$)/', $currentDetails, $matches)) {
+                                                                    $currentQty = $matches[1];
+                                                                    $currentDetails = preg_replace('/^Quantité: \d+(?:\n|$)/', '', $currentDetails);
+                                                                }
+                                                            }
+                                                            ?>
                                                             <form action="<?= APP_ENTRY ?>?url=teacher/update-evenement-ressource/<?= (int) $item['id'] ?>" method="POST">
                                                                 <input type="hidden" name="evenement_id" value="<?= (int) $selectedEvenementId ?>">
                                                                 <div style="margin-bottom: 10px;">
                                                                     <input type="text" name="title" value="<?= htmlspecialchars($item['title']) ?>" required style="width: 100%; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 0.95rem; font-weight: 600; outline: none;">
                                                                 </div>
+                                                                <?php if ($groupConfig['type'] === 'materiel'): ?>
+                                                                <div style="margin-bottom: 10px;">
+                                                                    <input type="number" name="quantite" value="<?= htmlspecialchars($currentQty) ?>" placeholder="Quantité" style="width: 100%; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; outline: none;">
+                                                                </div>
+                                                                <?php endif; ?>
                                                                 <div style="margin-bottom: 12px;">
-                                                                    <textarea name="details" placeholder="Details..." style="width: 100%; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; min-height: 60px; resize: vertical; outline: none;"><?= htmlspecialchars($item['details'] ?? '') ?></textarea>
+                                                                    <textarea name="details" placeholder="Details..." style="width: 100%; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; min-height: 60px; resize: vertical; outline: none;"><?= htmlspecialchars($currentDetails) ?></textarea>
                                                                 </div>
                                                                 <div style="display: flex; gap: 10px;">
                                                                     <button type="submit" style="background: #548CA8; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;">Sauvegarder</button>
@@ -128,9 +174,24 @@ $teacherSidebarActive = 'evenements';
                                                         <?php else: ?>
                                                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
                                                                 <div>
-                                                                    <strong style="color: #1e293b; font-size: 1.1rem; display: block; margin-bottom: 4px;"><?= htmlspecialchars($item['title']) ?></strong>
+                                                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                                                        <strong style="color: #1e293b; font-size: 1.1rem;"><?= htmlspecialchars($item['title']) ?></strong>
+                                                                        <?php
+                                                                        if ($groupConfig['type'] === 'materiel' && preg_match('/^Quantité: (\d+)/', $item['details'] ?? '', $m)) {
+                                                                            echo '<span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 700;">x' . $m[1] . '</span>';
+                                                                        }
+                                                                        ?>
+                                                                    </div>
                                                                     <?php if (!empty($item['details'])): ?>
-                                                                        <p style="color: #64748b; font-size: 0.95rem; margin: 0; line-height: 1.5;"><?= nl2br(htmlspecialchars($item['details'])) ?></p>
+                                                                        <?php
+                                                                        $displayDetails = $item['details'];
+                                                                        if ($groupConfig['type'] === 'materiel') {
+                                                                            $displayDetails = preg_replace('/^Quantité: \d+(?:\n|$)/', '', $displayDetails);
+                                                                        }
+                                                                        ?>
+                                                                        <?php if (!empty($displayDetails)): ?>
+                                                                            <p style="color: #64748b; font-size: 0.95rem; margin: 0; line-height: 1.5;"><?= nl2br(htmlspecialchars($displayDetails)) ?></p>
+                                                                        <?php endif; ?>
                                                                     <?php endif; ?>
                                                                 </div>
                                                                 <div style="display: flex; gap: 8px; flex-shrink: 0;">
@@ -175,6 +236,11 @@ $teacherSidebarActive = 'evenements';
 </div>
 
 <style>
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
     @media (max-width: 992px) {
         .ressource-content-grid {
             grid-template-columns: 1fr !important;
@@ -246,5 +312,38 @@ $teacherSidebarActive = 'evenements';
 
         window.location.href = '<?= APP_ENTRY ?>?url=teacher/evenements';
     });
+
+    const generateAiBtn = document.getElementById('generateAiBtn');
+    if (generateAiBtn) {
+        generateAiBtn.addEventListener('click', async function() {
+            const originalContent = generateAiBtn.innerHTML;
+            generateAiBtn.disabled = true;
+            generateAiBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg> Génération...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('evenement_id', <?= (int)$selectedEvenementId ?>);
+                
+                const response = await fetch('<?= APP_ENTRY ?>?url=teacher/generate-ai-resources', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Erreur: ' + data.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Erreur de connexion lors de la génération IA.');
+            } finally {
+                generateAiBtn.disabled = false;
+                generateAiBtn.innerHTML = originalContent;
+            }
+        });
+    }
 })();
 </script>
