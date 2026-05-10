@@ -88,9 +88,14 @@ $userName = $_SESSION['user_name'] ?? 'Administrator';
             
             <hr style="border:0; border-top:1px solid rgba(255,255,255,0.05); margin:1rem 0;">
             
-            <a href="<?= APP_ENTRY ?>?url=admin/evenements" class="nav-item <?= $adminSidebarActive === 'evenements' ? 'active' : '' ?>">
+            <a href="<?= APP_ENTRY ?>?url=event/evenements" class="nav-item <?= $adminSidebarActive === 'evenements' ? 'active' : '' ?>">
                 <i class="bi bi-calendar-event-fill"></i>
                 <span>Événements</span>
+            </a>
+
+            <a href="<?= APP_ENTRY ?>?url=admin/stat-evenements" class="nav-item <?= $adminSidebarActive === 'stat_evenements' ? 'active' : '' ?>">
+                <i class="bi bi-bar-chart-fill"></i>
+                <span>Stat Événements</span>
             </a>
             
             <a href="<?= APP_ENTRY ?>?url=admin/courses" class="nav-item <?= $adminSidebarActive === 'courses' ? 'active' : '' ?>">

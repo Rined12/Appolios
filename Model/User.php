@@ -1,15 +1,15 @@
 <?php
 /**
  * APPOLIOS User Model
- * Entity class with attributes, constructor, getters and setters only
- * Database operations moved to Controller
+ * Pure entity class — attributes, constructor, getters and setters only.
  */
 
 class User {
+
     // ==========================================
     // ATTRIBUTS (Private Properties)
     // ==========================================
-    private ?int $id;
+    private ?int    $id;
     private ?string $name;
     private ?string $email;
     private ?string $password;
@@ -19,35 +19,35 @@ class User {
     private ?string $face_descriptor;
     private ?string $reset_token;
     private ?string $reset_token_expiry;
-    private ?int $is_blocked;
+    private ?int    $is_blocked;
 
     // ==========================================
     // CONSTRUCTEUR
     // ==========================================
     public function __construct(
-        ?int $id = null,
-        ?string $name = null,
-        ?string $email = null,
-        ?string $password = null,
-        ?string $role = null,
-        ?string $created_at = null,
-        ?string $avatar = null,
-        ?string $face_descriptor = null,
-        ?string $reset_token = null,
+        ?int    $id                 = null,
+        ?string $name               = null,
+        ?string $email              = null,
+        ?string $password           = null,
+        ?string $role               = null,
+        ?string $created_at         = null,
+        ?string $avatar             = null,
+        ?string $face_descriptor    = null,
+        ?string $reset_token        = null,
         ?string $reset_token_expiry = null,
-        ?int $is_blocked = null
+        ?int    $is_blocked         = null
     ) {
-        $this->id = $id;
-        $this->name = $name;
-        $this->email = $email;
-        $this->password = $password;
-        $this->role = $role;
-        $this->created_at = $created_at;
-        $this->avatar = $avatar;
-        $this->face_descriptor = $face_descriptor;
-        $this->reset_token = $reset_token;
+        $this->id                 = $id;
+        $this->name               = $name;
+        $this->email              = $email;
+        $this->password           = $password;
+        $this->role               = $role;
+        $this->created_at         = $created_at;
+        $this->avatar             = $avatar;
+        $this->face_descriptor    = $face_descriptor;
+        $this->reset_token        = $reset_token;
         $this->reset_token_expiry = $reset_token_expiry;
-        $this->is_blocked = $is_blocked;
+        $this->is_blocked         = $is_blocked;
     }
 
     // ==========================================

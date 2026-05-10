@@ -31,20 +31,28 @@ trait ActivityLogger
             $stmt = $this->getDb()->prepare($sql);
             $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
             $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-            
-            // --- MODE RÉEL / TEST ---
-            // Si on est en local, on essaie de récupérer la VRAIE IP publique de l'utilisateur
+
+            // Resolve real public IP (only once per session)
             if ($ipAddress === '127.0.0.1' || $ipAddress === '::1' || $ipAddress === 'unknown') {
-                $publicIp = $this->getPublicIp();
-                if ($publicIp) {
-                    $ipAddress = $publicIp;
+                if (!empty($_SESSION['_cached_public_ip'])) {
+                    $ipAddress = $_SESSION['_cached_public_ip'];
                 } else {
-                    $ipAddress = '197.230.150.10'; // Fallback Tunisie si pas d'internet
+                    $publicIp = $this->getPublicIp();
+                    $ipAddress = $publicIp ?: '197.230.150.10';
+                    $_SESSION['_cached_public_ip'] = $ipAddress;
                 }
             }
-            
-            // Fetch location from ip-api.com
-            $location = $this->fetchIpLocation($ipAddress);
+
+            // Fetch location (cached in session — ip-api.com allows 45 req/min free)
+            $cacheKey = '_cached_location_' . md5($ipAddress);
+            if (!empty($_SESSION[$cacheKey])) {
+                $location = $_SESSION[$cacheKey];
+            } else {
+                $location = $this->fetchIpLocation($ipAddress);
+                if ($location !== 'Location not found') {
+                    $_SESSION[$cacheKey] = $location;
+                }
+            }
 
             // Use provided values or fall back to session
             $userId = $userId ?? $_SESSION['user_id'] ?? null;
@@ -76,11 +84,11 @@ trait ActivityLogger
         try {
             $ch = curl_init("https://api.ipify.org");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             $ip = curl_exec($ch);
             curl_close($ch);
-            return $ip ?: null;
+            return ($ip && filter_var($ip, FILTER_VALIDATE_IP)) ? $ip : null;
         } catch (Exception $e) {
             return null;
         }
@@ -91,17 +99,17 @@ trait ActivityLogger
      */
     private function fetchIpLocation(string $ip): string
     {
-        // Skip local addresses
         if ($ip === '127.0.0.1' || $ip === '::1' || $ip === 'unknown') {
             return "Local / Unknown";
         }
 
         try {
-            $ch = curl_init("http://ip-api.com/json/{$ip}");
+            $ch = curl_init("http://ip-api.com/json/{$ip}?fields=status,city,regionName,zip,country,countryCode,lat,lon");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 2); // Short timeout to avoid blocking
+            curl_setopt($ch, CURLOPT_TIMEOUT, 4);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
 
             if ($response) {

@@ -64,7 +64,7 @@
         <div class="admin-card" style="padding: 0; overflow: hidden;">
             <div class="admin-card-header" style="padding: 1.5rem 2rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 0;">
                 <h2 class="admin-card-title">Événements Récents</h2>
-                <a href="<?= APP_ENTRY ?>?url=admin/evenements" class="btn-admin btn-admin-primary" style="padding: 6px 14px; font-size: 0.8rem;">Tout voir</a>
+                <a href="<?= APP_ENTRY ?>?url=event/evenements" class="btn-admin btn-admin-primary" style="padding: 6px 14px; font-size: 0.8rem;">Tout voir</a>
             </div>
             <div style="overflow-x: auto;">
                 <table class="admin-table-pro">

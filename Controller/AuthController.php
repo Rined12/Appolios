@@ -9,7 +9,7 @@
 require_once __DIR__ . '/../Controller/BaseController.php';
 require_once __DIR__ . '/../Controller/ActivityLogger.php';
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../Controller/SmsService.php';
+// SMS is handled via $this->sendSms() defined in this controller
 
 class AuthController extends BaseController
 {
@@ -49,19 +49,21 @@ class AuthController extends BaseController
         $isAdminLogin = isset($_POST['admin_login']) && $_POST['admin_login'] === '1';
 
         // Validate reCAPTCHA v2
-        $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
-        if (empty($recaptchaResponse)) {
-            $this->setFlash('error', 'Please complete the reCAPTCHA verification.');
-            $this->redirect('login');
-            return;
-        }
+        if (!empty(RECAPTCHA_SITE_KEY)) {
+            $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
+            if (empty($recaptchaResponse)) {
+                $this->setFlash('error', 'Please complete the reCAPTCHA verification.');
+                $this->redirect('login');
+                return;
+            }
 
-        $recaptchaResult = $this->verifyRecaptchaV2($recaptchaResponse);
-        if (!$recaptchaResult['valid']) {
-            error_log('reCAPTCHA v2 login failed: ' . $recaptchaResult['message']);
-            $this->setFlash('error', 'reCAPTCHA verification failed. Please try again.');
-            $this->redirect('login');
-            return;
+            $recaptchaResult = $this->verifyRecaptchaV2($recaptchaResponse);
+            if (!$recaptchaResult['valid']) {
+                error_log('reCAPTCHA v2 login failed: ' . $recaptchaResult['message']);
+                $this->setFlash('error', 'reCAPTCHA verification failed. Please try again.');
+                $this->redirect('login');
+                return;
+            }
         }
 
 
@@ -77,11 +79,22 @@ class AuthController extends BaseController
             $this->redirect('login');
             return;
         }
+        
+        $ipAddress = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+        // Check Rate Limiting (Brute Force Protection)
+        if ($this->isRateLimited($ipAddress, $email)) {
+            $this->setFlash('error', 'Too many failed login attempts. Please try again in 15 minutes.');
+            $this->redirect('login');
+            return;
+        }
 
         // Use Controller database methods
         $user = $this->authenticateUser($email, $password);
 
         if ($user) {
+            // Clear Failed attempts on success
+            $this->clearLoginAttempts($ipAddress, $email);
             // Check if user is blocked
             if ($this->isUserBlocked($user['id'])) {
                 $this->setFlash('error', 'Your account has been blocked. Please contact an administrator.');
@@ -103,8 +116,15 @@ class AuthController extends BaseController
             $_SESSION['user_name'] = $user['name'];
             $_SESSION['user_email'] = $user['email'];
             $_SESSION['role'] = $user['role'];
+            $_SESSION['user_avatar'] = $user['avatar'] ?? null;
             $_SESSION['logged_in'] = true;
             $_SESSION['login_time'] = time();
+
+            // Handle Remember Me (Optional token log logic depending on auth_tokens)
+            if (isset($_POST['remember'])) {
+                $token = bin2hex(random_bytes(32));
+                setcookie('remember_token', $token, time() + (86400 * 30), "/", "", false, true);
+            }
 
             // Log activity - Business Logic
             $this->logActivity('login', "User logged in: {$user['name']} ({$user['email']})");
@@ -112,6 +132,9 @@ class AuthController extends BaseController
             $this->setFlash('success', 'Welcome back, ' . $user['name'] . '!');
             $this->redirectByRole($user['role']);
         } else {
+            // Log failed attempt
+            $this->addLoginAttempt($ipAddress, $email);
+
             $this->setFlash('error', 'Invalid email or password');
             if ($isAdminLogin) {
                 $this->redirect('admin/login');
@@ -292,21 +315,23 @@ class AuthController extends BaseController
         }
 
         // Validate reCAPTCHA v2
-        $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
-        if (empty($recaptchaResponse)) {
-            $this->setFlash('error', 'Please complete the reCAPTCHA verification.');
-            $_SESSION['old'] = $_POST;
-            $this->redirect('register');
-            return;
-        }
+        if (!empty(RECAPTCHA_SITE_KEY)) {
+            $recaptchaResponse = $_POST['g-recaptcha-response'] ?? '';
+            if (empty($recaptchaResponse)) {
+                $this->setFlash('error', 'Please complete the reCAPTCHA verification.');
+                $_SESSION['old'] = $_POST;
+                $this->redirect('register');
+                return;
+            }
 
-        $recaptchaResult = $this->verifyRecaptchaV2($recaptchaResponse);
-        if (!$recaptchaResult['valid']) {
-            error_log('reCAPTCHA v2 register failed: ' . $recaptchaResult['message']);
-            $this->setFlash('error', 'reCAPTCHA verification failed. Please try again.');
-            $_SESSION['old'] = $_POST;
-            $this->redirect('register');
-            return;
+            $recaptchaResult = $this->verifyRecaptchaV2($recaptchaResponse);
+            if (!$recaptchaResult['valid']) {
+                error_log('reCAPTCHA v2 register failed: ' . $recaptchaResult['message']);
+                $this->setFlash('error', 'reCAPTCHA verification failed. Please try again.');
+                $_SESSION['old'] = $_POST;
+                $this->redirect('register');
+                return;
+            }
         }
 
         $name = $this->sanitize($_POST['name'] ?? '');
@@ -408,11 +433,10 @@ class AuthController extends BaseController
 
             if ($appId) {
                 // Send SMS notification to admin via Twilio
-                $sms = new SmsService();
                 $adminPhone = defined('ADMIN_PHONE_NUMBER') ? ADMIN_PHONE_NUMBER : null;
                 if ($adminPhone) {
                     $smsMsg = "APPOLIOS: Nouvelle candidature enseignant de {$name} ({$email}). Veuillez verifier le panel admin.";
-                    $sms->sendSms($adminPhone, $smsMsg);
+                    $this->sendSms($adminPhone, $smsMsg);
                 }
 
                 $this->setFlash('success', 'Your teacher application has been submitted! An administrator will review your CV and notify you once approved.');
@@ -848,6 +872,11 @@ class AuthController extends BaseController
         $userEmail = $_SESSION['user_email'] ?? null;
         $userRole = $_SESSION['role'] ?? null;
 
+        // Clear Remember Me cookies
+        if (isset($_COOKIE['remember_token'])) {
+            setcookie('remember_token', '', time() - 3600, '/');
+        }
+
         // Destroy session
         $_SESSION = [];
 
@@ -939,8 +968,8 @@ class AuthController extends BaseController
         }
 
         // Send email with verification code - Business Logic
-        require_once __DIR__ . '/MailService.php';
-        $emailSent = MailService::sendVerificationCode(
+        require_once __DIR__ . '/EventController.php';
+        $emailSent = EventController::sendVerificationCode(
             $user['email'],
             $user['name'],
             $verificationCode
@@ -1115,17 +1144,25 @@ class AuthController extends BaseController
 
     public function createUser($data)
     {
-        $sql = "INSERT INTO {$this->table} (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
+        $sql = "INSERT INTO {$this->table} (name, email, phone, password, role, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())";
         try {
             $stmt = $this->getDb()->prepare($sql);
+            
+            // Génération de l'avatar dynamique 
+            $encodedName = urlencode($data['name']);
+            $avatarUrl = "https://ui-avatars.com/api/?name={$encodedName}&background=random&color=fff&rounded=true&bold=true";
+
             $stmt->execute([
                 $data['name'],
                 $data['email'],
+                $data['phone'] ?? null,
                 password_hash($data['password'], PASSWORD_DEFAULT, ['cost' => HASH_COST]),
-                $data['role'] ?? 'student'
+                $data['role'] ?? 'student',
+                $avatarUrl
             ]);
             return $this->getDb()->lastInsertId();
         } catch (PDOException $e) {
+            error_log("CreateUser error: " . $e->getMessage());
             return false;
         }
     }
@@ -1218,7 +1255,7 @@ class AuthController extends BaseController
             $stmt->execute([$id]);
             $result = $stmt->fetch();
 
-            if (!$result || $result['is_blocked'] != 1) {
+            if (!$result || !isset($result['is_blocked']) || $result['is_blocked'] != 1) {
                 return false;
             }
 
@@ -1234,27 +1271,48 @@ class AuthController extends BaseController
 
             return true;
         } catch (PDOException $e) {
-            // Fallback if ban_until column doesn't exist - just check is_blocked
-            $sql = "SELECT is_blocked FROM {$this->table} WHERE id = ?";
-            $stmt = $this->getDb()->prepare($sql);
-            $stmt->execute([$id]);
-            $result = $stmt->fetch();
-            return $result && $result['is_blocked'] == 1;
+            try {
+                // Fallback if ban_until column doesn't exist - just check is_blocked
+                $sql = "SELECT is_blocked FROM {$this->table} WHERE id = ?";
+                $stmt = $this->getDb()->prepare($sql);
+                $stmt->execute([$id]);
+                $result = $stmt->fetch();
+                return $result && isset($result['is_blocked']) && $result['is_blocked'] == 1;
+            } catch (PDOException $e2) {
+                // If is_blocked also doesn't exist, return false
+                return false;
+            }
         }
     }
 
     public function getUsersWithFaceDescriptor()
     {
-        $sql = "SELECT * FROM users WHERE face_descriptor IS NOT NULL AND face_descriptor != '' AND (is_blocked IS NULL OR is_blocked = 0)";
-        $stmt = $this->getDb()->query($sql);
-        return $stmt ? $stmt->fetchAll() : [];
+        try {
+            $sql = "SELECT * FROM users WHERE face_descriptor IS NOT NULL AND face_descriptor != '' AND (is_blocked IS NULL OR is_blocked = 0)";
+            $stmt = $this->getDb()->query($sql);
+            return $stmt ? $stmt->fetchAll() : [];
+        } catch (PDOException $e) {
+            try {
+                // Fallback if is_blocked does not exist
+                $sql = "SELECT * FROM users WHERE face_descriptor IS NOT NULL AND face_descriptor != ''";
+                $stmt = $this->getDb()->query($sql);
+                return $stmt ? $stmt->fetchAll() : [];
+            } catch (PDOException $e2) {
+                // If face_descriptor also doesn't exist, return empty array
+                return [];
+            }
+        }
     }
 
     public function updateFaceDescriptor($id, $faceDescriptor)
     {
-        $sql = "UPDATE {$this->table} SET face_descriptor = ? WHERE id = ?";
-        $stmt = $this->getDb()->prepare($sql);
-        return $stmt->execute([$faceDescriptor, $id]);
+        try {
+            $sql = "UPDATE {$this->table} SET face_descriptor = ? WHERE id = ?";
+            $stmt = $this->getDb()->prepare($sql);
+            return $stmt->execute([$faceDescriptor, $id]);
+        } catch (PDOException $e) {
+            return false;
+        }
     }
 
     public function setPasswordResetToken($id, $token, $expiry)
@@ -1273,14 +1331,20 @@ class AuthController extends BaseController
 
     public function createUserWithHashedPassword($data)
     {
-        $sql = "INSERT INTO {$this->table} (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
+        $sql = "INSERT INTO {$this->table} (name, email, phone, password, role, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
         try {
             $stmt = $this->getDb()->prepare($sql);
+
+            $encodedName = urlencode($data['name']);
+            $avatarUrl = "https://ui-avatars.com/api/?name={$encodedName}&background=random&color=fff&rounded=true&bold=true";
+
             $stmt->execute([
                 $data['name'],
                 $data['email'],
+                $data['phone'] ?? null,
                 $data['password'],
-                $data['role'] ?? 'teacher'
+                $data['role'] ?? 'teacher',
+                $avatarUrl
             ]);
             return $this->getDb()->lastInsertId();
         } catch (PDOException $e) {
@@ -1302,12 +1366,13 @@ class AuthController extends BaseController
 
     public function createTeacherAppWithFace($data)
     {
-        $sql = "INSERT INTO teacher_applications (name, email, password, cv_filename, cv_path, face_descriptor, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')";
+        $sql = "INSERT INTO teacher_applications (name, email, phone, password, cv_filename, cv_path, face_descriptor, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')";
         try {
             $stmt = $this->getDb()->prepare($sql);
             $stmt->execute([
                 $data['name'],
                 $data['email'],
+                $data['phone'] ?? null,
                 password_hash($data['password'], PASSWORD_DEFAULT, ['cost' => 12]),
                 $data['cv_filename'],
                 $data['cv_path'],
@@ -1317,5 +1382,105 @@ class AuthController extends BaseController
         } catch (PDOException $e) {
             return false;
         }
+    }
+
+    // ==========================================
+    // RATE LIMITING PROTECTION (BRUTE FORCE)
+    // ==========================================
+
+    private function isRateLimited($ipAddress, $email)
+    {
+        // 5 max attempts, lock for 15 minutes
+        $sql = "SELECT attempts, last_attempt FROM login_attempts WHERE ip_address = ? OR email = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$ipAddress, $email]);
+        $record = $stmt->fetch();
+
+        if ($record) {
+            $lastAttemptTime = strtotime($record['last_attempt']);
+            $currentTime = time();
+            $minutesDiff = ($currentTime - $lastAttemptTime) / 60;
+
+            if ($record['attempts'] >= 5 && $minutesDiff < 15) {
+                return true; // Locked
+            } elseif ($minutesDiff >= 15) {
+                $this->clearLoginAttempts($ipAddress, $email); // Reset after 15 mins
+            }
+        }
+        return false;
+    }
+
+    private function addLoginAttempt($ipAddress, $email)
+    {
+        $sqlCheck = "SELECT id, attempts FROM login_attempts WHERE ip_address = ? AND email = ?";
+        $stmtCheck = $this->getDb()->prepare($sqlCheck);
+        $stmtCheck->execute([$ipAddress, $email]);
+        $record = $stmtCheck->fetch();
+
+        if ($record) {
+            // Update
+            $newAttempts = $record['attempts'] + 1;
+            $sqlUpdate = "UPDATE login_attempts SET attempts = ?, last_attempt = NOW() WHERE id = ?";
+            $stmtUpdate = $this->getDb()->prepare($sqlUpdate);
+            $stmtUpdate->execute([$newAttempts, $record['id']]);
+        } else {
+            // Insert
+            $sqlInsert = "INSERT INTO login_attempts (ip_address, email, attempts, last_attempt) VALUES (?, ?, 1, NOW())";
+            $stmtInsert = $this->getDb()->prepare($sqlInsert);
+            $stmtInsert->execute([$ipAddress, $email]);
+        }
+    }
+
+    private function clearLoginAttempts($ipAddress, $email)
+    {
+        $sql = "DELETE FROM login_attempts WHERE ip_address = ? OR email = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$ipAddress, $email]);
+    }
+
+    // ==========================================
+    // SMS SERVICE  (from SmsService.php)
+    // ==========================================
+
+    /**
+     * Send SMS via Twilio
+     * @param string $to
+     * @param string $message
+     * @return bool
+     */
+    private function sendSms(string $to, string $message): bool
+    {
+        $sid   = defined('TWILIO_SID')         ? TWILIO_SID         : null;
+        $token = defined('TWILIO_TOKEN')        ? TWILIO_TOKEN       : null;
+        $from  = defined('TWILIO_FROM_NUMBER')  ? TWILIO_FROM_NUMBER : null;
+
+        if (!$sid || !$token || !$from) {
+            error_log('Twilio credentials not configured.');
+            return false;
+        }
+
+        $url      = "https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json";
+        $postData = http_build_query(['From' => $from, 'To' => $to, 'Body' => $message]);
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST,           true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS,     $postData);
+        curl_setopt($ch, CURLOPT_USERPWD,        "{$sid}:{$token}");
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error    = curl_error($ch);
+        curl_close($ch);
+
+        error_log("Twilio Response: " . $response);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return true;
+        }
+
+        error_log("Twilio SMS failed: HTTP {$httpCode} - Response: {$response} - Error: {$error}");
+        return false;
     }
 }
