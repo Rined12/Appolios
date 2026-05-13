@@ -78,7 +78,6 @@
         </div>
     </div>
 </section>
-
 <style>
     @media (max-width: 768px) {
         .neo-glass-card > div {

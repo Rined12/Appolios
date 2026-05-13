@@ -1,7 +1,7 @@
 # APPOLIOS - Git Ignore
 /config/credentials.php
 .env
-.env.local
+.env.*
 
 # IDEs
 .vscode/
@@ -11,7 +11,14 @@
 Thumbs.db
 .DS_Store
 
+# Dependencies
+vendor/
+node_modules/
+
 # Temporary files
 /tmp/
 /View/assets/uploads/tmp/*
 !/View/assets/uploads/tmp/.gitkeep
+
+# Logs
+*.log

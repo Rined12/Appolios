@@ -55,25 +55,117 @@ $teacherSidebarActive = 'courses';
                     </div>
 
                     <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6; display: flex; align-items: center; gap: 1.2rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
-                        <div style="width: 54px; height: 54px; border-radius: 14px; background: #fffbeb; color: #f59e0b; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <div style="width: 54px; height: 54px; border-radius: 14px; background: #ecfdf5; color: #10b981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
                         </div>
                         <div>
-                            <h3 style="margin: 0 0 0.2rem 0; font-size: 1.6rem; font-weight: 800; color: #1e293b; line-height: 1;"><?= $stats['active_enrollments'] ?? 0 ?></h3>
-                            <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 600;">Enrollments</p>
+                            <h3 style="margin: 0 0 0.2rem 0; font-size: 1.6rem; font-weight: 800; color: #1e293b; line-height: 1;">$<?= number_format($stats['total_earnings'] ?? 0, 2) ?></h3>
+                            <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 600;">Total Earnings</p>
+                        </div>
+                    </div>
+
+                    <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6; display: flex; align-items: center; gap: 1.2rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="width: 54px; height: 54px; border-radius: 14px; background: #fffbeb; color: #f59e0b; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 18 18.18 22.73 12 18.77 5.82 22.73 6 18 2 9.27 8.91 8.26 12 2"/></svg>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 0.2rem 0; font-size: 1.6rem; font-weight: 800; color: #1e293b; line-height: 1;"><?= $stats['avg_rating'] ?? 0 ?>/5</h3>
+                            <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 600;">Avg Rating</p>
                         </div>
                     </div>
 
                     <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6; display: flex; align-items: center; gap: 1.2rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
                         <div style="width: 54px; height: 54px; border-radius: 14px; background: #fef2f2; color: #ef4444; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         </div>
                         <div>
-                            <h3 style="margin: 0 0 0.2rem 0; font-size: 1.6rem; font-weight: 800; color: #1e293b; line-height: 1;"><?= $stats['total_evenements'] ?? 0 ?></h3>
-                            <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 600;">Events</p>
+                            <h3 style="margin: 0 0 0.2rem 0; font-size: 1.6rem; font-weight: 800; color: #1e293b; line-height: 1;"><?= $stats['total_reviews'] ?? 0 ?></h3>
+                            <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 600;">Reviews</p>
+                        </div>
+                    </div>
+
+                    <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6; display: flex; align-items: center; gap: 1.2rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="width: 54px; height: 54px; border-radius: 14px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0 0 0.2rem 0; font-size: 1.6rem; font-weight: 800; color: #1e293b; line-height: 1;"><?= $stats['pending_courses'] ?? 0 ?></h3>
+                            <p style="margin: 0; font-size: 0.9rem; color: #64748b; font-weight: 600;">Pending</p>
                         </div>
                     </div>
                 </div>
+
+                <!-- Chart Section -->
+                <?php 
+                $chartData = $monthlyEarnings ?? [];
+                $chartRange = $_GET['range'] ?? 'year';
+                $chartLabels = array_column($chartData, 'period');
+                $chartValues = array_column($chartData, 'earnings');
+                ?>
+                <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; padding: 2rem; margin-top: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0; font-size: 1.3rem; color: #1e293b; font-weight: 800;">Earnings</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <a href="?url=teacher/dashboard&range=day" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; <?= $chartRange === 'day' ? 'background: #3b82f6; color: white;' : 'background: #f1f5f9; color: #64748b;' ?>">Day</a>
+                            <a href="?url=teacher/dashboard&range=month" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; <?= $chartRange === 'month' ? 'background: #3b82f6; color: white;' : 'background: #f1f5f9; color: #64748b;' ?>">Month</a>
+                            <a href="?url=teacher/dashboard&range=year" style="padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; <?= $chartRange === 'year' ? 'background: #3b82f6; color: white;' : 'background: #f1f5f9; color: #64748b;' ?>">Year</a>
+                        </div>
+                    </div>
+                    <canvas id="teacherChart" height="100"></canvas>
+                </div>
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                <script>
+                const ctx = document.getElementById('teacherChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: <?= json_encode($chartLabels) ?>,
+                        datasets: [{
+                            label: 'Earnings ($)',
+                            data: <?= json_encode($chartValues) ?>,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#10b981',
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+                </script>
+
+                <!-- Course Performance -->
+                <?php if (!empty($coursePerformance)): ?>
+                <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; padding: 2rem; margin-top: 2rem;">
+                    <h3 style="margin: 0 0 1.5rem 0; font-size: 1.3rem; color: #1e293b; font-weight: 800;">Course Performance</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #e2e8f0;">
+                                <th style="text-align: left; padding: 12px; color: #64748b; font-weight: 600;">Course</th>
+                                <th style="text-align: center; padding: 12px; color: #64748b; font-weight: 600;">Students</th>
+                                <th style="text-align: center; padding: 12px; color: #64748b; font-weight: 600;">Earnings</th>
+                                <th style="text-align: center; padding: 12px; color: #64748b; font-weight: 600;">Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($coursePerformance as $perf): ?>
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 12px; font-weight: 600; color: #1e293b;"><?= htmlspecialchars($perf['title']) ?></td>
+                                <td style="padding: 12px; text-align: center; color: #3b82f6; font-weight: 600;"><?= $perf['students'] ?? 0 ?></td>
+                                <td style="padding: 12px; text-align: center; color: #10b981; font-weight: 600;">$<?= number_format($perf['earnings'] ?? 0, 2) ?></td>
+                                <td style="padding: 12px; text-align: center; color: #f59e0b; font-weight: 600;"><?= $perf['avg_rating'] ? round($perf['avg_rating'], 1) . '/5' : '-' ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
 
                 <div class="pro-dashboard-grid">
                     <!-- MAIN COLUMN -->

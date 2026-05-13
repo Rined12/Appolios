@@ -8,6 +8,8 @@ $enrollmentCount = count($enrollments ?? []);
 $availableCount = count($allCourses ?? []);
 $avgProgress = 0;
 
+$rank = isset($rank) && is_array($rank) ? $rank : null;
+
 if (!empty($enrollments)) {
     $sum = 0;
     foreach ($enrollments as $enrollment) {
@@ -22,9 +24,8 @@ if (!empty($enrollments)) {
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
 
-            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
+            <div class="admin-main">
                 
-                <!-- Welcome Banner -->
                 <section class="student-events-hero-top" style="margin-bottom: 2rem;">
                     <div class="student-events-hero-copy">
                         <span class="student-events-hero-kicker">Student Space</span>
@@ -49,7 +50,6 @@ if (!empty($enrollments)) {
                     </div>
                 </section>
 
-                <!-- Stats Grid -->
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
                     <div style="background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid #eef2f6; display: flex; align-items: center; gap: 1.2rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
                         <div style="width: 54px; height: 54px; border-radius: 14px; background: #eff6ff; color: #3b82f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -83,10 +83,8 @@ if (!empty($enrollments)) {
                 </div>
 
                 <div class="pro-dashboard-grid">
-                    <!-- MAIN COLUMN -->
                     <div class="pro-main-col" style="display: flex; flex-direction: column; gap: 2rem;">
                         
-                        <!-- Continue Learning -->
                         <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden; padding: 2rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                                 <div>
@@ -127,47 +125,59 @@ if (!empty($enrollments)) {
                             <?php endif; ?>
                         </div>
 
-                        <!-- Recommended Courses -->
+                        <?php if (!empty($recommendations)): ?>
                         <div style="background: white; border-radius: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden; padding: 2rem;">
-                            <h3 style="margin: 0 0 1.5rem 0; font-size: 1.3rem; color: #1e293b; font-weight: 800;">Recommended For You</h3>
+                            <h3 style="margin: 0 0 1.5rem 0; font-size: 1.3rem; color: #1e293b; font-weight: 800;">Recommended For You <span style="font-size:0.8rem;background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:2px 8px;border-radius:12px;margin-left:8px;">🤖 AI Picks</span></h3>
                             
                             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem;">
-                                <?php if (!empty($allCourses)): ?>
-                                    <?php foreach (array_slice($allCourses, 0, 2) as $course): ?>
-                                        <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
-                                            <div style="width: 48px; height: 48px; background: #fff7ed; color: #ea580c; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                                            </div>
-                                            <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($course['title']) ?></h4>
-                                            <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #64748b;">By <?= htmlspecialchars($course['creator_name'] ?? 'Instructor') ?></p>
-                                            
-                                            <a href="<?= APP_ENTRY ?>?url=student/course/<?= (int) $course['id'] ?>" style="display: block; text-align: center; background: white; color: #548CA8; text-decoration: none; padding: 8px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; border: 1px solid #548CA8; transition: all 0.2s;" onmouseover="this.style.background='#548CA8'; this.style.color='white'" onmouseout="this.style.background='white'; this.style.color='#548CA8'">View Details</a>
+                                <?php foreach ($recommendations as $course): ?>
+                                    <div style="border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; transition: transform 0.2s; box-shadow: 0 4px 20px rgba(102,126,234,0.15);" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
                                         </div>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <p style="color: #64748b; font-size: 0.9rem;">No recommendations available right now.</p>
-                                <?php endif; ?>
+                                        <h4 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; font-weight: 700; color: #1e293b;"><?= htmlspecialchars($course['title']) ?></h4>
+                                        <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #64748b;"><?= htmlspecialchars(mb_strimwidth($course['description'] ?? '', 0, 50, '...')) ?></p>
+                                        
+                                        <a href="<?= APP_ENTRY ?>?url=student/course/<?= (int) $course['id'] ?>" style="display: block; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 8px; border-radius: 8px; font-weight: 600; font-size: 0.9rem;">View Course</a>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
+                        <?php endif; ?>
                     </div>
                     
-                    <!-- SIDE COLUMN -->
                     <div class="pro-side-col" style="display: flex; flex-direction: column; gap: 2rem;">
-                        <!-- Profile Level Card -->
                         <div style="background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); border-radius: 20px; padding: 2rem; box-shadow: 0 5px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f6; text-align: center;">
                             <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #E19864 0%, #C87B46 100%); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto; font-size: 2rem; font-weight: 800; box-shadow: 0 10px 20px rgba(225, 152, 100, 0.2);">
                                 <?= strtoupper(substr($userName, 0, 1)) ?>
                             </div>
                             <h3 style="margin: 0 0 0.3rem 0; font-size: 1.4rem; color: #1e293b; font-weight: 800;"><?= htmlspecialchars($userName) ?></h3>
-                            <p style="margin: 0 0 1.5rem 0; color: #64748b; font-weight: 600; font-size: 0.95rem;">Student Level <?= max(1, (int) floor(($avgProgress + 20) / 15)) ?></p>
+                            <p style="margin: 0 0 1.5rem 0; color: #64748b; font-weight: 600; font-size: 0.95rem;">Student <?= htmlspecialchars($levelInfo['level'] ?? 'Level 1') ?></p>
+
+                            <?php if (!empty($rank)): ?>
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap: 10px; padding: 10px 12px; background: #0b1f3a; color: #e6f1ff; border-radius: 12px; margin-bottom: 1rem;">
+                                    <div style="text-align:left;">
+                                        <div style="font-weight:800; font-size: .95rem;">Quiz Rank</div>
+                                        <div style="margin-top:4px; font-weight:700;">
+                                            <?= htmlspecialchars((string) ($rank['league'] ?? 'Bronze')) ?> <?= htmlspecialchars((string) ($rank['division'] ?? 'III')) ?>
+                                        </div>
+                                    </div>
+                                    <div style="text-align:right;">
+                                        <div style="font-size:.8rem; opacity:.9; font-weight:700;">Rating</div>
+                                        <div style="font-weight:900; font-size: 1.15rem; line-height:1;">
+                                            <?= (int) ($rank['rating'] ?? 1000) ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                             
                             <div style="margin-bottom: 1.5rem; text-align: left;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                                     <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">XP to Next Level</span>
-                                    <span style="font-size: 0.8rem; font-weight: 700; color: #E19864;"><?= max(120, $avgProgress * 20) ?> XP</span>
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #E19864;"><?= (int) ($levelInfo['xp_to_next'] ?? 100) ?> XP</span>
                                 </div>
                                 <div style="width: 100%; background: #e2e8f0; border-radius: 99px; height: 8px; overflow: hidden;">
-                                    <div style="height: 100%; background: linear-gradient(90deg, #E19864, #f9b384); width: <?= max(25, min(95, $avgProgress + 12)) ?>%;"></div>
+                                    <div style="height: 100%; background: linear-gradient(90deg, #E19864, #f9b384); width: <?= (int) ($levelInfo['progress'] ?? 0) ?>%;"></div>
                                 </div>
                             </div>
 

@@ -1,8 +1,8 @@
 <?php
 /**
  * APPOLIOS MailService
- * Sends HTML emails via PHP mail() — works on XAMPP with sendmail configured.
- * For production, swap the send() method body with PHPMailer/SMTP.
+ * Sends HTML email via PHPMailer + SMTP when MAIL_USE_SMTP is true (see config / .env),
+ * otherwise falls back to PHP mail() (usually not suitable for Gmail on XAMPP).
  */
 
 class MailService
@@ -142,6 +142,87 @@ class MailService
         return self::send($toEmail, $toName, $subject, $body);
     }
 
+    /**
+     * Send an event participation ticket to the student.
+     */
+    public static function sendEventTicket(
+        string $toEmail, 
+        string $toName, 
+        string $eventTitle, 
+        string $eventDate, 
+        string $eventLocation
+    ): bool {
+        $subject = '🎫 Your Ticket for ' . $eventTitle . ' — ' . APP_NAME;
+
+        $body = self::wrapTemplate(
+            toName: $toName,
+            accentColor: '#548CA8',
+            iconEmoji: '🎫',
+            headingText: 'Event Participation Ticket',
+            bodyHtml: '
+            <p style="color:#374151;font-size:15px;line-height:1.7;">
+                Hello <strong>' . htmlspecialchars($toName) . '</strong>, your participation for 
+                <strong>' . htmlspecialchars($eventTitle) . '</strong> has been <span style="color:#22c55e;font-weight:700;">approved</span>!
+            </p>
+            <div style="margin:24px 0;padding:24px;background:#f8fafc;border:2px dashed #cbd5e1;border-radius:16px;">
+                <p style="margin:0 0 10px 0;font-size:14px;color:#64748b;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Official Ticket</p>
+                <h2 style="margin:0 0 15px 0;color:#2B4865;font-size:22px;font-weight:800;">' . htmlspecialchars($eventTitle) . '</h2>
+                <div style="display:flex;gap:20px;margin-bottom:15px;">
+                    <div>
+                        <p style="margin:0;font-size:12px;color:#94a3b8;">DATE & TIME</p>
+                        <p style="margin:2px 0 0 0;font-size:15px;color:#1e293b;font-weight:600;">' . htmlspecialchars($eventDate) . '</p>
+                    </div>
+                </div>
+                <div>
+                    <p style="margin:0;font-size:12px;color:#94a3b8;">LOCATION</p>
+                    <p style="margin:2px 0 0 0;font-size:15px;color:#1e293b;font-weight:600;">' . htmlspecialchars($eventLocation) . '</p>
+                </div>
+            </div>
+            <p style="color:#374151;font-size:15px;line-height:1.7;">
+                Please keep this email as your proof of entry. We look forward to seeing you there!
+            </p>
+            <div style="text-align:center;margin:28px 0;">
+                <a href="' . APP_ENTRY . '?url=teacher/evenements"
+                   style="display:inline-block;padding:13px 32px;background:linear-gradient(135deg,#2B4865,#548CA8);
+                          color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;
+                          letter-spacing:.3px;box-shadow:0 4px 14px rgba(43,72,101,0.35);">
+                    View My Events
+                </a>
+            </div>'
+        );
+
+        return self::send($toEmail, $toName, $subject, $body);
+    }
+
+    /**
+     * Notify the site inbox when someone submits the public contact form.
+     * Reply-To is set to the visitor so staff can answer directly from the mail client.
+     */
+    public static function sendContactFormSubmission(
+        string $senderName,
+        string $senderEmail,
+        string $subjectLine,
+        string $messageBody
+    ): bool {
+        $inbox = defined('CONTACT_INBOX_EMAIL') ? CONTACT_INBOX_EMAIL : 'appolios2026@gmail.com';
+        $inbox = trim($inbox);
+        if ($inbox === '' || !filter_var($inbox, FILTER_VALIDATE_EMAIL)) {
+            return false;
+        }
+
+        $subject = '[APPOLIOS Contact] ' . $subjectLine;
+        $body = self::wrapContactInquiryBody($senderName, $senderEmail, $subjectLine, $messageBody);
+
+        return self::send(
+            $inbox,
+            APP_NAME . ' Inbox',
+            $subject,
+            $body,
+            $senderEmail,
+            $senderName !== '' ? $senderName : null
+        );
+    }
+
     // ─────────────────────────────────────────────
     //  PRIVATE HELPERS
     // ─────────────────────────────────────────────
@@ -207,24 +288,144 @@ class MailService
 </html>';
     }
 
+    private static function wrapContactInquiryBody(
+        string $senderName,
+        string $senderEmail,
+        string $subjectLine,
+        string $messageBody
+    ): string {
+        $h = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
+        $msgHtml = nl2br($h($messageBody));
+
+        return '<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Contact form</title></head>
+<body style="margin:0;padding:24px;background:#f1f5f9;font-family:\'Segoe UI\',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+    <tr><td style="padding:24px 28px;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;font-size:18px;font-weight:700;">New message from ' . APP_NAME . ' contact form</td></tr>
+    <tr><td style="padding:28px 28px 32px;color:#334155;font-size:15px;line-height:1.65;">
+      <p style="margin:0 0 12px;"><strong>Name:</strong> ' . $h($senderName) . '</p>
+      <p style="margin:0 0 12px;"><strong>Email:</strong> <a href="mailto:' . $h($senderEmail) . '" style="color:#2563eb;">' . $h($senderEmail) . '</a></p>
+      <p style="margin:0 0 12px;"><strong>Subject:</strong> ' . $h($subjectLine) . '</p>
+      <p style="margin:16px 0 8px;font-weight:600;color:#0f172a;">Message</p>
+      <div style="padding:16px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">' . $msgHtml . '</div>
+    </td></tr>
+  </table>
+</body>
+</html>';
+    }
+
     /**
-     * Core send method — uses PHP mail().
-     * Replace with PHPMailer/SMTP calls for production.
+     * Core send — SMTP (PHPMailer) when configured, else PHP mail().
+     *
+     * @param string|null $replyToEmail If set, Reply-To uses this address (and optional name).
      */
-    private static function send(string $toEmail, string $toName, string $subject, string $body): bool
-    {
+    private static function send(
+        string $toEmail,
+        string $toName,
+        string $subject,
+        string $body,
+        ?string $replyToEmail = null,
+        ?string $replyToName = null
+    ): bool {
+        if (defined('MAIL_USE_SMTP') && MAIL_USE_SMTP) {
+            if (!self::loadPhpMailer()) {
+                error_log('MailService: SMTP enabled but PHPMailer not found under libs/PHPMailer/src/');
+
+                return false;
+            }
+
+            return self::sendViaSmtp($toEmail, $toName, $subject, $body, $replyToEmail, $replyToName);
+        }
+
         $fromEmail = self::$fromEmail;
         $fromName = self::$fromName;
 
         $headers = "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
         $headers .= "From: =?UTF-8?B?" . base64_encode($fromName) . "?= <{$fromEmail}>\r\n";
-        $headers .= "Reply-To: {$fromEmail}\r\n";
+        if ($replyToEmail !== null && $replyToEmail !== '' && filter_var($replyToEmail, FILTER_VALIDATE_EMAIL)) {
+            if ($replyToName !== null && $replyToName !== '') {
+                $headers .= 'Reply-To: =?UTF-8?B?' . base64_encode($replyToName) . '?= <' . $replyToEmail . ">\r\n";
+            } else {
+                $headers .= "Reply-To: {$replyToEmail}\r\n";
+            }
+        } else {
+            $headers .= "Reply-To: {$fromEmail}\r\n";
+        }
         $headers .= "X-Mailer: APPOLIOS-MailService/1.0\r\n";
 
         $encodedSubject = "=?UTF-8?B?" . base64_encode($subject) . "?=";
         $to = "=?UTF-8?B?" . base64_encode($toName) . "?= <{$toEmail}>";
 
         return @mail($to, $encodedSubject, $body, $headers);
+    }
+
+    private static function loadPhpMailer(): bool
+    {
+        static $loaded = null;
+        if ($loaded !== null) {
+            return $loaded;
+        }
+        $base = __DIR__ . '/../libs/PHPMailer/src/';
+        if (!is_file($base . 'PHPMailer.php')) {
+            $loaded = false;
+            return false;
+        }
+        require_once $base . 'Exception.php';
+        require_once $base . 'PHPMailer.php';
+        require_once $base . 'SMTP.php';
+        $loaded = class_exists(\PHPMailer\PHPMailer\PHPMailer::class);
+
+        return $loaded;
+    }
+
+    private static function sendViaSmtp(
+        string $toEmail,
+        string $toName,
+        string $subject,
+        string $body,
+        ?string $replyToEmail,
+        ?string $replyToName
+    ): bool {
+        try {
+            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+            $mail->isSMTP();
+            $mail->Host = MAIL_HOST;
+            $mail->SMTPAuth = true;
+            $mail->Username = MAIL_USERNAME;
+            $mail->Password = MAIL_PASSWORD;
+            $mail->Port = MAIL_PORT;
+            $enc = strtolower((string) MAIL_ENCRYPTION);
+            if ($enc === 'ssl' || (int) MAIL_PORT === 465) {
+                $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
+            } else {
+                $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+            }
+            $mail->CharSet = 'UTF-8';
+
+            // Gmail SMTP expects From to match the authenticated account (or a configured alias).
+            $fromEmail = self::$fromEmail;
+            $fromName = self::$fromName;
+            if (MAIL_HOST === 'smtp.gmail.com' && filter_var(MAIL_USERNAME, FILTER_VALIDATE_EMAIL)) {
+                $fromEmail = MAIL_USERNAME;
+            }
+
+            $mail->setFrom($fromEmail, $fromName);
+            $mail->addAddress($toEmail, $toName);
+
+            if ($replyToEmail !== null && $replyToEmail !== '' && filter_var($replyToEmail, FILTER_VALIDATE_EMAIL)) {
+                $mail->addReplyTo($replyToEmail, $replyToName ?? '');
+            }
+
+            $mail->Subject = $subject;
+            $mail->msgHTML($body);
+
+            return $mail->send();
+        } catch (\Throwable $e) {
+            error_log('MailService SMTP: ' . $e->getMessage());
+
+            return false;
+        }
     }
 }

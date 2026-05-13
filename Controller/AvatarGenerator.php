@@ -75,24 +75,11 @@ class AvatarGenerator
 
         $emoji = $this->selectEmoji($skinTone, $hairColor, $gender, $age);
 
-        // Background gradient colour based on gender
-        $bgFrom = ($gender === 'female') ? '#f9a8d4' : '#93c5fd';
-        $bgTo   = ($gender === 'female') ? '#ec4899' : '#3b82f6';
-
         $svg  = '<?xml version="1.0" encoding="UTF-8"?>';
         $svg .= '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">';
-        $svg .= '<defs>';
-        $svg .= '<radialGradient id="bgGrad" cx="50%" cy="40%" r="60%">'
-              . '<stop offset="0%"   stop-color="' . $bgFrom . '"/>'
-              . '<stop offset="100%" stop-color="' . $bgTo   . '"/>'
-              . '</radialGradient>';
-        $svg .= '</defs>';
-
-        // Circle background
-        $svg .= '<circle cx="100" cy="100" r="100" fill="url(#bgGrad)"/>';
-
+        
         // Emoji rendered as text (browsers render emoji fonts perfectly in SVG)
-        $svg .= '<text x="100" y="130" font-size="110" text-anchor="middle" dominant-baseline="middle">'
+        $svg .= '<text x="100" y="110" font-size="160" text-anchor="middle" dominant-baseline="middle">'
               . $emoji
               . '</text>';
 
@@ -101,61 +88,40 @@ class AvatarGenerator
         return $svg;
     }
 
-    /**
-     * Picks the best emoji from detected characteristics.
-     */
     private function selectEmoji(string $skinTone, string $hairColor, string $gender, float $age): string
     {
-        // ── Hair analysis ──────────────────────────────────────────────────
-        [$rH, $gH, $bH] = sscanf(ltrim($hairColor, '#'), '%02x%02x%02x');
-        $hairLuminance   = 0.299 * $rH + 0.587 * $gH + 0.114 * $bH;   // 0-255
-        $isRedHair       = ($rH > 140 && $rH > $gH * 1.4 && $rH > $bH * 1.6);
-        $isBlonde        = ($hairLuminance > 160);
-        $isWhiteOrGray   = ($hairLuminance > 200 && abs($rH - $gH) < 15 && abs($gH - $bH) < 15);
-        $isBald          = ($hairLuminance > 220);
+        // Hair analysis
+        $isBlonde = false;
+        if (!empty($hairColor)) {
+            [$rH, $gH, $bH] = sscanf(ltrim($hairColor, '#'), '%02x%02x%02x');
+            $hairLuminance = 0.299 * ($rH ?? 0) + 0.587 * ($gH ?? 0) + 0.114 * ($bH ?? 0);
+            $isBlonde = ($hairLuminance > 160);
+        }
 
-        // ── Age groups ─────────────────────────────────────────────────────
-        if ($age < 10) {
+        if ($age < 12) {
             return ($gender === 'female') ? '👧' : '👦';
         }
-        if ($age < 18) {
-            return ($gender === 'female') ? '👩' : '👦';
-        }
-        if ($age > 65) {
+        
+        if ($age > 60) {
             return ($gender === 'female') ? '👵' : '👴';
         }
-        if ($age > 50) {
-            return ($gender === 'female') ? '👩🦳' : '👨🦳';
+
+        if ($isBlonde) {
+            return '👱'; // Simple Blond Person (No gender symbol sequence)
         }
 
-        // ── Adults ─────────────────────────────────────────────────────────
-        if ($gender === 'female') {
-            if ($isBald)        return '👩🦲';
-            if ($isWhiteOrGray) return '👩🦳';
-            if ($isRedHair)     return '👩🦰';
-            if ($isBlonde)      return '👱♀️';
-            return '👩';
-        }
-
-        // Male
-        if ($isBald)        return '👨🦲';
-        if ($isWhiteOrGray) return '👨🦳';
-        if ($isRedHair)     return '👨🦰';
-        if ($isBlonde)      return '👱♂️';
-        return '🧔';   // default adult male → bearded
+        return ($gender === 'female') ? '👩' : '👨';
     }
 
     private function saveAvatar(int $userId, ?string $imageData, array $faceData): int
     {
         $config = json_encode($faceData);
         $stmt   = $this->db->prepare(
-            "INSERT INTO avatars (user_id, name, avatar_config, avatar_image, is_active)
-             VALUES (:user_id, :name, :config, :image, 1)"
+            "INSERT INTO avatars (user_id, filename, avatar_data) VALUES (:user_id, :name, :image)"
         );
         $stmt->execute([
             ':user_id' => $userId,
-            ':name'    => 'Emoji Avatar',
-            ':config'  => $config,
+            ':name'    => 'emoji_avatar_' . time() . '.svg',
             ':image'   => $imageData,
         ]);
         return (int) $this->db->lastInsertId();
@@ -163,7 +129,29 @@ class AvatarGenerator
 
     private function updateUserAvatar(int $userId, string $filename): void
     {
-        $stmt = $this->db->prepare("UPDATE users SET avatar = :avatar WHERE id = :id");
-        $stmt->execute([':avatar' => $filename, ':id' => $userId]);
+        // Check if avatar column exists first
+        $cols = $this->db->query("DESCRIBE users")->fetchAll(PDO::FETCH_COLUMN);
+        if (in_array('avatar', $cols)) {
+            $stmt = $this->db->prepare("UPDATE users SET avatar = :avatar WHERE id = :id");
+            $stmt->execute([':avatar' => $filename, ':id' => $userId]);
+        }
+    }
+    
+    public function getAvatarById(int $avatarId): array
+    {
+        $stmt = $this->db->prepare("SELECT avatar_data, filename FROM avatars WHERE id = ?");
+        $stmt->execute([$avatarId]);
+        $result = $stmt->fetch();
+        
+        if ($result && !empty($result['avatar_data'])) {
+            return [
+                'success' => true,
+                'data' => $result['avatar_data'],
+                'type' => 'image/svg+xml',
+                'filename' => $result['filename']
+            ];
+        }
+        
+        return ['success' => false];
     }
 }

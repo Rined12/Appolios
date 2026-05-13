@@ -11,5 +11,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
+    <script src="<?= APP_URL ?>/View/assets/js/module-focus.js"></script>
 </body>
 </html>

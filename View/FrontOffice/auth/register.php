@@ -102,9 +102,9 @@ unset($_SESSION['errors']);
                         <div
                             style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                             <span
-                                style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Strength</span>
-                            <span id="strength-text" style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Too
-                                Weak</span>
+                                style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">Sécurité</span>
+                            <span id="strength-text" style="font-size: 0.75rem; font-weight: 700; color: #64748b;">Trop
+                                Faible</span>
                         </div>
                         <div
                             style="height: 6px; background: rgba(226, 232, 240, 0.1); border-radius: 10px; overflow: hidden; margin-bottom: 12px;">
@@ -118,21 +118,21 @@ unset($_SESSION['errors']);
                                 <div class="req-dot"
                                     style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;">
                                 </div>
-                                At least 8 characters
+                                Au moins 8 caractères
                             </li>
                             <li id="req-number"
                                 style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
                                 <div class="req-dot"
                                     style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;">
                                 </div>
-                                Contains a number
+                                Contient un chiffre
                             </li>
                             <li id="req-special"
                                 style="font-size: 0.8rem; color: #ef4444; display: flex; align-items: center; gap: 8px; transition: all 0.3s;">
                                 <div class="req-dot"
                                     style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;">
                                 </div>
-                                Contains a special character
+                                Contient un caractère spécial
                             </li>
                         </ul>
                     </div>
@@ -438,23 +438,23 @@ unset($_SESSION['errors']);
 
                         if (strength === 0) {
                             bar.style.background = '#ef4444';
-                            text.textContent = 'Too Weak';
+                            text.textContent = 'Trop Faible';
                             text.style.color = '#ef4444';
                         } else if (strength < 34) {
                             bar.style.background = '#ef4444';
-                            text.textContent = 'Weak';
+                            text.textContent = 'Faible';
                             text.style.color = '#ef4444';
                         } else if (strength < 67) {
                             bar.style.background = '#f59e0b';
-                            text.textContent = 'Medium';
+                            text.textContent = 'Moyen';
                             text.style.color = '#f59e0b';
                         } else if (strength < 100) {
                             bar.style.background = '#10b981';
-                            text.textContent = 'Strong';
+                            text.textContent = 'Fort';
                             text.style.color = '#10b981';
                         } else {
                             bar.style.background = '#22c55e';
-                            text.textContent = 'Very Strong';
+                            text.textContent = 'Très Fort';
                             text.style.color = '#22c55e';
                         }
                     });

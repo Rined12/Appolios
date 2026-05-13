@@ -51,22 +51,36 @@ $params = [];
 if (!empty($segments)) {
     $first = strtolower($segments[0]);
     $second = $segments[1] ?? '';
+    $secondLower = strtolower((string) $second);
 
-    if (in_array($first, ['login', 'register', 'signup', 'logout', 'authenticate', 'admin'], true) && strtolower($second) === 'login') {
+    if ($first === 'admin' && $secondLower === 'login') {
         $controller = 'AuthController';
-        $action = 'login';
-    } elseif ($first === 'auth' && $second === 'face-login-admin') {
+        $action = 'adminLogin';
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'admin' && $secondLower === 'generate-with-ai') {
+        $controller = 'AdminController';
+        $action = 'generateWithAI';
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'teacher' && $secondLower === 'generate-with-ai') {
+        $controller = 'TeacherController';
+        $action = 'generateWithAI';
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'auth' && $secondLower === 'face-login-admin') {
         $controller = 'AuthController';
         $action = 'faceLoginAdmin';
-    } elseif ($first === 'auth' && $second === 'save-face-descriptor') {
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'auth' && $secondLower === 'save-face-descriptor') {
         $controller = 'AuthController';
         $action = 'saveFaceDescriptor';
-    } elseif ($first === 'auth' && $second === 'check-face-unique') {
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'auth' && $secondLower === 'check-face-unique') {
         $controller = 'AuthController';
         $action = 'checkFaceUnique';
-    } elseif ($first === 'auth' && $second === 'face-login') {
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'auth' && $secondLower === 'face-login') {
         $controller = 'AuthController';
         $action = 'faceLogin';
+        $params = array_slice($segments, 2);
     } elseif (in_array($first, ['login', 'register', 'signup', 'logout', 'authenticate'], true)) {
         $controller = 'AuthController';
         $actionMap = [
@@ -77,25 +91,143 @@ if (!empty($segments)) {
             'authenticate' => 'authenticate',
         ];
         $action = $actionMap[$first] ?? 'login';
+        $params = array_slice($segments, 1);
     } elseif ($first === 'forgot-password') {
         $controller = 'AuthController';
         $action = 'forgotPassword';
+        $params = array_slice($segments, 1);
     } elseif ($first === 'request-password-reset') {
         $controller = 'AuthController';
         $action = 'requestPasswordReset';
+        $params = array_slice($segments, 1);
     } elseif ($first === 'verify-reset-code') {
         $controller = 'AuthController';
         $action = 'verifyResetCode';
+        $params = array_slice($segments, 1);
     } elseif ($first === 'reset-password') {
         $controller = 'AuthController';
         $action = 'resetPassword';
+        $params = array_slice($segments, 1);
     } elseif ($first === 'process-reset-password') {
         $controller = 'AuthController';
         $action = 'processResetPassword';
-    } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home'], true)) {
-        $controller = ucfirst($first) . 'Controller';
-        $action = $second !== '' ? toCamelCaseAction($second) : ($first === 'auth' ? 'login' : 'index');
+        $params = array_slice($segments, 1);
+    } elseif ($first === 'language' && $secondLower === 'switch') {
+        $controller = 'LanguageController';
+        $action = 'switchLanguage';
         $params = array_slice($segments, 2);
+    } elseif ($first === 'admin-quiz') {
+        $adminQuizQuestionActions = [
+            'questions',
+            'add-question',
+            'store-question',
+            'edit-question',
+            'update-question',
+        ];
+        if (in_array($secondLower, $adminQuizQuestionActions, true)) {
+            $controller = 'QuestionController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'questions';
+            $params = array_slice($segments, 2);
+        } else {
+            $controller = 'QuizController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'quiz';
+            $params = array_slice($segments, 2);
+        }
+    } elseif ($first === 'student-quiz') {
+        $controller = 'QuizController';
+        $action = $second !== '' ? toCamelCaseAction($second) : 'quiz';
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'teacher-quiz') {
+        $teacherQuestionActions = [
+            'questions',
+            'create-question-collection',
+            'delete-question-collection',
+            'add-question-to-collection',
+            'remove-question-from-collection',
+            'add-question',
+            'store-question',
+            'edit-question',
+            'update-question',
+        ];
+        if (in_array($secondLower, $teacherQuestionActions, true)) {
+            $controller = 'QuestionController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'questions';
+            $params = array_slice($segments, 2);
+        } else {
+            $controller = 'QuizController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'quiz';
+            $params = array_slice($segments, 2);
+        }
+    } elseif ($first === 'student' && $secondLower === 'login') {
+        $controller = 'AuthController';
+        $action = 'login';
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'student' && $secondLower === 'get-avatar') {
+        $controller = 'StudentController';
+        $action = 'getAvatar';
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'teacher' && $secondLower === 'login') {
+        $controller = 'AuthController';
+        $action = 'login';
+        $params = array_slice($segments, 2);
+    } elseif ($first === 'certificate' && $secondLower === 'verify') {
+        $controller = 'StudentController';
+        $action = 'verifyCertificate';
+        $params = array_slice($segments, 2);
+    } elseif (in_array($first, ['admin', 'student', 'teacher', 'auth', 'home', 'book', 'chatbot', 'payment', 'certificate', 'event', 'ressource', 'discussion'], true)) {
+        if (in_array($first, ['admin', 'teacher'], true) && in_array($secondLower, [
+            'quizzes',
+            'quiz-history',
+            'quiz-stats',
+            'add-quiz',
+            'store-quiz',
+            'edit-quiz',
+            'update-quiz',
+            'delete-quiz',
+            'approve-quiz',
+            'reject-quiz',
+            'duplicate-quiz',
+        ], true)) {
+            $controller = 'QuizController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
+        } elseif ($first === 'student' && in_array($secondLower, [
+            'quiz',
+            'take-quiz',
+            'submit-quiz',
+            'toggle-favorite-quiz',
+            'toggle-redo-quiz',
+        ], true)) {
+            $controller = 'QuizController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
+        } elseif ($first === 'student' && in_array($secondLower, ['coach', 'quiz-history'], true)) {
+            $controller = 'QuizController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
+        } elseif (in_array($first, ['admin', 'teacher'], true) && in_array($secondLower, [
+            'questions',
+            'add-question',
+            'store-question',
+            'edit-question',
+            'update-question',
+        ], true)) {
+            $controller = 'QuestionController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
+        } elseif ($first === 'student' && in_array($secondLower, [
+            'questions-bank',
+            'training',
+            'questions-bank-difficulty',
+        ], true)) {
+            $controller = 'QuestionController';
+            $action = $second !== '' ? toCamelCaseAction($second) : 'index';
+            $params = array_slice($segments, 2);
+        } else {
+            $controller = ucfirst($first) . 'Controller';
+            $action = $second !== '' ? toCamelCaseAction($second) : ($first === 'auth' ? 'login' : 'index');
+            $params = array_slice($segments, 2);
+        }
     } else {
         $controller = 'HomeController';
         $action = toCamelCaseAction($first);

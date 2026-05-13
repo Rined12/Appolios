@@ -11,10 +11,7 @@ $editResource = $editResource ?? null;
 
 ?>
 
-<div class="dashboard">
-    <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
-        <div class="admin-layout">
-            <?php $adminSidebarActive = 'evenements'; require __DIR__ . '/partials/sidebar.php'; ?>
+
 
             <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
                 
@@ -30,7 +27,7 @@ $editResource = $editResource ?? null;
                             
                             <div style="position: relative; z-index: 2;">
                                 <!-- Back Link matching the screenshot -->
-                                <a href="<?= APP_ENTRY ?>?url=admin/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; color: #548CA8; font-weight: 700; text-decoration: none; margin-bottom: 2rem; transition: color 0.2s;" onmouseover="this.style.color='#355C7D'" onmouseout="this.style.color='#548CA8'">
+                                <a href="<?= APP_ENTRY ?>?url=event/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; color: #548CA8; font-weight: 700; text-decoration: none; margin-bottom: 2rem; transition: color 0.2s;" onmouseover="this.style.color='#355C7D'" onmouseout="this.style.color='#548CA8'">
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                                     Back to Evenements
                                 </a>
@@ -45,6 +42,10 @@ $editResource = $editResource ?? null;
                                     <span style="color: #94a3b8; margin-right: 8px;">Evenement:</span>
                                     <strong style="color: #2B4865; font-size: 1.05rem;"><?= htmlspecialchars($selectedEvenementTitle) ?></strong>
                                 </div>
+                                <button type="button" id="generateAiBtn" data-evenement-id="<?= (int) $selectedEvenementId ?>" style="margin-left: 1rem; background: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(124, 58, 237, 0.2); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                                    Générer IA
+                                </button>
                             </div>
                         </div>
 
@@ -65,7 +66,7 @@ $editResource = $editResource ?? null;
                                 <?php foreach ($formCards as $fc): ?>
                                 <div class="ressource-form-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.02);" onmouseover="this.style.transform='translateY(-4px)'; this.style.borderColor='#cbd5e1'; this.style.boxShadow='0 12px 20px rgba(0,0,0,0.06)'" onmouseout="this.style.transform='translateY(0)'; this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.02)'">
                                     <h3 style="margin: 0 0 1.2rem 0; color: #1e293b; font-size: 1.15rem; font-weight: 700;">Ajouter <?= htmlspecialchars($fc['label']) ?></h3>
-                                    <form action="<?= APP_ENTRY ?>?url=admin/store-evenement-ressource" method="POST" class="resource-create-form" data-type-label="<?= htmlspecialchars($fc['label']) ?>">
+                                    <form action="<?= APP_ENTRY ?>?url=ressource/store-evenement-ressource" method="POST" class="resource-create-form" data-type-label="<?= htmlspecialchars($fc['label']) ?>">
                                         <input type="hidden" name="type" value="<?= htmlspecialchars($fc['type']) ?>">
                                         <input type="hidden" name="evenement_id" value="<?= (int) $selectedEvenementId ?>">
                                         
@@ -111,7 +112,7 @@ $editResource = $editResource ?? null;
                                                 <?php foreach ($items as $item): ?>
                                                     <li style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; transition: all 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.background='#f1f5f9'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
                                                         <?php if ($editResource && (int) $editResource['id'] === (int) $item['id']): ?>
-                                                            <form action="<?= APP_ENTRY ?>?url=admin/update-evenement-ressource/<?= (int) $item['id'] ?>" method="POST">
+                                                            <form action="<?= APP_ENTRY ?>?url=ressource/update-evenement-ressource/<?= (int) $item['id'] ?>" method="POST">
                                                                 <input type="hidden" name="evenement_id" value="<?= (int) $selectedEvenementId ?>">
                                                                 <div style="margin-bottom: 10px;">
                                                                     <input type="text" name="title" value="<?= htmlspecialchars($item['title']) ?>" required style="width: 100%; background: #fff; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; font-size: 0.95rem; font-weight: 600; outline: none;">
@@ -121,7 +122,7 @@ $editResource = $editResource ?? null;
                                                                 </div>
                                                                 <div style="display: flex; gap: 10px;">
                                                                     <button type="submit" style="background: #548CA8; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer;">Sauvegarder</button>
-                                                                    <a href="<?= APP_ENTRY ?>?url=admin/evenement-ressources&evenement_id=<?= (int) $selectedEvenementId ?>" style="background: #e2e8f0; color: #475569; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: 600;">Annuler</a>
+                                                                    <a href="<?= APP_ENTRY ?>?url=ressource/evenement-ressources&evenement_id=<?= (int) $selectedEvenementId ?>" style="background: #e2e8f0; color: #475569; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: 600;">Annuler</a>
                                                                 </div>
                                                             </form>
                                                         <?php else: ?>
@@ -133,10 +134,10 @@ $editResource = $editResource ?? null;
                                                                     <?php endif; ?>
                                                                 </div>
                                                                 <div style="display: flex; gap: 8px; flex-shrink: 0;">
-                                                                    <a href="<?= APP_ENTRY ?>?url=admin/evenement-ressources&evenement_id=<?= (int) $selectedEvenementId ?>&edit_id=<?= (int) $item['id'] ?>" style="background: #fff; border: 1.5px solid #e2e8f0; color: #64748b; text-decoration: none; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.borderColor='#548CA8'; this.style.color='#548CA8'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'" title="Edit">
+                                                                    <a href="<?= APP_ENTRY ?>?url=ressource/evenement-ressources&evenement_id=<?= (int) $selectedEvenementId ?>&edit_id=<?= (int) $item['id'] ?>" style="background: #fff; border: 1.5px solid #e2e8f0; color: #64748b; text-decoration: none; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.borderColor='#548CA8'; this.style.color='#548CA8'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'" title="Edit">
                                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                                                     </a>
-                                                                    <form action="<?= APP_ENTRY ?>?url=admin/delete-evenement-ressource/<?= (int) $item['id'] ?>" method="POST" style="margin: 0;">
+                                                                    <form action="<?= APP_ENTRY ?>?url=ressource/delete-evenement-ressource/<?= (int) $item['id'] ?>" method="POST" style="margin: 0;">
                                                                         <input type="hidden" name="evenement_id" value="<?= (int) $selectedEvenementId ?>">
                                                                         <button type="submit" onclick="return confirm('Delete this resource item?')" style="background: #fff; border: 1.5px solid #e2e8f0; color: #ef4444; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.borderColor='#fecaca'; this.style.background='#fef2f2'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#fff'" title="Delete">
                                                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
@@ -169,9 +170,7 @@ $editResource = $editResource ?? null;
                 </section>
                 
             </div>
-        </div>
-    </div>
-</div>
+        
 
 <style>
     @media (max-width: 992px) {
@@ -199,7 +198,7 @@ $editResource = $editResource ?? null;
         if (validForms.length === 0) {
             if (existingRightListItems.length > 0) {
                 alert('Resources are already present in the right list and considered saved.');
-                window.location.href = '<?= APP_ENTRY ?>?url=admin/evenements';
+                window.location.href = '<?= APP_ENTRY ?>?url=event/evenements';
                 return;
             }
 
@@ -243,7 +242,41 @@ $editResource = $editResource ?? null;
             alert('All resources saved successfully (' + savedCount + ').');
         }
 
-        window.location.href = '<?= APP_ENTRY ?>?url=admin/evenements';
+        window.location.href = '<?= APP_ENTRY ?>?url=event/evenements';
     });
+
+    const generateAiBtn = document.getElementById('generateAiBtn');
+    if (generateAiBtn) {
+        generateAiBtn.addEventListener('click', async function() {
+            if (!confirm('Générer des ressources avec IA pour cet événement ? Cela peut prendre quelques secondes.')) return;
+            
+            const originalText = this.innerHTML;
+            this.innerHTML = 'Génération en cours...';
+            this.disabled = true;
+            
+            const fd = new FormData();
+            fd.append('evenement_id', this.dataset.evenementId);
+            
+            try {
+                const res = await fetch('<?= APP_ENTRY ?>?url=ressource/generateAiResources', {
+                    method: 'POST',
+                    body: fd
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Succès: ' + data.message);
+                    window.location.reload();
+                } else {
+                    alert('Erreur: ' + data.message);
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                }
+            } catch (e) {
+                alert('Erreur de connexion');
+                this.innerHTML = originalText;
+                this.disabled = false;
+            }
+        });
+    }
 })();
 </script>

@@ -20,16 +20,27 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             <span>Espace</span>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=admin/evenements" class="admin-side-link <?= $adminSidebarActive === 'evenements' ? 'active' : '' ?>">
+        <a href="<?= APP_ENTRY ?>?url=event/evenements" class="admin-side-link <?= $adminSidebarActive === 'evenements' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M8 2v4"></path>
-                    <path d="M16 2v4"></path>
-                    <rect x="3" y="5" width="18" height="16" rx="2"></rect>
-                    <path d="M3 10h18"></path>
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
             </span>
-            <span>Evenement</span>
+            <span>Evenements</span>
+        </a>
+
+        <a href="<?= APP_ENTRY ?>?url=admin/stat-evenements" class="admin-side-link <?= $adminSidebarActive === 'stat-evenements' ? 'active' : '' ?>">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+            </span>
+            <span>Stat Evenements</span>
         </a>
 
         <a href="<?= APP_ENTRY ?>?url=admin/teacher-applications" class="admin-side-link <?= $adminSidebarActive === 'teacher-applications' ? 'active' : '' ?>">
@@ -50,15 +61,13 @@ $adminSidebarActive = $adminSidebarActive ?? '';
             <?php endif; ?>
         </a>
 
-        <a href="<?= APP_ENTRY ?>?url=admin/add-evenement" class="admin-side-link <?= $adminSidebarActive === 'add-evenement' ? 'active' : '' ?>">
+        <a href="<?= APP_ENTRY ?>?url=event/add-evenement" class="admin-side-link <?= $adminSidebarActive === 'add-evenement' ? 'active' : '' ?>">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="12" y1="12" x2="12" y2="12"></line>
-                    <line x1="8" y1="12" x2="16" y2="12"></line>
-                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
             </span>
             <span>Add Evenement</span>
@@ -74,6 +83,17 @@ $adminSidebarActive = $adminSidebarActive ?? '';
                 </svg>
             </span>
             <span>Add Course</span>
+        </a>
+
+        <a href="<?= APP_ENTRY ?>?url=admin/course-requests" class="admin-side-link <?= $adminSidebarActive === 'course-requests' ? 'active' : '' ?>">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+            </span>
+            <span>Course Requests</span>
         </a>
 
         <a href="<?= APP_ENTRY ?>?url=admin/courses" class="admin-side-link <?= $adminSidebarActive === 'courses' ? 'active' : '' ?>">
@@ -151,12 +171,35 @@ $adminSidebarActive = $adminSidebarActive ?? '';
                     <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
                 </svg>
             </span>
-            <span>Statistique</span>
+            <span>Statistiques</span>
         </a>
 
-        <div class="sidebar-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 15px 20px;"></div>
+        <a href="<?= APP_ENTRY ?>?url=admin/quizzes" class="admin-side-link <?= $adminSidebarActive === 'quizzes' ? 'active' : '' ?>">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 11 12 14 22 4"></polyline>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                </svg>
+            </span>
+            <span>Quiz & Examens</span>
+        </a>
+
+        <a href="<?= APP_ENTRY ?>?url=admin/questions" class="admin-side-link <?= $adminSidebarActive === 'questions_bank' ? 'active' : '' ?>">
+            <span class="admin-side-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="2"></circle>
+                    <line x1="12" y1="17" x2="12" y2="17.5"></line>
+                </svg>
+            </span>
+            <span>Banque de Questions</span>
+        </a>
+
+
+            <div class="sidebar-divider" style="height: 1px; background: rgba(255,255,255,0.1); margin: 15px 20px;"></div>
         <p style="padding-left: 20px; font-size: 0.7rem; color: rgba(255,255,255,0.5); text-transform: uppercase; margin-bottom: 5px;">Aperçu des Espaces</p>
 
+        <!-- Conteneur pour l'Espace Étudiant -->
         <a href="<?= APP_ENTRY ?>?url=student/dashboard" class="admin-side-link">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -165,9 +208,10 @@ $adminSidebarActive = $adminSidebarActive ?? '';
                     <polyline points="12 4 4 8 12 12 20 8 12 4"></polyline>
                 </svg>
             </span>
-            <span>Etudiant</span>
+            <span>Espace Étudiant</span>
         </a>
 
+        <!-- Conteneur pour l'Espace Teacher -->
         <a href="<?= APP_ENTRY ?>?url=teacher/dashboard" class="admin-side-link">
             <span class="admin-side-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -175,7 +219,7 @@ $adminSidebarActive = $adminSidebarActive ?? '';
                     <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
                 </svg>
             </span>
-            <span>Teacher</span>
+            <span>Espace Teacher</span>
         </a>
 
     </nav>

@@ -10,6 +10,762 @@ class AdminController extends BaseController
 {
     use ActivityLogger;
 
+
+
+    public function slGroupes()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $groupModel = $this->model('Groupe');
+        $pending = array_values(array_filter($groupModel->fetchAll(), function ($g) {
+            return (string) ($g['approval_statut'] ?? '') === 'en_cours';
+        }));
+        $approved = $groupModel->fetchAllApproved();
+
+        $normalizeCover = function (array $g): array {
+            $raw = trim((string) ($g['image_url'] ?? ''));
+            if ($raw === '') {
+                $g['cover_url'] = '';
+            } elseif (preg_match('~^https?://~i', $raw)) {
+                $g['cover_url'] = $raw;
+            } else {
+                $g['cover_url'] = APP_URL . '/' . ltrim($raw, '/');
+            }
+            return $g;
+        };
+        $pending = array_map($normalizeCover, $pending);
+        $approved = array_map($normalizeCover, $approved);
+
+        $data = [
+            'title' => 'Social Learning - Groupes',
+            'description' => 'Manage Social Learning groups',
+            'adminSidebarActive' => 'sl-groupes',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'pending_groups' => $pending,
+            'approved_groups' => $approved,
+            'flash' => $this->getFlash(),
+        ];
+
+        $this->view('BackOffice/admin/sl_groupes', $data);
+    }
+
+    public function approveGroupe($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupId = (int) $id;
+        if ($groupId <= 0) {
+            $this->setFlash('error', 'Invalid group id.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupModel = $this->model('Groupe');
+        $g = $groupModel->findById($groupId);
+        if (!$g) {
+            $this->setFlash('error', 'Group not found.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $ok = $groupModel->updateGroupe($groupId, [
+            'nom_groupe' => (string) ($g['nom_groupe'] ?? ''),
+            'description' => (string) ($g['description'] ?? ''),
+            'statut' => (string) ($g['statut'] ?? 'actif'),
+            'approval_statut' => 'approuve',
+            'image_url' => (string) ($g['image_url'] ?? ''),
+        ]);
+
+        if ($ok) {
+            $this->setFlash('success', 'Group approved.');
+        } else {
+            $this->setFlash('error', 'Failed to approve group.');
+        }
+
+        $this->redirect('admin/sl-groupes');
+    }
+
+    public function editGroupe($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $groupId = (int) $id;
+        if ($groupId <= 0) {
+            $this->setFlash('error', 'Invalid group id.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupModel = $this->model('Groupe');
+        $g = $groupModel->findById($groupId);
+        if (!$g) {
+            $this->setFlash('error', 'Group not found.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $data = [
+            'title' => 'Edit Group - APPOLIOS',
+            'description' => 'Edit Social Learning group',
+            'adminSidebarActive' => 'sl-groupes',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'groupe' => $g,
+            'flash' => $this->getFlash(),
+        ];
+        $this->view('BackOffice/admin/edit_groupe', $data);
+    }
+
+    public function updateGroupe($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupId = (int) $id;
+        if ($groupId <= 0) {
+            $this->setFlash('error', 'Invalid group id.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupModel = $this->model('Groupe');
+        $g = $groupModel->findById($groupId);
+        if (!$g) {
+            $this->setFlash('error', 'Group not found.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $nom = trim((string) ($_POST['nom_groupe'] ?? ''));
+        $desc = trim((string) ($_POST['description'] ?? ''));
+        $statut = (string) ($_POST['statut'] ?? (string) ($g['statut'] ?? 'actif'));
+        $approval = (string) ($_POST['approval_statut'] ?? (string) ($g['approval_statut'] ?? 'en_cours'));
+
+        if ($nom === '' || $desc === '') {
+            $this->setFlash('error', 'Name and description are required.');
+            $this->redirect('admin/edit-groupe/' . $groupId);
+            return;
+        }
+        if (!in_array($statut, ['actif', 'archivé'], true)) {
+            $statut = 'actif';
+        }
+        if (!in_array($approval, ['en_cours', 'approuve', 'rejete'], true)) {
+            $approval = (string) ($g['approval_statut'] ?? 'en_cours');
+        }
+
+        $imageUrl = (string) ($g['image_url'] ?? '');
+        if (!empty($_FILES['group_photo']) && is_array($_FILES['group_photo']) && ($_FILES['group_photo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $uploadResult = $this->storeUploadedFile($_FILES['group_photo'], __DIR__ . '/../uploads/groupes');
+            if ($uploadResult['ok']) {
+                $imageUrl = 'uploads/groupes/' . $uploadResult['fileName'];
+            }
+        }
+
+        $ok = $groupModel->updateGroupe($groupId, [
+            'nom_groupe' => $nom,
+            'description' => $desc,
+            'statut' => $statut,
+            'approval_statut' => $approval,
+            'image_url' => $imageUrl,
+        ]);
+
+        if ($ok) {
+            $this->setFlash('success', 'Group updated.');
+        } else {
+            $this->setFlash('error', 'Failed to update group.');
+        }
+        $this->redirect('admin/edit-groupe/' . $groupId);
+    }
+
+    public function groupActivityPdf($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $groupId = (int) $id;
+        if ($groupId <= 0) {
+            $this->setFlash('error', 'Invalid group id.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupModel = $this->model('Groupe');
+        $postModel = $this->model('GroupPost');
+        $reactionModel = $this->model('GroupPostReaction');
+        $commentModel = $this->model('GroupPostComment');
+        $discussionModel = $this->model('Discussion');
+
+        $g = $groupModel->findById($groupId);
+        if (!$g) {
+            $this->setFlash('error', 'Group not found.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $members = $groupModel->fetchMembres($groupId);
+        $posts = $postModel->fetchByGroup($groupId, 200);
+        $postCount = count($posts);
+        $commentCount = 0;
+        $reactionCount = 0;
+        foreach ($posts as $p) {
+            $pid = (int) ($p['id'] ?? 0);
+            $commentCount += $pid > 0 ? count($commentModel->fetchByPost($pid, 200)) : 0;
+            $r = $pid > 0 ? $reactionModel->countByPost($pid) : [];
+            foreach ($r as $cnt) {
+                $reactionCount += (int) $cnt;
+            }
+        }
+        $discussions = $discussionModel->fetchByGroup($groupId);
+
+        $data = [
+            'title' => 'Group Activity Report - APPOLIOS',
+            'description' => 'Printable group activity report',
+            'adminSidebarActive' => 'sl-groupes',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'groupe' => $g,
+            'members' => $members,
+            'posts' => $posts,
+            'discussions' => $discussions,
+            'stats' => [
+                'posts' => $postCount,
+                'comments' => $commentCount,
+                'reactions' => $reactionCount,
+                'members' => count($members),
+                'discussions' => count($discussions),
+            ],
+            'flash' => $this->getFlash(),
+        ];
+        $this->view('BackOffice/admin/group_activity_pdf', $data);
+    }
+
+    public function showGroupe($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $groupId = (int) $id;
+        if ($groupId <= 0) {
+            $this->setFlash('error', 'Invalid group id.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupModel = $this->model('Groupe');
+        $g = $groupModel->findById($groupId);
+        if (!$g) {
+            $this->setFlash('error', 'Group not found.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $members = $groupModel->fetchMembres($groupId);
+
+        $data = [
+            'title' => 'Group Details - APPOLIOS',
+            'description' => 'Admin group view',
+            'adminSidebarActive' => 'sl-groupes',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'groupe' => $g,
+            'members' => $members,
+            'flash' => $this->getFlash(),
+        ];
+        $this->view('BackOffice/admin/show_groupe', $data);
+    }
+
+    public function createGroupe()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $data = [
+            'title' => 'Create Group - APPOLIOS',
+            'description' => 'Create Social Learning group',
+            'adminSidebarActive' => 'sl-groupes',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'flash' => $this->getFlash(),
+        ];
+        $this->view('BackOffice/admin/create_groupe', $data);
+    }
+
+    public function storeGroupe()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/create-groupe');
+            return;
+        }
+
+        $nom = trim((string) ($_POST['nom_groupe'] ?? ''));
+        $desc = trim((string) ($_POST['description'] ?? ''));
+        $statut = (string) ($_POST['statut'] ?? 'actif');
+        $approval = (string) ($_POST['approval_statut'] ?? 'approuve');
+
+        if ($nom === '' || $desc === '') {
+            $this->setFlash('error', 'Name and description are required.');
+            $this->redirect('admin/create-groupe');
+            return;
+        }
+        if (!in_array($statut, ['actif', 'archivé'], true)) {
+            $statut = 'actif';
+        }
+        if (!in_array($approval, ['en_cours', 'approuve', 'rejete'], true)) {
+            $approval = 'approuve';
+        }
+
+        $imageUrl = null;
+        if (!empty($_FILES['group_photo']) && is_array($_FILES['group_photo']) && ($_FILES['group_photo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $uploadResult = $this->storeUploadedFile($_FILES['group_photo'], __DIR__ . '/../uploads/groupes');
+            if ($uploadResult['ok']) {
+                $imageUrl = 'uploads/groupes/' . $uploadResult['fileName'];
+            }
+        }
+
+        $groupModel = $this->model('Groupe');
+        $newId = $groupModel->create([
+            'nom_groupe' => $nom,
+            'description' => $desc,
+            'id_createur' => (int) ($_SESSION['user_id'] ?? 0),
+            'statut' => $statut,
+            'approval_statut' => $approval,
+            'image_url' => $imageUrl,
+        ]);
+
+        if ($newId) {
+            $this->setFlash('success', 'Group created.');
+            $this->redirect('admin/edit-groupe/' . (int) $newId);
+            return;
+        }
+
+        $this->setFlash('error', 'Failed to create group.');
+        $this->redirect('admin/create-groupe');
+    }
+
+    public function slDiscussions()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $status = (string) ($_GET['status'] ?? 'all');
+        $approval = null;
+        if (in_array($status, ['en_cours', 'approuve', 'rejete'], true)) {
+            $approval = $status;
+        }
+
+        $discussionModel = $this->model('Discussion');
+        $rows = $discussionModel->fetchAllWithGroupAndAuthor($approval);
+
+        $pendingCount = count($discussionModel->fetchAllWithGroupAndAuthor('en_cours'));
+        $approvedCount = count($discussionModel->fetchAllWithGroupAndAuthor('approuve'));
+        $rejectedCount = count($discussionModel->fetchAllWithGroupAndAuthor('rejete'));
+
+        $data = [
+            'title' => 'Social Learning - Discussions',
+            'description' => 'Manage Social Learning discussions',
+            'adminSidebarActive' => 'sl-discussions',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'discussions' => $rows,
+            'filterStatus' => $status,
+            'pendingCount' => $pendingCount,
+            'approvedCount' => $approvedCount,
+            'rejectedCount' => $rejectedCount,
+            'flash' => $this->getFlash(),
+        ];
+
+        $this->view('BackOffice/admin/sl_discussions', $data);
+    }
+
+    public function approveDiscussion($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $discussionId = (int) $id;
+        if ($discussionId <= 0) {
+            $this->setFlash('error', 'Invalid discussion id.');
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $discussionModel = $this->model('Discussion');
+        $row = $discussionModel->fetchRowByPk($discussionId);
+        if (!$row) {
+            $this->setFlash('error', 'Discussion not found.');
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $stmt = $this->getDb()->prepare('UPDATE discussion SET approval_statut = ? WHERE id_discussion = ?');
+        $ok = $stmt->execute(['approuve', $discussionId]);
+        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion approved.' : 'Failed to approve discussion.');
+        $this->redirect('admin/sl-discussions');
+    }
+
+    public function rejectDiscussion($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $discussionId = (int) $id;
+        if ($discussionId <= 0) {
+            $this->setFlash('error', 'Invalid discussion id.');
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $discussionModel = $this->model('Discussion');
+        $row = $discussionModel->fetchRowByPk($discussionId);
+        if (!$row) {
+            $this->setFlash('error', 'Discussion not found.');
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $stmt = $this->getDb()->prepare('UPDATE discussion SET approval_statut = ? WHERE id_discussion = ?');
+        $ok = $stmt->execute(['rejete', $discussionId]);
+        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion rejected.' : 'Failed to reject discussion.');
+        $this->redirect('admin/sl-discussions');
+    }
+
+    public function deleteDiscussion($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $discussionId = (int) $id;
+        if ($discussionId <= 0) {
+            $this->setFlash('error', 'Invalid discussion id.');
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $discussionModel = $this->model('Discussion');
+        $ok = $discussionModel->deleteByPrimaryKey($discussionId);
+        $this->setFlash($ok ? 'success' : 'error', $ok ? 'Discussion deleted.' : 'Failed to delete discussion.');
+        $this->redirect('admin/sl-discussions');
+    }
+
+    public function createDiscussion()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $groupModel = $this->model('Groupe');
+        $groups = $groupModel->fetchAllApproved();
+
+        $data = [
+            'title' => 'Create Discussion - APPOLIOS',
+            'description' => 'Create Social Learning discussion',
+            'adminSidebarActive' => 'sl-discussions',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'groups' => $groups,
+            'flash' => $this->getFlash(),
+        ];
+        $this->view('BackOffice/admin/create_discussion', $data);
+    }
+
+    public function storeDiscussion()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/create-discussion');
+            return;
+        }
+
+        $groupId = (int) ($_POST['id_groupe'] ?? 0);
+        $title = trim((string) ($_POST['titre'] ?? ''));
+        $content = trim((string) ($_POST['contenu'] ?? ''));
+        $approval = (string) ($_POST['approval_statut'] ?? 'approuve');
+
+        if ($groupId <= 0 || $title === '' || $content === '') {
+            $this->setFlash('error', 'Group, title and content are required.');
+            $this->redirect('admin/create-discussion');
+            return;
+        }
+        if (!in_array($approval, ['en_cours', 'approuve', 'rejete'], true)) {
+            $approval = 'approuve';
+        }
+
+        $groupModel = $this->model('Groupe');
+        $g = $groupModel->findById($groupId);
+        if (!$g || (string) ($g['approval_statut'] ?? '') !== 'approuve') {
+            $this->setFlash('error', 'Selected group is not approved.');
+            $this->redirect('admin/create-discussion');
+            return;
+        }
+
+        $discussionModel = $this->model('Discussion');
+        $ok = $discussionModel->createForGroup($groupId, (int) ($_SESSION['user_id'] ?? 0), $title, $content, $approval);
+        if ($ok) {
+            $this->setFlash('success', 'Discussion created.');
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $this->setFlash('error', 'Failed to create discussion.');
+        $this->redirect('admin/create-discussion');
+    }
+
+    public function chatDiscussion($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $discussionId = (int) $id;
+        if ($discussionId <= 0) {
+            $this->setFlash('error', 'Invalid discussion id.');
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $discussionModel = $this->model('Discussion');
+        $groupModel = $this->model('Groupe');
+        $discussion = $discussionModel->fetchRowByPk($discussionId);
+        if (!$discussion) {
+            $this->setFlash('error', 'Discussion not found.');
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        if ((string) ($discussion['approval_statut'] ?? '') !== 'approuve') {
+            $this->setFlash('error', 'Live chat is available only for approved discussions.');
+            $this->redirect('admin/sl-discussions');
+            return;
+        }
+
+        $group = $groupModel->findById((int) ($discussion['id_groupe'] ?? 0));
+        $chatRoom = 'discussion_' . $discussionId;
+        $socketUrl = (string) ($_ENV['REALTIME_SOCKET_URL'] ?? 'http://127.0.0.1:3001');
+
+        $uploadUrl = APP_ENTRY . '?url=admin/upload-chat-attachment/' . $discussionId;
+        $summarizeUrl = APP_ENTRY . '?url=student/summarize-text';
+
+        $data = [
+            'title' => 'Live discussion - APPOLIOS',
+            'description' => 'Admin live discussion chat',
+            'adminSidebarActive' => 'sl-discussions',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'discussion' => $discussion,
+            'group' => $group ?: [],
+            'chatRoom' => $chatRoom,
+            'socketUrl' => $socketUrl,
+            'currentUserId' => (int) ($_SESSION['user_id'] ?? 0),
+            'currentUserName' => (string) ($_SESSION['user_name'] ?? 'Admin'),
+            'discussion_chat' => [
+                'back_url' => APP_ENTRY . '?url=admin/sl-discussions',
+                'upload_url' => $uploadUrl,
+                'summarize_url' => $summarizeUrl,
+            ],
+            'flash' => $this->getFlash(),
+        ];
+
+        $this->view('BackOffice/admin/chat_discussion', $data);
+    }
+
+    public function uploadChatAttachment($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->jsonResponse(['ok' => false, 'error' => 'Unauthorized.'], 401);
+        }
+
+        $discussionId = (int) $id;
+        if ($discussionId <= 0) {
+            $this->jsonResponse(['ok' => false, 'error' => 'Invalid discussion id.'], 422);
+        }
+
+        if (empty($_FILES['attachment']) || !is_array($_FILES['attachment'])) {
+            $this->jsonResponse(['ok' => false, 'error' => 'No file uploaded.'], 422);
+        }
+
+        $result = $this->storeAdminChatAttachment($_FILES['attachment'], __DIR__ . '/../uploads/chat');
+        if (!$result['ok']) {
+            $this->jsonResponse(['ok' => false, 'error' => $result['error']], 422);
+        }
+
+        $url = APP_URL . '/uploads/chat/' . $result['fileName'];
+        $this->jsonResponse(['ok' => true, 'data' => ['url' => $url, 'name' => $result['originalName'] ?? $result['fileName']]]);
+    }
+
+    private function storeAdminChatAttachment(array $file, string $targetDir): array
+    {
+        $err = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($err !== UPLOAD_ERR_OK) {
+            return ['ok' => false, 'error' => 'Upload failed.'];
+        }
+
+        if (!is_dir($targetDir)) {
+            @mkdir($targetDir, 0775, true);
+        }
+
+        $original = (string) ($file['name'] ?? 'file');
+        $tmp = (string) ($file['tmp_name'] ?? '');
+        $mime = (string) ($file['type'] ?? '');
+        $size = (int) ($file['size'] ?? 0);
+
+        if ($tmp === '' || !is_uploaded_file($tmp)) {
+            return ['ok' => false, 'error' => 'Invalid upload.'];
+        }
+
+        if ($size > 2 * 1024 * 1024) {
+            return ['ok' => false, 'error' => 'File too large (max 2MB).'];
+        }
+
+        $ext = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+        if ($ext === '') {
+            $ext = 'bin';
+        }
+
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'mp3', 'wav', 'doc', 'docx'];
+        if (!in_array($ext, $allowed, true)) {
+            return ['ok' => false, 'error' => 'Unsupported file type.'];
+        }
+
+        $safe = preg_replace('/[^a-zA-Z0-9._-]/', '_', pathinfo($original, PATHINFO_FILENAME));
+        if ($safe === '' || $safe === null) {
+            $safe = 'upload';
+        }
+        $fileName = $safe . '_' . date('Ymd_His') . '_' . random_int(1000, 9999) . '.' . $ext;
+        $dest = rtrim($targetDir, '/\\') . DIRECTORY_SEPARATOR . $fileName;
+
+        if (!@move_uploaded_file($tmp, $dest)) {
+            return ['ok' => false, 'error' => 'Failed to save file.'];
+        }
+
+        return [
+            'ok' => true,
+            'fileName' => $fileName,
+            'originalName' => $original,
+            'mime' => $mime,
+        ];
+    }
+
+    public function rejectGroupe($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupId = (int) $id;
+        if ($groupId <= 0) {
+            $this->setFlash('error', 'Invalid group id.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupModel = $this->model('Groupe');
+        $g = $groupModel->findById($groupId);
+        if (!$g) {
+            $this->setFlash('error', 'Group not found.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $ok = $groupModel->updateGroupe($groupId, [
+            'nom_groupe' => (string) ($g['nom_groupe'] ?? ''),
+            'description' => (string) ($g['description'] ?? ''),
+            'statut' => (string) ($g['statut'] ?? 'actif'),
+            'approval_statut' => 'rejete',
+            'image_url' => (string) ($g['image_url'] ?? ''),
+        ]);
+
+        if ($ok) {
+            $this->setFlash('success', 'Group rejected.');
+        } else {
+            $this->setFlash('error', 'Failed to reject group.');
+        }
+
+        $this->redirect('admin/sl-groupes');
+    }
+
+    public function deleteGroupe($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupId = (int) $id;
+        if ($groupId <= 0) {
+            $this->setFlash('error', 'Invalid group id.');
+            $this->redirect('admin/sl-groupes');
+            return;
+        }
+
+        $groupModel = $this->model('Groupe');
+        $ok = $groupModel->deleteGroupe($groupId);
+        if ($ok) {
+            $this->setFlash('success', 'Group deleted.');
+        } else {
+            $this->setFlash('error', 'Failed to delete group.');
+        }
+
+        $this->redirect('admin/sl-groupes');
+    }
+
     /**
      * Admin dashboard
      */
@@ -67,6 +823,250 @@ class AdminController extends BaseController
         ];
 
         $this->view('BackOffice/admin/users', $data);
+    }
+
+    public function categories() {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $categoryModel = $this->model('Category');
+        $categories = $categoryModel->getAll();
+
+        $data = [
+            'title' => 'Manage Categories - APPOLIOS',
+            'categories' => $categories,
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/categories', $data);
+    }
+
+    public function storeCategory() {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/categories');
+            return;
+        }
+
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $icon = $_POST['icon'] ?? 'folder';
+        $types = trim($_POST['types'] ?? '');
+
+        if (empty($name)) {
+            $this->setFlash('error', 'Category name is required');
+            $this->redirect('admin/categories');
+            return;
+        }
+
+        $categoryModel = $this->model('Category');
+        $result = $categoryModel->create([
+            'name' => $name,
+            'description' => $description,
+            'icon' => $icon,
+            'types' => $types
+        ]);
+
+        if ($result) {
+            $this->setFlash('success', 'Category created successfully!');
+        } else {
+            $this->setFlash('error', 'Failed to create category.');
+        }
+
+        $this->redirect('admin/categories');
+    }
+
+    public function deleteCategory($id) {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $categoryModel = $this->model('Category');
+        $categoryModel->delete($id);
+
+        $this->setFlash('success', 'Category deleted successfully!');
+        $this->redirect('admin/categories');
+    }
+
+    public function deleteCourse($id) {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $courseModel = $this->model('Course');
+        $courseModel->delete($id);
+
+        $this->setFlash('success', 'Course deleted successfully!');
+        $this->redirect('admin/courses');
+    }
+
+    public function viewCourse($id) {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $courseModel = $this->model('Course');
+        $course = $courseModel->getWithChapters($id);
+        
+        if (!$course) {
+            $this->setFlash('error', 'Course not found');
+            $this->redirect('admin/manage-courses');
+            return;
+        }
+
+        $userModel = $this->model('User');
+        $creator = $userModel->findById($course['created_by']);
+
+        $db = $this->getDb();
+        $stmt = $db->prepare("SELECT e.*, u.name as student_name, u.email as student_email FROM enrollments e JOIN users u ON e.user_id = u.id WHERE e.course_id = ?");
+        $stmt->execute([$id]);
+        $enrollments = $stmt->fetchAll();
+
+        $lessonCount = 0;
+        foreach ($course['chapters'] as $chapter) {
+            $lessonCount += count($chapter['lessons'] ?? []);
+        }
+        $course['lesson_count'] = $lessonCount;
+
+        $data = [
+            'title' => 'View Course - APPOLIOS',
+            'course' => $course,
+            'chapters' => $course['chapters'] ?? [],
+            'creator' => $creator,
+            'enrollments' => $enrollments,
+            'adminSidebarActive' => 'manage-courses'
+        ];
+
+        $this->view('BackOffice/admin/view_course', $data);
+    }
+
+    public function manageCourses() {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $status = $_GET['status'] ?? 'approved';
+        $courseModel = $this->model('Course');
+        $db = $this->getDb();
+
+        if ($status === 'all') {
+            $courses = $courseModel->getAllWithCreator();
+        } else {
+            $courses = $courseModel->getByStatus($status);
+        }
+
+        $pendingCount = $courseModel->countByStatus('pending');
+        $approvedCount = $courseModel->countByStatus('approved');
+        $rejectedCount = $courseModel->countByStatus('rejected');
+        $totalCourses = $pendingCount + $approvedCount + $rejectedCount;
+
+        $earningsStmt = $db->query("SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status IN ('succeeded', 'completed')");
+        $totalEarnings = (float) ($earningsStmt->fetch()['total'] ?? 0);
+
+        foreach ($courses as &$course) {
+            $chCountStmt = $db->prepare("SELECT COUNT(*) as cnt FROM chapters WHERE course_id = ?");
+            $chCountStmt->execute([$course['id']]);
+            $course['chapters_count'] = (int) ($chCountStmt->fetch()['cnt'] ?? 0);
+
+            $lesCountStmt = $db->prepare("SELECT COUNT(*) as cnt FROM lessons l JOIN chapters ch ON l.chapter_id = ch.id WHERE ch.course_id = ?");
+            $lesCountStmt->execute([$course['id']]);
+            $course['lessons_count'] = (int) ($lesCountStmt->fetch()['cnt'] ?? 0);
+        }
+
+        $data = [
+            'title' => 'Manage Courses - APPOLIOS',
+            'courses' => $courses,
+            'filterStatus' => $status,
+            'totalCourses' => $totalCourses,
+            'pendingCount' => $pendingCount,
+            'approvedCount' => $approvedCount,
+            'rejectedCount' => $rejectedCount,
+            'totalEarnings' => $totalEarnings,
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/manage_courses', $data);
+    }
+
+    public function courseRequests() {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $status = $_GET['status'] ?? 'all';
+        $courseModel = $this->model('Course');
+        $db = $this->getDb();
+        $adminId = $_SESSION['user_id'] ?? 0;
+
+        if ($status === 'all') {
+            $courses = $courseModel->getAllWithCreator();
+            $courses = array_filter($courses, fn($c) => $c['created_by'] != $adminId);
+        } else {
+            $courses = $courseModel->getByStatus($status);
+            $courses = array_filter($courses, fn($c) => $c['created_by'] != $adminId);
+        }
+
+        $courses = array_values($courses);
+
+        foreach ($courses as &$course) {
+            $chCountStmt = $db->prepare("SELECT COUNT(*) as cnt FROM chapters WHERE course_id = ?");
+            $chCountStmt->execute([$course['id']]);
+            $course['chapters_count'] = (int) ($chCountStmt->fetch()['cnt'] ?? 0);
+
+            $lesCountStmt = $db->prepare("SELECT COUNT(*) as cnt FROM lessons l JOIN chapters ch ON l.chapter_id = ch.id WHERE ch.course_id = ?");
+            $lesCountStmt->execute([$course['id']]);
+            $course['lessons_count'] = (int) ($lesCountStmt->fetch()['cnt'] ?? 0);
+        }
+
+        $data = [
+            'title' => 'Course Requests - APPOLIOS',
+            'courses' => $courses,
+            'filterStatus' => $status,
+            'pendingCount' => $courseModel->countByStatus('pending'),
+            'approvedCount' => $courseModel->countByStatus('approved'),
+            'rejectedCount' => $courseModel->countByStatus('rejected'),
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/course_requests', $data);
+    }
+
+    public function approveCourse($id) {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $courseModel = $this->model('Course');
+        $courseModel->updateStatus($id, 'approved');
+
+        $this->setFlash('success', 'Course approved!');
+        $this->redirect('admin/course-requests');
+    }
+
+    public function rejectCourse($id) {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $courseModel = $this->model('Course');
+        $courseModel->updateStatus($id, 'rejected');
+
+        $this->setFlash('success', 'Course rejected.');
+        $this->redirect('admin/course-requests');
     }
 
     /**
@@ -312,6 +1312,10 @@ class AdminController extends BaseController
                 break;
         }
 
+        try {
+            $this->getDb()->exec("ALTER TABLE users ADD COLUMN ban_until DATETIME DEFAULT NULL");
+        } catch (PDOException $e) {}
+
         // Use explicit column name with backticks to avoid any parsing issues
         $sql = "UPDATE `users` SET `is_blocked` = 1, `ban_until` = :ban_until WHERE `id` = :id";
         $stmt = $this->getDb()->prepare($sql);
@@ -366,6 +1370,48 @@ class AdminController extends BaseController
             $this->setFlash('success', 'User ' . htmlspecialchars($user['name']) . ' has been unblocked successfully.');
         } else {
             $this->setFlash('error', 'Failed to unblock user.');
+        }
+
+        $this->redirect('admin/users');
+    }
+
+    /**
+     * Delete a user permanently
+     */
+    public function deleteUser($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ((int) $id === (int) $_SESSION['user_id']) {
+            $this->setFlash('error', 'You cannot delete yourself.');
+            $this->redirect('admin/users');
+            return;
+        }
+
+        $user = $this->findUserById((int) $id);
+
+        if (!$user) {
+            $this->setFlash('error', 'User not found.');
+            $this->redirect('admin/users');
+            return;
+        }
+
+        $sql = "DELETE FROM users WHERE id = ?";
+        $stmt = $this->getDb()->prepare($sql);
+        if ($stmt->execute([$id])) {
+            $this->logDiff(
+                'delete_user',
+                ['id' => $id, 'email' => $user['email']],
+                null,
+                "Admin deleted user: {$user['name']} ({$user['email']})"
+            );
+            $this->setFlash('success', 'User has been deleted successfully.');
+        } else {
+            $this->setFlash('error', 'Failed to delete user.');
         }
 
         $this->redirect('admin/users');
@@ -484,6 +1530,47 @@ class AdminController extends BaseController
     }
 
     /**
+     * Courses list page
+     */
+    public function courses()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $courseModel = $this->model('Course');
+        $courses = $courseModel->getAllWithCreator();
+        $db = $this->getDb();
+
+        foreach ($courses as &$course) {
+            $chCountStmt = $db->prepare("SELECT COUNT(*) as cnt FROM chapters WHERE course_id = ?");
+            $chCountStmt->execute([$course['id']]);
+            $course['chapters_count'] = (int) ($chCountStmt->fetch()['cnt'] ?? 0);
+
+            $lesCountStmt = $db->prepare("SELECT COUNT(*) as cnt FROM lessons l JOIN chapters ch ON l.chapter_id = ch.id WHERE ch.course_id = ?");
+            $lesCountStmt->execute([$course['id']]);
+            $course['lessons_count'] = (int) ($lesCountStmt->fetch()['cnt'] ?? 0);
+        }
+
+        $data = [
+            'title' => 'Manage Courses - APPOLIOS',
+            'description' => 'Manage courses',
+            'adminSidebarActive' => 'courses',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'courses' => $courses,
+            'totalCourses' => $courseModel->countByStatus('pending') + $courseModel->countByStatus('approved') + $courseModel->countByStatus('rejected'),
+            'pendingCount' => $courseModel->countByStatus('pending'),
+            'approvedCount' => $courseModel->countByStatus('approved'),
+            'rejectedCount' => $courseModel->countByStatus('rejected'),
+            'totalEarnings' => (float) ($db->query("SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status IN ('succeeded', 'completed')")->fetch()['total'] ?? 0),
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/courses', $data);
+    }
+
+    /**
      * Add course page
      */
     public function addCourse()
@@ -503,6 +1590,224 @@ class AdminController extends BaseController
         ];
 
         $this->view('BackOffice/admin/add_course', $data);
+    }
+
+    /**
+     * Generate course with AI
+     */
+    public function generateWithAI() {
+        header('Content-Type: application/json');
+        ob_clean(); // Ensure clean output
+        
+        if (!$this->isAdmin()) {
+            echo json_encode(['success' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+        
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request']);
+            exit;
+        }
+
+        // Handle different types of AI generation
+        $type = $_POST['type'] ?? 'course';
+
+        if ($type === 'events' || $type === 'event_predictions') {
+            $predictions = [
+                'success' => true,
+                'predictions' => [
+                    'Attendance is expected to be high for technical workshops next month.',
+                    'Students show increasing interest in AI and Web Development events.',
+                    'Suggested time for your next event: Saturday afternoon.'
+                ]
+            ];
+            echo json_encode($predictions);
+            exit;
+        }
+        
+        $topic = trim($_POST['topic'] ?? '');
+        $audience = $_POST['audience'] ?? 'beginners';
+        
+        if (empty($topic)) {
+            echo json_encode(['success' => false, 'error' => 'Please enter a course topic']);
+            exit;
+        }
+        
+        require_once __DIR__ . '/../Service/AICourseGenerator.php';
+        $aiGenerator = new AICourseGenerator();
+        
+        $result = $aiGenerator->generateFullCourse($topic, $audience);
+        
+        echo json_encode($result);
+        exit;
+    }
+
+    /**
+     * Store new course with chapters and lessons
+     */
+    public function storeCourse()
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/add-course');
+            return;
+        }
+
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $image = $_POST['image'] ?? '';
+        $courseType = $_POST['course_type'] ?? '';
+        $price = $_POST['price'] ?? 0.0;
+        $categoryId = !empty($_POST['category_id']) ? $_POST['category_id'] : null;
+        
+        // Validate price
+        if (!is_numeric($price) || $price < 0) {
+            $_SESSION['errors'] = ['price' => 'Invalid price. Must be a non-negative number.'];
+            $_SESSION['old'] = $_POST;
+            $this->redirect('admin/add-course');
+            return;
+        }
+        
+        // Handle course image upload
+        if (isset($_FILES['course_image']) && !empty($_FILES['course_image']['tmp_name'])) {
+            $uploadDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR;
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            $filename = time() . '_' . basename($_FILES['course_image']['name']);
+            if (move_uploaded_file($_FILES['course_image']['tmp_name'], $uploadDir . $filename)) {
+                $image = 'uploads/images/' . $filename;
+            }
+        }
+        
+        if (empty($title)) {
+            $_SESSION['errors'] = ['title' => 'Course title is required'];
+            $_SESSION['old'] = $_POST;
+            $this->redirect('admin/add-course');
+            return;
+        }
+
+        if (empty($description)) {
+            $_SESSION['errors'] = ['description' => 'Course description is required'];
+            $_SESSION['old'] = $_POST;
+            $this->redirect('admin/add-course');
+            return;
+        }
+
+        $courseModel = $this->model('Course');
+        $courseId = $courseModel->create([
+            'title' => $title,
+            'description' => $description,
+            'status' => 'approved',
+            'image' => $image,
+            'course_type' => $courseType,
+            'category_id' => $categoryId,
+            'price' => $price,
+            'created_by' => $_SESSION['user_id']
+        ]);
+
+        if ($courseId) {
+            // Save chapters and lessons if provided
+            $this->saveCourseChapters($courseId, $_POST);
+            $this->saveCourseBadges($courseId, $_POST);
+            $this->setFlash('success', 'Course created successfully!');
+        } else {
+            $this->setFlash('error', 'Failed to create course');
+        }
+        
+        $this->redirect('admin/courses');
+    }
+
+    /**
+     * Save chapters and lessons for a course
+     */
+    private function saveCourseChapters($courseId, $postData)
+    {
+        if (!isset($postData['chapters']) || empty($postData['chapters'])) {
+            return;
+        }
+
+        $chapterModel = $this->model('Chapter');
+        $lessonModel = $this->model('Lesson');
+
+        foreach ($postData['chapters'] as $chapterIndex => $chapterData) {
+            $chapterTitle = trim($chapterData['title'] ?? '');
+            if (empty($chapterTitle)) continue;
+
+            $chapterId = $chapterModel->create([
+                'course_id' => $courseId,
+                'title' => $chapterTitle,
+                'description' => $chapterData['description'] ?? '',
+                'sort_order' => $chapterIndex + 1
+            ]);
+
+            if (!$chapterId) continue;
+
+            // Save lessons for this chapter
+            if (isset($chapterData['lessons']) && is_array($chapterData['lessons'])) {
+                $lessonOrder = 1;
+                foreach ($chapterData['lessons'] as $lessonIndex => $lessonData) {
+                    $lessonTitle = trim($lessonData['title'] ?? '');
+                    if (empty($lessonTitle)) continue;
+
+                    // Handle PDF upload if present
+                    $pdfPath = null;
+                    if (isset($_FILES['lessons']['tmp_name'][$chapterIndex][$lessonIndex]['pdf_file']) && 
+                        !empty($_FILES['lessons']['tmp_name'][$chapterIndex][$lessonIndex]['pdf_file'])) {
+                        
+                        $tmpName = $_FILES['lessons']['tmp_name'][$chapterIndex][$lessonIndex]['pdf_file'];
+                        $originalName = $_FILES['lessons']['name'][$chapterIndex][$lessonIndex]['pdf_file'];
+                        
+                        $uploadDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'lessons' . DIRECTORY_SEPARATOR;
+                        if (!is_dir($uploadDir)) {
+                            mkdir($uploadDir, 0755, true);
+                        }
+                        $filename = time() . '_' . $chapterIndex . '_' . $lessonIndex . '_' . basename($originalName);
+                        if (move_uploaded_file($tmpName, $uploadDir . $filename)) {
+                            $pdfPath = 'uploads/lessons/' . $filename;
+                        }
+                    }
+
+                    $lessonModel->createLesson([
+                        'chapter_id' => $chapterId,
+                        'title' => $lessonTitle,
+                        'content' => $lessonData['content'] ?? '',
+                        'lesson_type' => $lessonData['lesson_type'] ?? 'text',
+                        'pdf_path' => $pdfPath,
+                        'sort_order' => $lessonOrder++
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Save course badges
+     */
+    private function saveCourseBadges($courseId, $postData)
+    {
+        if (!isset($postData['badges']) || empty($postData['badges'])) {
+            return;
+        }
+
+        $badgeModel = $this->model('CourseBadge');
+
+        foreach ($postData['badges'] as $badgeData) {
+            $badgeName = trim($badgeData['badge_name'] ?? '');
+            if (empty($badgeName)) continue;
+
+            $badgeModel->create([
+                'course_id' => $courseId,
+                'badge_name' => $badgeName,
+                'badge_icon' => $badgeData['badge_icon'] ?? 'trophy',
+                'badge_condition' => $badgeData['badge_condition'] ?? 'completion',
+                'description' => $badgeData['description'] ?? ''
+            ]);
+        }
     }
 
     /**
@@ -527,6 +1832,52 @@ class AdminController extends BaseController
         $this->view('BackOffice/admin/add_teacher', $data);
     }
 
+    public function storeTeacher() {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/teachers');
+            return;
+        }
+
+        $name = $this->sanitize($_POST['name'] ?? '');
+        $email = $this->sanitize($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        $errors = [];
+        if (empty($name)) $errors['name'] = 'Name is required';
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['email'] = 'Valid email is required';
+        if (empty($password) || strlen($password) < 6) $errors['password'] = 'Password must be at least 6 characters';
+
+        $userModel = $this->model('User');
+        if ($userModel->emailExists($email)) $errors['email'] = 'Email already registered';
+
+        if (!empty($errors)) {
+            $this->setErrors($errors);
+            $_SESSION['old'] = $_POST;
+            $this->redirect('admin/add-teacher');
+            return;
+        }
+
+        $result = $userModel->create([
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            'role' => 'teacher'
+        ]);
+
+        if ($result) {
+            $this->setFlash('success', 'Teacher account created successfully!');
+            $this->redirect('admin/teachers');
+        } else {
+            $this->setFlash('error', 'Failed to create teacher account.');
+            $this->redirect('admin/add-teacher');
+        }
+    }
+
     /**
      * Edit course page
      */
@@ -538,7 +1889,8 @@ class AdminController extends BaseController
         }
 
         $courseModel = $this->model('Course');
-        $course = $courseModel->findById($id);
+        // Use getWithChapters to get the full structure
+        $course = $courseModel->getWithChapters($id);
 
         if (!$course) {
             $this->setFlash('error', 'Course not found');
@@ -546,16 +1898,103 @@ class AdminController extends BaseController
             return;
         }
 
+        // Fetch badges if available
+        $badges = [];
+        try {
+            $sql = "SELECT * FROM course_badges WHERE course_id = ?";
+            $stmt = $this->getDb()->prepare($sql);
+            $stmt->execute([$id]);
+            $badges = $stmt->fetchAll();
+        } catch (Exception $e) {
+            // Table might not exist yet or other error
+        }
+
         $data = [
             'title' => 'Edit Course - APPOLIOS',
             'description' => 'Update course details',
             'course' => $course,
-            'adminSidebarActive' => 'edit-course',
+            'badges' => $badges,
+            'adminSidebarActive' => 'courses',
             'unreadCount' => $this->getContactMessageUnreadCount(),
             'flash' => $this->getFlash()
         ];
 
         $this->view('BackOffice/admin/edit_course', $data);
+    }
+
+    /**
+     * Update course
+     */
+    public function updateCourse($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('admin/edit-course/' . $id);
+            return;
+        }
+
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $image = $_POST['image'] ?? '';
+        $courseType = $_POST['course_type'] ?? '';
+        $price = $_POST['price'] ?? 0.0;
+        $categoryId = !empty($_POST['category_id']) ? $_POST['category_id'] : null;
+        
+        $courseModel = $this->model('Course');
+        $course = $courseModel->findById($id);
+        
+        if (!$course) {
+            $this->setFlash('error', 'Course not found');
+            $this->redirect('admin/courses');
+            return;
+        }
+
+        // Handle course image upload
+        if (isset($_FILES['course_image']) && !empty($_FILES['course_image']['tmp_name'])) {
+            $uploadDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR;
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            $filename = time() . '_' . basename($_FILES['course_image']['name']);
+            if (move_uploaded_file($_FILES['course_image']['tmp_name'], $uploadDir . $filename)) {
+                $image = 'uploads/images/' . $filename;
+            }
+        } else {
+            $image = $course['image'];
+        }
+
+        $result = $courseModel->update($id, [
+            'title' => $title,
+            'description' => $description,
+            'image' => $image,
+            'course_type' => $courseType,
+            'category_id' => $categoryId,
+            'status' => $course['status'],
+            'price' => $price,
+            'admin_message' => $course['admin_message']
+        ]);
+
+        if ($result) {
+            // Recreate structure
+            $this->clearCourseContent($id);
+            $this->saveCourseChapters($id, $_POST);
+            $this->saveCourseBadges($id, $_POST);
+            $this->setFlash('success', 'Course updated successfully!');
+        } else {
+            $this->setFlash('error', 'Failed to update course');
+        }
+        
+        $this->redirect('admin/courses');
+    }
+
+    private function clearCourseContent($courseId) {
+        $db = $this->getDb();
+        $db->prepare("DELETE FROM course_badges WHERE course_id = ?")->execute([$courseId]);
+        $db->prepare("DELETE FROM chapters WHERE course_id = ?")->execute([$courseId]);
     }
 
     /**
@@ -989,6 +2428,130 @@ class AdminController extends BaseController
     /**
      * List teacher evenement requests awaiting admin review.
      */
+    public function evenements()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $evenementModel = $this->model('Evenement');
+        
+        // Fetch all participations for the modal
+        $db = $this->getDb();
+        $sql = "SELECT r.id, r.evenement_id, r.created_by as student_id,
+                    r.title as student_name, r.details as status, r.created_at,
+                    e.title as event_title, e.created_by as event_creator_id,
+                    u.name as student_name_full, u.email as student_email,
+                    u.role as student_role, u.created_at as student_registered_at
+             FROM evenement_ressources r
+             JOIN evenements e ON r.evenement_id = e.id
+             JOIN users u ON r.created_by = u.id
+             WHERE r.type = 'participation'
+             ORDER BY r.created_at DESC";
+        $stmt = $db->query($sql);
+        $allParticipations = $stmt->fetchAll();
+        
+        $participationsByEvent = [];
+        foreach ($allParticipations as $p) {
+            $eventId = (int)$p['evenement_id'];
+            if (!isset($participationsByEvent[$eventId])) {
+                $participationsByEvent[$eventId] = [];
+            }
+            $participationsByEvent[$eventId][] = $p;
+        }
+
+        $data = [
+            'title' => 'Manage Events - APPOLIOS',
+            'description' => 'Event management panel',
+            'adminSidebarActive' => 'evenements',
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'evenements' => $evenementModel->getAllWithCreator(),
+            'participationsByEvent' => $participationsByEvent,
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/evenements', $data);
+    }
+
+    public function approveParticipation($id) {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { $this->redirect('admin/evenements'); return; }
+
+        $db = $this->getDb();
+        $stmt = $db->prepare(
+            "SELECT r.*, e.created_by as event_creator_id
+             FROM evenement_ressources r
+             JOIN evenements e ON r.evenement_id = e.id
+             WHERE r.id = ? AND r.type = 'participation' LIMIT 1"
+        );
+        $stmt->execute([(int)$id]);
+        $participation = $stmt->fetch();
+
+        if (!$participation) {
+            $this->setFlash('error', 'Participation not found.');
+            $this->redirect('admin/evenements');
+            return;
+        }
+
+        if ((int)$participation['event_creator_id'] !== (int)$_SESSION['user_id']) {
+            $this->setFlash('error', 'You can only manage participations for events you created.');
+            $this->redirect('admin/evenements');
+            return;
+        }
+
+        $upd = $db->prepare(
+            "UPDATE evenement_ressources
+             SET details = 'approved', updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND type = 'participation'"
+        );
+        $upd->execute([(int)$id])
+            ? $this->setFlash('success', 'Participation approved.')
+            : $this->setFlash('error', 'Failed to approve.');
+
+        $this->redirect('admin/evenements');
+    }
+
+    public function rejectParticipation($id) {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') { $this->redirect('admin/evenements'); return; }
+
+        $reason = trim($_POST['reason'] ?? '');
+        $db = $this->getDb();
+        $stmt = $db->prepare(
+            "SELECT r.*, e.created_by as event_creator_id
+             FROM evenement_ressources r
+             JOIN evenements e ON r.evenement_id = e.id
+             WHERE r.id = ? AND r.type = 'participation' LIMIT 1"
+        );
+        $stmt->execute([(int)$id]);
+        $participation = $stmt->fetch();
+
+        if (!$participation) {
+            $this->setFlash('error', 'Participation not found.');
+            $this->redirect('admin/evenements');
+            return;
+        }
+
+        if ((int)$participation['event_creator_id'] !== (int)$_SESSION['user_id']) {
+            $this->setFlash('error', 'You can only manage participations for events you created.');
+            $this->redirect('admin/evenements');
+            return;
+        }
+
+        $upd = $db->prepare(
+            "UPDATE evenement_ressources
+             SET details = 'rejected', rejection_reason = ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND type = 'participation'"
+        );
+        $upd->execute([$reason, (int)$id])
+            ? $this->setFlash('success', 'Participation rejected.')
+            : $this->setFlash('error', 'Failed to reject.');
+
+        $this->redirect('admin/evenements');
+    }
+
     public function evenementRequests()
     {
         if (!$this->isAdmin()) {
@@ -1439,6 +3002,7 @@ class AdminController extends BaseController
             ]);
             return $this->getDb()->lastInsertId();
         } catch (PDOException $e) {
+            error_log('Admin Approve Teacher DB Error: ' . $e->getMessage());
             return false;
         }
     }
@@ -1449,10 +3013,6 @@ class AdminController extends BaseController
         $stmt = $this->getDb()->prepare($sql);
         return $stmt->execute([$faceDescriptor, $id]);
     }
-
-    // ==========================================
-    // CONTACT MESSAGE METHODS - From ContactMessage Model
-    // ==========================================
 
     public function createContactMessage($data)
     {
@@ -1509,10 +3069,6 @@ class AdminController extends BaseController
         return $stmt->execute([$id]);
     }
 
-    // ==========================================
-    // TEACHER APPLICATION METHODS - From TeacherApplication Model
-    // ==========================================
-
     public function createTeacherApplication($data)
     {
         $sql = "INSERT INTO teacher_applications (name, email, password, cv_filename, cv_path, status) VALUES (?, ?, ?, ?, ?, 'pending')";
@@ -1552,7 +3108,7 @@ class AdminController extends BaseController
 
     public function getPendingApplications()
     {
-        $sql = "SELECT * FROM v_pending_teachers ORDER BY created_at DESC";
+        $sql = "SELECT * FROM teacher_applications WHERE status = 'pending' ORDER BY created_at DESC";
         $stmt = $this->getDb()->query($sql);
         return $stmt->fetchAll();
     }
@@ -1587,32 +3143,6 @@ class AdminController extends BaseController
         }
     }
 
-    public function applicationEmailExists($email)
-    {
-        $sql = "SELECT id FROM teacher_applications WHERE email = ?";
-        $stmt = $this->getDb()->prepare($sql);
-        $stmt->execute([$email]);
-        return $stmt->fetch() !== false;
-    }
-
-    public function countPendingApplications()
-    {
-        $sql = "SELECT COUNT(*) as count FROM teacher_applications WHERE status = 'pending'";
-        $stmt = $this->getDb()->query($sql);
-        $result = $stmt->fetch();
-        return (int) ($result['count'] ?? 0);
-    }
-
-    public function applicationEmailExistsPending($email)
-    {
-        $sql = "SELECT id FROM teacher_applications WHERE email = ? AND status = 'pending'";
-        $stmt = $this->getDb()->prepare($sql);
-        $stmt->execute([$email]);
-        return $stmt->fetch() !== false;
-    }
-
-    // ==========================================
-    // DATABASE METHODS - For Activity Log operations
     // ==========================================
 
     /**
@@ -1789,8 +3319,483 @@ class AdminController extends BaseController
             'change_password' => 'Changement mot de passe',
             'upload_file' => 'Téléchargement de fichier',
             'delete_file' => 'Suppression de fichier',
+            'create_quiz' => 'Création de quiz',
+            'update_quiz' => 'Modification de quiz',
+            'delete_quiz' => 'Suppression de quiz',
+            'create_question' => 'Création de question',
+            'update_question' => 'Modification de question',
+            'delete_question' => 'Suppression de question',
         ];
 
         return $labels[$type] ?? ucfirst($type);
+    }
+
+    // Quiz Management Methods
+
+    /**
+     * Admin quiz management page
+     */
+    public function quizzes()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $quizModel = $this->model('Quiz');
+        $quizzes = $quizModel->getAllWithDetails();
+
+        $data = [
+            'title' => 'Quiz Management - Admin',
+            'description' => 'Manage all quizzes in the system',
+            'quizzes' => $quizzes,
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/quizzes', $data);
+    }
+
+    /**
+     * Admin question bank management
+     */
+    public function questions()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $questionBankModel = $this->model('QuestionBank');
+        $questions = $questionBankModel->getAllWithStats();
+        $stats = $questionBankModel->getTopStats();
+        $charts = $questionBankModel->getChartData();
+        $questionQa = $questionBankModel->getQualityAssessment();
+
+        $data = [
+            'title' => 'Question Bank - Admin',
+            'description' => 'Manage the system question bank',
+            'questions' => $questions,
+            'qbTopStats' => $stats,
+            'charts' => $charts,
+            'questionQa' => $questionQa,
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/questions_bank', $data);
+    }
+
+    /**
+     * Add new quiz (admin)
+     */
+    public function addQuiz()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $quizModel = $this->model('Quiz');
+            
+            $data = [
+                'title' => $_POST['title'] ?? '',
+                'course_id' => (int) ($_POST['course_id'] ?? 0),
+                'chapter_id' => (int) ($_POST['chapter_id'] ?? 0),
+                'difficulty' => $_POST['difficulty'] ?? 'beginner',
+                'tags' => $_POST['tags'] ?? '',
+                'time_limit_sec' => (int) ($_POST['time_limit_sec'] ?? 0),
+                'status' => 'approved',
+                'created_by' => $_SESSION['user_id']
+            ];
+
+            $quizId = $quizModel->create($data);
+            
+            if ($quizId) {
+                // Add questions if provided
+                if (!empty($_POST['questions'])) {
+                    $questionBankModel = $this->model('QuestionBank');
+                    foreach ($_POST['questions'] as $questionId) {
+                        $quizModel->addQuestion($quizId, $questionId);
+                    }
+                }
+
+                $this->logActivity('create_quiz', "Created quiz: {$data['title']}");
+                $this->setFlash('success', 'Quiz created successfully.');
+                $this->redirect('admin-quiz/quizzes');
+            } else {
+                $this->setFlash('error', 'Failed to create quiz.');
+            }
+        }
+
+        $courseModel = $this->model('Course');
+        $chapterModel = $this->model('Chapter');
+        $questionBankModel = $this->model('QuestionBank');
+
+        $data = [
+            'title' => 'Add Quiz - Admin',
+            'description' => 'Create a new quiz',
+            'courses' => $courseModel->getAll(),
+            'chapters' => $chapterModel->getAll(),
+            'questions' => $questionBankModel->getAll(),
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/quiz_form', $data);
+    }
+
+    /**
+     * Edit quiz (admin)
+     */
+    public function editQuiz($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $quizModel = $this->model('Quiz');
+        $quiz = $quizModel->getById((int) $id);
+
+        if (!$quiz) {
+            $this->setFlash('error', 'Quiz not found.');
+            $this->redirect('admin-quiz/quizzes');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'title' => $_POST['title'] ?? '',
+                'course_id' => (int) ($_POST['course_id'] ?? 0),
+                'chapter_id' => (int) ($_POST['chapter_id'] ?? 0),
+                'difficulty' => $_POST['difficulty'] ?? 'beginner',
+                'tags' => $_POST['tags'] ?? '',
+                'time_limit_sec' => (int) ($_POST['time_limit_sec'] ?? 0)
+            ];
+
+            if ($quizModel->update((int) $id, $data)) {
+                // Update questions if provided
+                if (isset($_POST['questions'])) {
+                    $quizModel->updateQuestions((int) $id, $_POST['questions']);
+                }
+
+                $this->logActivity('update_quiz', "Updated quiz: {$data['title']}");
+                $this->setFlash('success', 'Quiz updated successfully.');
+                $this->redirect('admin-quiz/quizzes');
+            } else {
+                $this->setFlash('error', 'Failed to update quiz.');
+            }
+        }
+
+        $courseModel = $this->model('Course');
+        $chapterModel = $this->model('Chapter');
+        $questionBankModel = $this->model('QuestionBank');
+
+        $data = [
+            'title' => 'Edit Quiz - Admin',
+            'description' => 'Edit quiz',
+            'quiz' => $quiz,
+            'courses' => $courseModel->getAll(),
+            'chapters' => $chapterModel->getAll(),
+            'questions' => $questionBankModel->getAll(),
+            'quizQuestions' => $quizModel->getQuestions((int) $id),
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/quiz_form', $data);
+    }
+
+    /**
+     * Delete quiz (admin)
+     */
+    public function deleteQuiz($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $quizModel = $this->model('Quiz');
+        $quiz = $quizModel->getById((int) $id);
+
+        if ($quiz && $quizModel->delete((int) $id)) {
+            $this->logActivity('delete_quiz', "Deleted quiz: {$quiz['title']}");
+            $this->setFlash('success', 'Quiz deleted successfully.');
+        } else {
+            $this->setFlash('error', 'Failed to delete quiz.');
+        }
+
+        $this->redirect('admin-quiz/quizzes');
+    }
+
+    /**
+     * Add new question (admin)
+     */
+    public function addQuestion()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $questionBankModel = $this->model('QuestionBank');
+            
+            $data = [
+                'title' => $_POST['title'] ?? '',
+                'question_text' => $_POST['question_text'] ?? '',
+                'options' => $_POST['options'] ?? [],
+                'correct_answer' => (int) ($_POST['correct_answer'] ?? 0),
+                'difficulty' => $_POST['difficulty'] ?? 'beginner',
+                'tags' => $_POST['tags'] ?? '',
+                'created_by' => $_SESSION['user_id']
+            ];
+
+            $questionId = $questionBankModel->create($data);
+            
+            if ($questionId) {
+                $this->logActivity('create_question', "Created question: {$data['title']}");
+                $this->setFlash('success', 'Question created successfully.');
+                $this->redirect('admin-quiz/questions');
+            } else {
+                $this->setFlash('error', 'Failed to create question.');
+            }
+        }
+
+        $data = [
+            'title' => 'Add Question - Admin',
+            'description' => 'Create a new question',
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/question_form', $data);
+    }
+
+    /**
+     * Edit question (admin)
+     */
+    public function editQuestion($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $questionBankModel = $this->model('QuestionBank');
+        $question = $questionBankModel->getById((int) $id);
+
+        if (!$question) {
+            $this->setFlash('error', 'Question not found.');
+            $this->redirect('admin-quiz/questions');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = [
+                'title' => $_POST['title'] ?? '',
+                'question_text' => $_POST['question_text'] ?? '',
+                'options' => $_POST['options'] ?? [],
+                'correct_answer' => (int) ($_POST['correct_answer'] ?? 0),
+                'difficulty' => $_POST['difficulty'] ?? 'beginner',
+                'tags' => $_POST['tags'] ?? ''
+            ];
+
+            if ($questionBankModel->update((int) $id, $data)) {
+                $this->logActivity('update_question', "Updated question: {$data['title']}");
+                $this->setFlash('success', 'Question updated successfully.');
+                $this->redirect('admin-quiz/questions');
+            } else {
+                $this->setFlash('error', 'Failed to update question.');
+            }
+        }
+
+        $data = [
+            'title' => 'Edit Question - Admin',
+            'description' => 'Edit question',
+            'question' => $question,
+            'flash' => $this->getFlash()
+        ];
+
+        $this->view('BackOffice/admin/question_form', $data);
+    }
+
+    /**
+     * Delete question (admin)
+     */
+    public function deleteQuestion($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        $questionBankModel = $this->model('QuestionBank');
+        $question = $questionBankModel->getById((int) $id);
+
+        if ($question && $questionBankModel->delete((int) $id)) {
+            $this->logActivity('delete_question', "Deleted question: {$question['title']}");
+            $this->setFlash('success', 'Question deleted successfully.');
+        } else {
+            $this->setFlash('error', 'Failed to delete question.');
+        }
+
+        $this->redirect('admin-quiz/questions');
+    }
+
+    /**
+     * Update quiz question (admin)
+     */
+    public function updateQuestion($id)
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $questionBankModel = $this->model('QuestionBank');
+            
+            $data = [
+                'title' => $_POST['title'] ?? '',
+                'question_text' => $_POST['question_text'] ?? '',
+                'options' => $_POST['options'] ?? [],
+                'correct_answer' => (int) ($_POST['correct_answer'] ?? 0),
+                'difficulty' => $_POST['difficulty'] ?? 'beginner',
+                'tags' => $_POST['tags'] ?? ''
+            ];
+
+            if ($questionBankModel->update((int) $id, $data)) {
+                $this->logActivity('update_question', "Updated question: {$data['title']}");
+                $this->setFlash('success', 'Question updated successfully.');
+                $this->redirect('admin-quiz/questions');
+            } else {
+                $this->setFlash('error', 'Failed to update question.');
+            }
+        }
+
+        $this->redirect('admin-quiz/questions');
+    }
+
+    /**
+     * Store new question (admin)
+     */
+    public function storeQuestion()
+    {
+        if (!$this->isAdmin()) {
+            $this->setFlash('error', 'Access denied. Admin privileges required.');
+            $this->redirect('admin/login');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $questionBankModel = $this->model('QuestionBank');
+            
+            $data = [
+                'title' => $_POST['title'] ?? '',
+                'question_text' => $_POST['question_text'] ?? '',
+                'options' => $_POST['options'] ?? [],
+                'correct_answer' => (int) ($_POST['correct_answer'] ?? 0),
+                'difficulty' => $_POST['difficulty'] ?? 'beginner',
+                'tags' => $_POST['tags'] ?? '',
+                'created_by' => $_SESSION['user_id']
+            ];
+
+            $questionId = $questionBankModel->create($data);
+            
+            if ($questionId) {
+                $this->logActivity('create_question', "Created question: {$data['title']}");
+                $this->setFlash('success', 'Question created successfully.');
+                $this->redirect('admin-quiz/questions');
+            } else {
+                $this->setFlash('error', 'Failed to create question.');
+            }
+        }
+
+        $this->redirect('admin-quiz/add-question');
+    }
+
+    /**
+     * Admin Event Statistics (improved dashboard)
+     */
+    public function statEvenements()
+    {
+        if (!$this->isAdmin()) { $this->redirect('admin/login'); return; }
+
+        $db = $this->getDb();
+
+        // Event stats (participations per event)
+        $eventStats = $db->query(
+            "SELECT e.id, e.title, e.capacite_max, e.statut, e.type,
+                    COUNT(r.id) AS participant_count
+             FROM evenements e
+             LEFT JOIN evenement_ressources r
+                ON r.evenement_id = e.id
+               AND r.type = 'participation'
+             GROUP BY e.id
+             ORDER BY participant_count DESC
+             LIMIT 12"
+        )->fetchAll();
+
+        // Events by type
+        $typeStats = $db->query(
+            "SELECT COALESCE(type, 'Autre') AS type, COUNT(*) AS count
+             FROM evenements
+             GROUP BY COALESCE(type, 'Autre')
+             ORDER BY count DESC"
+        )->fetchAll();
+
+        // Participants by event type
+        $participantTypeStats = $db->query(
+            "SELECT COALESCE(e.type, 'Autre') AS type,
+                    COUNT(r.id) AS participant_count
+             FROM evenements e
+             LEFT JOIN evenement_ressources r
+                ON r.evenement_id = e.id
+               AND r.type = 'participation'
+             GROUP BY COALESCE(e.type, 'Autre')
+             ORDER BY participant_count DESC"
+        )->fetchAll();
+
+        // Status distribution
+        $statusStats = $db->query(
+            "SELECT statut, COUNT(*) AS count FROM evenements GROUP BY statut"
+        )->fetchAll();
+
+        $data = array(
+            'title' => 'Event Statistics - APPOLIOS',
+            'adminSidebarActive' => 'stat-evenements',
+            'eventStats' => $eventStats,
+            'typeStats' => $typeStats,
+            'participantTypeStats' => $participantTypeStats,
+            'statusStats' => $statusStats,
+            'unreadCount' => $this->getContactMessageUnreadCount(),
+            'flash' => $this->getFlash(),
+        );
+
+        $this->view('BackOffice/admin/stat_evenement', $data);
+    }
+
+    public function countPendingApplications()
+    {
+        $sql = "SELECT COUNT(*) as count FROM teacher_applications WHERE status = 'pending'";
+        $stmt = $this->getDb()->query($sql);
+        $result = $stmt->fetch();
+        return (int) ($result['count'] ?? 0);
+    }
+
+    public function applicationEmailExistsPending($email)
+    {
+        $sql = "SELECT id FROM teacher_applications WHERE email = ? AND status = 'pending'";
+        $stmt = $this->getDb()->prepare($sql);
+        $stmt->execute([$email]);
+        return $stmt->fetch() !== false;
     }
 }

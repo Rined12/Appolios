@@ -5,53 +5,190 @@
 
 $studentSidebarActive = 'profile';
 ?>
+<style>
+.student-profile-page.student-events-page .admin-main {
+    background: transparent;
+    padding: 1rem 0 2rem 0;
+}
+.student-profile-page .student-profile-header h1 {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0 0 0.35rem 0;
+}
+.student-profile-page .student-profile-header p {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin: 0 0 1.25rem 0;
+}
+.student-profile-page .student-profile-header--embedded { margin-bottom: 2rem; }
+.student-profile-page .student-profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 1.75rem;
+}
+@media (max-width: 991px) {
+    .student-profile-page .student-profile-grid { grid-template-columns: 1fr; }
+}
+.student-profile-page .student-profile-card.table-container {
+    margin-top: 0;
+    border-radius: 16px;
+    border: 1px solid #eef2f6;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+}
+.student-profile-page .student-profile-card .table-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 1rem 1.25rem;
+}
+.student-profile-page .student-profile-card .table-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+}
+.student-profile-page .student-profile-name {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0.35rem 0 0.25rem;
+}
+.student-profile-page .student-profile-email {
+    color: #64748b;
+    font-size: 0.92rem;
+    margin: 0;
+}
+.student-profile-page .student-profile-role {
+    display: inline-block;
+    margin-top: 0.85rem;
+    padding: 0.35rem 1rem;
+    background: #10b981;
+    color: #fff;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+.student-profile-page .student-profile-avatar-wrap {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1rem;
+}
+.student-profile-page .student-profile-avatar-wrap img,
+.student-profile-page .student-profile-avatar-wrap .student-profile-avatar-placeholder {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #0ea5e9;
+    box-sizing: border-box;
+}
+.student-profile-page .student-profile-avatar-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0ea5e9, #14b8a6);
+}
+.student-profile-page .student-profile-upload-btn {
+    cursor: pointer;
+    background: #0ea5e9;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+}
+.student-profile-page .student-profile-field-label {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #1e3a5f;
+}
+.student-profile-page .student-profile-field {
+    padding: 12px 16px;
+    background: #f1f5f9;
+    border-radius: 10px;
+    color: #334155;
+    font-size: 0.95rem;
+}
+.student-profile-page .student-profile-actions {
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.student-profile-page .student-profile-face-wrap {
+    margin-top: 1.25rem;
+}
+.student-profile-page .student-profile-face-wrap h4 {
+    color: #1e293b;
+    font-weight: 700;
+}
+.student-profile-page .student-profile-face-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.student-profile-page .student-profile-face-icon--on { background: #10b981; }
+.student-profile-page .student-profile-face-icon--off { background: #94a3b8; }
+</style>
 
 <?php if (!isset($adminSidebarActive)): ?>
-<div class="dashboard student-profile-page">
+<div class="dashboard student-events-page student-profile-page">
     <div class="container admin-dashboard-container" style="max-width: 1400px; width: 100%;">
         <div class="admin-layout">
             <?php require __DIR__ . '/partials/sidebar.php'; ?>
-            <div class="admin-main" style="background: transparent; padding: 1rem 0 2rem 0;">
+            <div class="admin-main">
+<?php else: ?>
+<div class="student-profile-page">
 <?php endif; ?>
 
-                <div class="dashboard-header" style="<?= isset($adminSidebarActive) ? 'margin-bottom: 2rem;' : '' ?>">
-                    <h1 style="<?= isset($adminSidebarActive) ? 'font-size: 1.8rem; font-weight: 800; color: #1e293b; margin: 0 0 0.5rem 0;' : '' ?>">Mon Profil</h1>
-                    <p style="<?= isset($adminSidebarActive) ? 'color: #64748b; margin: 0;' : '' ?>">Gérez vos informations personnelles et votre sécurité.</p>
+                <div class="dashboard-header student-profile-header<?= isset($adminSidebarActive) ? ' student-profile-header--embedded' : '' ?>">
+                    <h1>Mon Profil</h1>
+                    <p>Gérez vos informations personnelles et votre sécurité.</p>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+                <div class="student-profile-grid">
             <!-- Profile Card -->
-            <div class="table-container">
+            <div class="table-container student-profile-card">
                 <div style="padding: 40px; text-align: center;">
-                    <div style="position: relative; width: 120px; height: 120px; margin: 0 auto 20px;">
+                    <div class="student-profile-avatar-wrap">
                         <?php if (!empty($user['avatar'])): ?>
                             <img id="profile-avatar-img" src="<?= APP_URL ?>/uploads/avatars/<?= htmlspecialchars($user['avatar']) ?>"
-                                 alt="<?= htmlspecialchars($user['name']) ?>"
-                                 style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary-color);">
+                                 alt="<?= htmlspecialchars($user['name']) ?>">
                         <?php else: ?>
-                            <div id="profile-avatar-img" style="width: 120px; height: 120px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 4px solid var(--primary-color);">
+                            <div id="profile-avatar-img" class="student-profile-avatar-placeholder">
                                 <svg viewBox="0 0 24 24" width="60" height="60" fill="white">
                                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                                 </svg>
                             </div>
                         <?php endif; ?>
 
-                        <!-- Upload Button -->
                         <form id="avatarUploadForm" style="position: absolute; bottom: 0; right: 0;" enctype="multipart/form-data">
                             <input type="file" id="avatarInput" name="avatar" accept="image/*" style="display: none;" onchange="uploadAvatar()">
-                            <label for="avatarInput" style="cursor: pointer; background: var(--primary-color); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" title="Change profile picture">
+                            <label for="avatarInput" class="student-profile-upload-btn" title="Change profile picture">
                                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                                     <path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/>
                                 </svg>
                             </label>
                         </form>
                     </div>
-                    <h2 style="font-size: 1.5rem;"><?= htmlspecialchars($user['name']) ?></h2>
-                    <p style="color: var(--gray-dark); font-size: 0.9rem;"><?= htmlspecialchars($user['email']) ?></p>
-                    <p style="margin-top: 15px;">
-                        <span style="padding: 6px 16px; background: var(--secondary-color); color: white; border-radius: 20px; font-size: 0.85rem;">
-                            <?= ucfirst(htmlspecialchars($user['role'])) ?>
-                        </span>
+                    <h2 class="student-profile-name"><?= htmlspecialchars($user['name']) ?></h2>
+                    <p class="student-profile-email"><?= htmlspecialchars($user['email']) ?></p>
+                    <p style="margin: 0;">
+                        <span class="student-profile-role"><?= ucfirst(htmlspecialchars($user['role'])) ?></span>
                     </p>
 
                     <!-- Generate Avatar Button -->
@@ -67,40 +204,40 @@ $studentSidebarActive = 'profile';
             </div>
 
             <!-- Account Info -->
-            <div class="table-container">
+            <div class="table-container student-profile-card">
                 <div class="table-header">
-                    <h3 style="margin: 0;">Account Information</h3>
+                    <h3>Account Information</h3>
                 </div>
                 <div style="padding: 30px;">
                     <div style="margin-bottom: 25px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--primary-color);">Full Name</label>
-                        <div style="padding: 12px 16px; background: var(--gray-light); border-radius: var(--border-radius-sm);">
+                        <label class="student-profile-field-label">Full Name</label>
+                        <div class="student-profile-field">
                             <?= htmlspecialchars($user['name']) ?>
                         </div>
                     </div>
 
                     <div style="margin-bottom: 25px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--primary-color);">Email Address</label>
-                        <div style="padding: 12px 16px; background: var(--gray-light); border-radius: var(--border-radius-sm);">
+                        <label class="student-profile-field-label">Email Address</label>
+                        <div class="student-profile-field">
                             <?= htmlspecialchars($user['email']) ?>
                         </div>
                     </div>
 
                     <div style="margin-bottom: 25px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--primary-color);">Account Type</label>
-                        <div style="padding: 12px 16px; background: var(--gray-light); border-radius: var(--border-radius-sm);">
+                        <label class="student-profile-field-label">Account Type</label>
+                        <div class="student-profile-field">
                             <?= ucfirst(htmlspecialchars($user['role'])) ?>
                         </div>
                     </div>
 
                     <div style="margin-bottom: 25px;">
-                        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--primary-color);">Member Since</label>
-                        <div style="padding: 12px 16px; background: var(--gray-light); border-radius: var(--border-radius-sm);">
+                        <label class="student-profile-field-label">Member Since</label>
+                        <div class="student-profile-field">
                             <?= date('F d, Y', strtotime($user['created_at'])) ?>
                         </div>
                     </div>
 
-                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--gray); display: flex; gap: 15px;">
+                    <div class="student-profile-actions">
                         <a href="<?= APP_ENTRY ?>?url=student/edit-profile" class="btn btn-primary">Edit Profile</a>
                         <a href="<?= APP_ENTRY ?>?url=logout" class="btn btn-outline" style="color: #dc3545; border-color: #dc3545;">
                             Logout
@@ -111,10 +248,10 @@ $studentSidebarActive = 'profile';
         </div>
 
         <!-- Face ID Section -->
-        <div style="grid-column: 1 / -1; margin-top: 10px;">
-            <div class="table-container">
+        <div class="student-profile-face-wrap">
+            <div class="table-container student-profile-card">
                 <div class="table-header">
-                    <h3 style="margin: 0;">
+                    <h3>
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="vertical-align: middle; margin-right: 8px;">
                             <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
                         </svg>
@@ -123,7 +260,7 @@ $studentSidebarActive = 'profile';
                 </div>
                 <div style="padding: 30px;">
                     <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
-                        <div style="width: 60px; height: 60px; background: <?= !empty($user['face_descriptor']) ? 'var(--success-color)' : 'var(--gray)' ?>; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <div class="student-profile-face-icon <?= !empty($user['face_descriptor']) ? 'student-profile-face-icon--on' : 'student-profile-face-icon--off' ?>">
                             <svg viewBox="0 0 24 24" width="30" height="30" fill="white">
                                 <?php if (!empty($user['face_descriptor'])): ?>
                                     <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
@@ -136,7 +273,7 @@ $studentSidebarActive = 'profile';
                             <h4 style="margin: 0 0 5px 0;">
                                 <?= !empty($user['face_descriptor']) ? 'Face ID is Enabled' : 'Face ID is Not Set' ?>
                             </h4>
-                            <p style="margin: 0; color: var(--gray-dark); font-size: 0.9rem;">
+                            <p style="margin: 0; color: #64748b; font-size: 0.9rem;">
                                 <?= !empty($user['face_descriptor']) ? 'You can use your face to login securely.' : 'Add Face ID for quick and secure login.' ?>
                             </p>
                         </div>
@@ -153,10 +290,14 @@ $studentSidebarActive = 'profile';
                         <?php endif; ?>
                     </div>
                 </div>
+            </div>
+        </div>
 <?php if (!isset($adminSidebarActive)): ?>
             </div>
         </div>
     </div>
+</div>
+<?php else: ?>
 </div>
 <?php endif; ?>
 
@@ -701,7 +842,7 @@ function generateAvatar() {
                     img.id = 'profile-avatar-img';
                     img.src = data.url;
                     img.alt = 'Avatar';
-                    img.style.cssText = 'width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid var(--primary-color);';
+                    img.style.cssText = 'width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid #0ea5e9;';
                     profileImg.replaceWith(img);
                 } else {
                     profileImg.src = data.url;

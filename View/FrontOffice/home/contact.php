@@ -55,7 +55,7 @@
                     </div>
                     <div>
                         <h3 style="font-size: 1.3rem; color: #2B4865; margin-bottom: 8px; font-weight: 700;">Our Location</h3>
-                        <p style="color: #64748b; line-height: 1.6; margin: 0;">123 Education Street<br>Learning City, ED 12345<br>United States</p>
+                        <p style="color: #64748b; line-height: 1.6; margin: 0;">Pôle Technologique, 1<br>2 rue André Ampère<br>Cebalat 2083</p>
                     </div>
                 </div>
 
@@ -65,7 +65,7 @@
                     </div>
                     <div>
                         <h3 style="font-size: 1.3rem; color: #2B4865; margin-bottom: 8px; font-weight: 700;">Email Us</h3>
-                        <p style="color: #64748b; line-height: 1.6; margin: 0;">General: info@appolios.com<br>Support: support@appolios.com</p>
+                        <p style="color: #64748b; line-height: 1.6; margin: 0;"><a href="mailto:appolios2026@gmail.com" style="color: #2B4865; font-weight: 600; text-decoration: none;">appolios2026@gmail.com</a></p>
                     </div>
                 </div>
 
@@ -75,7 +75,7 @@
                     </div>
                     <div>
                         <h3 style="font-size: 1.3rem; color: #2B4865; margin-bottom: 8px; font-weight: 700;">Call Us</h3>
-                        <p style="color: #64748b; line-height: 1.6; margin: 0;">+1 (555) 123-4567<br>Mon - Fri: 9:00 AM - 5:00 PM</p>
+                        <p style="color: #64748b; line-height: 1.6; margin: 0;"><a href="tel:+21699791512" style="color: #2B4865; font-weight: 600; text-decoration: none;">+216 99 791 512</a><br><span style="font-size: 0.92em;">Mon – Fri: 9:00 AM – 5:00 PM</span></p>
                     </div>
                 </div>
             </div>

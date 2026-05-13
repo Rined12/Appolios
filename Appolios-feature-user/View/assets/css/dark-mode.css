@@ -1,0 +1,461 @@
+/**
+ * APPOLIOS - Dark Mode Styles
+ * These styles are applied when body has the 'dark-mode' class
+ */
+
+/* ==================== BASE DARK MODE ==================== */
+body.dark-mode {
+    background-color: #0f172a !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .home-lite-page,
+body.dark-mode .student-events-page,
+body.dark-mode .dashboard {
+    background-color: #0f172a !important;
+}
+
+/* ==================== HEADER DARK MODE ==================== */
+body.dark-mode .neo-header {
+    background: rgba(15, 23, 42, 0.95) !important;
+    border-bottom-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .neo-brand-logo {
+    background: linear-gradient(135deg, #548CA8 0%, #E19864 100%) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+body.dark-mode .neo-nav a {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .neo-nav a:hover {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .neo-nav a.active {
+    color: #E19864 !important;
+}
+
+body.dark-mode .neo-btn-outline {
+    background: rgba(30, 41, 59, 0.8) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(84, 140, 168, 0.3) !important;
+}
+
+body.dark-mode .neo-btn-outline:hover {
+    border-color: #E19864 !important;
+    background: rgba(225, 152, 100, 0.1) !important;
+}
+
+/* ==================== GLASS CARDS DARK MODE ==================== */
+body.dark-mode .neo-glass-card {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: rgba(84, 140, 168, 0.2) !important;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .neo-auth-info {
+    background: rgba(15, 23, 42, 0.6) !important;
+    border-right-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+/* ==================== FORMS DARK MODE ==================== */
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: rgba(84, 140, 168, 0.3) !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #64748b !important;
+}
+
+body.dark-mode input:focus,
+body.dark-mode textarea:focus,
+body.dark-mode select:focus {
+    border-color: #E19864 !important;
+    box-shadow: 0 0 0 3px rgba(225, 152, 100, 0.2) !important;
+}
+
+body.dark-mode label {
+    color: #94a3b8 !important;
+}
+
+/* ==================== SIDEBAR DARK MODE ==================== */
+body.dark-mode .admin-side-nav {
+    background: rgba(15, 23, 42, 0.95) !important;
+    border-right-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .admin-side-header {
+    border-bottom-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .admin-side-link {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .admin-side-link:hover {
+    background: rgba(225, 152, 100, 0.1) !important;
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .admin-side-link.active {
+    background: rgba(225, 152, 100, 0.2) !important;
+    color: #E19864 !important;
+}
+
+body.dark-mode .admin-side-footer {
+    border-top-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+/* ==================== TABLES DARK MODE ==================== */
+body.dark-mode .table-container {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode table {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode th {
+    background: rgba(15, 23, 42, 0.8) !important;
+    color: #E19864 !important;
+    border-bottom-color: rgba(84, 140, 168, 0.3) !important;
+}
+
+body.dark-mode td {
+    border-bottom-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode tr:hover {
+    background: rgba(225, 152, 100, 0.05) !important;
+}
+
+/* ==================== TYPOGRAPHY DARK MODE ==================== */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6 {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode p,
+body.dark-mode span {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .home-lite-kicker,
+body.dark-mode .student-events-hero-kicker {
+    color: #E19864 !important;
+    background: rgba(225, 152, 100, 0.1) !important;
+}
+
+/* ==================== BUTTONS DARK MODE ==================== */
+body.dark-mode .btn.btn-secondary {
+    background: rgba(84, 140, 168, 0.2) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(84, 140, 168, 0.3) !important;
+}
+
+body.dark-mode .btn.btn-secondary:hover {
+    background: rgba(84, 140, 168, 0.3) !important;
+    border-color: #E19864 !important;
+}
+
+body.dark-mode .btn.btn-primary {
+    background: linear-gradient(135deg, #E19864 0%, #d9804b 100%) !important;
+    color: #fff !important;
+}
+
+body.dark-mode .btn.btn-yellow {
+    background: linear-gradient(135deg, #E19864 0%, #d9804b 100%) !important;
+    color: #fff !important;
+}
+
+body.dark-mode .btn.btn-outline {
+    background: transparent !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(84, 140, 168, 0.3) !important;
+}
+
+body.dark-mode .btn.btn-outline:hover {
+    background: rgba(225, 152, 100, 0.1) !important;
+    border-color: #E19864 !important;
+    color: #E19864 !important;
+}
+
+/* ==================== DASHBOARD SPECIFIC DARK MODE ==================== */
+body.dark-mode .dashboard-header h1 {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .dashboard-header p {
+    color: #64748b !important;
+}
+
+body.dark-mode .admin-main {
+    background: transparent !important;
+}
+
+/* ==================== CARDS & SECTIONS DARK MODE ==================== */
+body.dark-mode section {
+    background: transparent !important;
+}
+
+body.dark-mode .form-container {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .form-group {
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+/* ==================== LINKS DARK MODE ==================== */
+body.dark-mode a {
+    color: #548CA8 !important;
+}
+
+body.dark-mode a:hover {
+    color: #E19864 !important;
+}
+
+/* ==================== FLASH MESSAGES DARK MODE ==================== */
+body.dark-mode .flash-message,
+body.dark-mode [style*="background: rgba(220, 53, 69, 0.1)"] {
+    background: rgba(220, 53, 69, 0.2) !important;
+    border-color: rgba(220, 53, 69, 0.4) !important;
+}
+
+body.dark-mode [style*="background: rgba(25, 135, 84, 0.1)"] {
+    background: rgba(25, 135, 84, 0.2) !important;
+    border-color: rgba(25, 135, 84, 0.4) !important;
+}
+
+/* ==================== SCROLLBAR DARK MODE ==================== */
+body.dark-mode::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+body.dark-mode::-webkit-scrollbar-track {
+    background: #0f172a;
+}
+
+body.dark-mode::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 5px;
+}
+
+body.dark-mode::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* ==================== MODAL/OVERLAY DARK MODE ==================== */
+body.dark-mode .modal {
+    background: rgba(15, 23, 42, 0.9) !important;
+}
+
+body.dark-mode .modal-content {
+    background: rgba(30, 41, 59, 0.95) !important;
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+/* ==================== GRID ITEMS DARK MODE ==================== */
+body.dark-mode .course-card,
+body.dark-mode .event-card {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .course-card:hover,
+body.dark-mode .event-card:hover {
+    border-color: rgba(225, 152, 100, 0.4) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ==================== STUDENT/TEACHER DASHBOARD DARK MODE ==================== */
+body.dark-mode .student-events-hero-copy h1,
+body.dark-mode .student-events-hero-copy p {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .student-events-visual-card {
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .student-courses-hero-btn-primary {
+    background: linear-gradient(135deg, #E19864 0%, #d9804b 100%) !important;
+    color: #fff !important;
+}
+
+body.dark-mode .student-courses-hero-btn-secondary {
+    background: rgba(30, 41, 59, 0.8) !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(84, 140, 168, 0.3) !important;
+}
+
+body.dark-mode .student-courses-hero-btn-secondary:hover {
+    border-color: #E19864 !important;
+    background: rgba(225, 152, 100, 0.1) !important;
+}
+
+/* ==================== AUTH PAGES DARK MODE ==================== */
+body.dark-mode.auth-page {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+}
+
+body.dark-mode .auth-container {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .auth-container h1,
+body.dark-mode .auth-container h2 {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .auth-container p {
+    color: #94a3b8 !important;
+}
+
+/* ==================== DECORATIVE ELEMENTS DARK MODE ==================== */
+body.dark-mode [style*="background: #e9f1fa"] {
+    background: rgba(84, 140, 168, 0.1) !important;
+}
+
+body.dark-mode [style*="background: #fef2f2"] {
+    background: rgba(225, 152, 100, 0.1) !important;
+}
+
+body.dark-mode [style*="background: #e1edf7"] {
+    background: rgba(84, 140, 168, 0.1) !important;
+}
+
+body.dark-mode [style*="background: #fcfcfc"] {
+    background: rgba(15, 23, 42, 0.5) !important;
+}
+
+body.dark-mode [style*="background: #f8fafc"] {
+    background: rgba(30, 41, 59, 0.5) !important;
+}
+
+/* ==================== BADGES DARK MODE ==================== */
+body.dark-mode .neo-badges span,
+body.dark-mode [style*="background: #e9f1fa"] {
+    background: rgba(84, 140, 168, 0.2) !important;
+    color: #548CA8 !important;
+}
+
+body.dark-mode [style*="background: #dc3545"] {
+    background: rgba(220, 53, 69, 0.2) !important;
+    color: #dc3545 !important;
+}
+
+body.dark-mode [style*="background: #28a745"] {
+    background: rgba(40, 167, 69, 0.2) !important;
+    color: #28a745 !important;
+}
+
+/* ==================== NAVIGATION DROPDOWNS DARK MODE ==================== */
+body.dark-mode .dropdown-menu {
+    background: rgba(30, 41, 59, 0.95) !important;
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .dropdown-item {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .dropdown-item:hover {
+    background: rgba(225, 152, 100, 0.1) !important;
+    color: #E19864 !important;
+}
+
+/* ==================== PAGINATION DARK MODE ==================== */
+body.dark-mode .pagination {
+    background: transparent !important;
+}
+
+body.dark-mode .page-link {
+    background: rgba(30, 41, 59, 0.8) !important;
+    color: #94a3b8 !important;
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .page-link:hover {
+    background: rgba(225, 152, 100, 0.1) !important;
+    color: #E19864 !important;
+    border-color: #E19864 !important;
+}
+
+body.dark-mode .page-item.active .page-link {
+    background: #E19864 !important;
+    color: #fff !important;
+    border-color: #E19864 !important;
+}
+
+/* ==================== STATS/COUNTERS DARK MODE ==================== */
+body.dark-mode [style*="background: #548CA8"] {
+    background: rgba(84, 140, 168, 0.3) !important;
+    color: #548CA8 !important;
+}
+
+body.dark-mode [style*="background: #E19864"] {
+    background: rgba(225, 152, 100, 0.3) !important;
+    color: #E19864 !important;
+}
+
+/* ==================== HOME PAGE SPECIFIC DARK MODE ==================== */
+body.dark-mode .home-lite-container h1 {
+    color: #e2e8f0 !important;
+}
+
+body.dark-mode .home-lite-container h1 span {
+    color: #E19864 !important;
+}
+
+body.dark-mode .home-lite-hero-copy p {
+    color: #94a3b8 !important;
+}
+
+/* ==================== TEACHER/STUDENT SIDEBAR DARK MODE ==================== */
+body.dark-mode .student-sidebar,
+body.dark-mode .teacher-sidebar {
+    background: rgba(15, 23, 42, 0.95) !important;
+    border-right-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .student-sidebar a,
+body.dark-mode .teacher-sidebar a {
+    color: #94a3b8 !important;
+}
+
+body.dark-mode .student-sidebar a:hover,
+body.dark-mode .teacher-sidebar a:hover,
+body.dark-mode .student-sidebar a.active,
+body.dark-mode .teacher-sidebar a.active {
+    background: rgba(225, 152, 100, 0.1) !important;
+    color: #E19864 !important;
+}
+
+/* ==================== PROGRESS BARS DARK MODE ==================== */
+body.dark-mode .progress {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: rgba(84, 140, 168, 0.2) !important;
+}
+
+body.dark-mode .progress-bar {
+    background: linear-gradient(135deg, #E19864 0%, #d9804b 100%) !important;
+}

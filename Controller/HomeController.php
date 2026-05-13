@@ -91,6 +91,11 @@ class HomeController extends BaseController {
         $result = $this->createContactMessage($name, $email, $subject, $message);
 
         if ($result) {
+            require_once __DIR__ . '/MailService.php';
+            $mailSent = MailService::sendContactFormSubmission($name, $email, $subject, $message);
+            if (!$mailSent) {
+                error_log('APPOLIOS contact form: mail() failed to deliver notification to inbox');
+            }
             $this->setFlash('success', 'Thank you! Your message has been sent successfully. We will get back to you soon.');
         } else {
             $this->setFlash('error', 'Sorry, there was an error sending your message. Please try again.');

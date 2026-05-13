@@ -5,16 +5,22 @@
 $adminSidebarActive = $adminSidebarActive ?? '';
 $userAvatar = $_SESSION['user_avatar'] ?? 'default-admin.png';
 $userName = $_SESSION['user_name'] ?? 'Administrator';
+$lang = $lang ?? [];
+$currentLang = $currentLang ?? 'fr';
+$isRtl = ($currentLang === 'ar');
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<?= htmlspecialchars($currentLang) ?>" dir="<?= $isRtl ? 'rtl' : 'ltr' ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="<?= APP_URL ?>/View/assets/images/branding/favicon.png">
+    <link rel="apple-touch-icon" href="<?= APP_URL ?>/View/assets/images/branding/favicon.png">
     <title>Admin Pro | <?= htmlspecialchars($title ?? 'Dashboard') ?></title>
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/vendor/font-awesome/css/all.min.css">
     <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/admin-neo.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/View/assets/css/module-focus.css">
     <script>
         // Pre-load theme to prevent flash
         (function() {
@@ -58,6 +64,19 @@ $userName = $_SESSION['user_name'] ?? 'Administrator';
                 <?php endif; ?>
             </a>
 
+            <!-- Conteneur pour l'Espace Étudiant -->
+            <a href="<?= APP_ENTRY ?>?url=student/dashboard" class="nav-item">
+                <i class="bi bi-mortarboard-fill"></i>
+                <span>Espace Étudiant</span>
+            </a>
+
+            <!-- Conteneur pour l'Espace Teacher -->
+            <a href="<?= APP_ENTRY ?>?url=teacher/dashboard" class="nav-item">
+                <i class="bi bi-person-video3"></i>
+                <span>Espace Teacher</span>
+            </a>
+            
+
             <a href="<?= APP_ENTRY ?>?url=admin/users" class="nav-item <?= $adminSidebarActive === 'users' ? 'active' : '' ?>">
                 <i class="bi bi-people-fill"></i>
                 <span>Utilisateurs</span>
@@ -66,6 +85,16 @@ $userName = $_SESSION['user_name'] ?? 'Administrator';
             <a href="<?= APP_ENTRY ?>?url=admin/teachers" class="nav-item <?= $adminSidebarActive === 'teachers' ? 'active' : '' ?>">
                 <i class="bi bi-mortarboard-fill"></i>
                 <span>Enseignants</span>
+            </a>
+
+            <a href="<?= APP_ENTRY ?>?url=admin/sl-groupes" class="nav-item <?= $adminSidebarActive === 'sl-groupes' ? 'active' : '' ?>">
+                <i class="bi bi-people-fill"></i>
+                <span>Manage groups</span>
+            </a>
+
+            <a href="<?= APP_ENTRY ?>?url=admin/sl-discussions" class="nav-item <?= $adminSidebarActive === 'sl-discussions' ? 'active' : '' ?>">
+                <i class="bi bi-chat-left-text-fill"></i>
+                <span>Manage discussions</span>
             </a>
 
             <a href="<?= APP_ENTRY ?>?url=admin/contact-messages" class="nav-item <?= $adminSidebarActive === 'contact-messages' ? 'active' : '' ?>">
@@ -86,32 +115,46 @@ $userName = $_SESSION['user_name'] ?? 'Administrator';
                 <span>Statistiques</span>
             </a>
             
-            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.05); margin:1rem 0;">
+            <a href="<?= APP_ENTRY ?>?url=admin/quizzes" class="nav-item <?= $adminSidebarActive === 'quizzes' ? 'active' : '' ?>">
+                <i class="bi bi-patch-question-fill"></i>
+                <span>Quiz & Examens</span>
+            </a>
+
+            <a href="<?= APP_ENTRY ?>?url=admin/questions" class="nav-item <?= $adminSidebarActive === 'questions_bank' ? 'active' : '' ?>">
+                <i class="bi bi-collection-fill"></i>
+                <span>Banque de Questions</span>
+            </a>
             
-            <a href="<?= APP_ENTRY ?>?url=admin/evenements" class="nav-item <?= $adminSidebarActive === 'evenements' ? 'active' : '' ?>">
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.05); margin:0.5rem 0;">
+            
+            <a href="<?= APP_ENTRY ?>?url=event/evenements" class="nav-item <?= $adminSidebarActive === 'evenements' ? 'active' : '' ?>">
                 <i class="bi bi-calendar-event-fill"></i>
                 <span>Événements</span>
             </a>
+
+            <a href="<?= APP_ENTRY ?>?url=admin/stat-evenements" class="nav-item <?= $adminSidebarActive === 'stat-evenements' ? 'active' : '' ?>">
+                <i class="bi bi-bar-chart-fill"></i>
+                <span>Stat Événements</span>
+            </a>
             
+            
+            
+            <a href="<?= APP_ENTRY ?>?url=admin/course-requests" class="nav-item <?= $adminSidebarActive === 'course-requests' ? 'active' : '' ?>">
+                <i class="bi bi-clipboard-check-fill"></i>
+                <span>Course Requests</span>
+            </a>
+
             <a href="<?= APP_ENTRY ?>?url=admin/courses" class="nav-item <?= $adminSidebarActive === 'courses' ? 'active' : '' ?>">
                 <i class="bi bi-book-half"></i>
                 <span>Cours</span>
             </a>
-
-            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.05); margin:1rem 0;">
-            <p style="padding: 0 1.5rem; font-size: 0.65rem; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">Aperçu Espaces</p>
-
-            <a href="<?= APP_ENTRY ?>?url=student/dashboard" class="nav-item">
-                <i class="bi bi-mortarboard"></i>
-                <span>Espace Étudiant</span>
+            
+            <a href="<?= APP_ENTRY ?>?url=admin/add-course" class="nav-item <?= $adminSidebarActive === 'add-course' ? 'active' : '' ?>">
+                <i class="bi bi-plus-circle"></i>
+                <span>Ajouter Cours</span>
             </a>
 
-            <a href="<?= APP_ENTRY ?>?url=teacher/dashboard" class="nav-item">
-                <i class="bi bi-person-video3"></i>
-                <span>Espace Teacher</span>
-            </a>
-
-            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.05); margin:1rem 0;">
+            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.05); margin:0.5rem 0;">
 
             <a href="<?= APP_ENTRY ?>?url=student/profile" class="nav-item <?= $adminSidebarActive === 'profile' ? 'active' : '' ?>">
                 <i class="bi bi-person-circle"></i>

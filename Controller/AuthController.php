@@ -169,7 +169,13 @@ class AuthController extends BaseController
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Necessary for some local XAMPP setups
         $response = curl_exec($ch);
         $curlError = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        // DEBUG LOGGING
+        $logDir = __DIR__ . '/../logs';
+        if (!is_dir($logDir)) @mkdir($logDir, 0777, true);
+        file_put_contents($logDir . '/recaptcha_debug.log', "[" . date('Y-m-d H:i:s') . "] Response: $response | Error: $curlError | HTTP: $httpCode\n", FILE_APPEND);
 
         if ($response === false) {
             $this->setFlash('error', 'CURL Error: ' . $curlError);
@@ -489,7 +495,7 @@ class AuthController extends BaseController
      * @param string $faceDescriptorRaw
      * @return string|null
      */
-    private function processFaceDescriptor($faceDescriptorRaw)
+    private function processFaceDescriptor($faceDescriptorRaw, $excludeUserId = null)
     {
         if (empty($faceDescriptorRaw)) {
             return null;
@@ -504,6 +510,8 @@ class AuthController extends BaseController
         $existingUsers = $this->getUsersWithFaceDescriptor();
         $isUnique = true;
         foreach ($existingUsers as $eu) {
+            if ($excludeUserId && $eu['id'] == $excludeUserId) continue;
+            
             $stored = json_decode($eu['face_descriptor'], true);
             if (!$stored || count($stored) !== 128)
                 continue;
@@ -667,6 +675,8 @@ class AuthController extends BaseController
         echo json_encode(['unique' => true, 'message' => 'Face is unique.']);
     }
 
+
+
     /**
      * Verify Google reCAPTCHA v3 response using cURL
      * @param string $recaptchaResponse
@@ -692,7 +702,7 @@ class AuthController extends BaseController
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
         $result = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -773,13 +783,19 @@ class AuthController extends BaseController
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
         $result = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
         curl_close($ch);
+
+        // DEBUG LOGGING
+        $logDir = __DIR__ . '/../logs';
+        if (!is_dir($logDir)) @mkdir($logDir, 0777, true);
+        file_put_contents($logDir . '/recaptcha_debug.log', "[" . date('Y-m-d H:i:s') . "] Result: $result | Error: $curlError | HTTP: $httpCode\n", FILE_APPEND);
 
         if ($result === false || $httpCode !== 200) {
             error_log('reCAPTCHA v2 cURL error: ' . $curlError . ' (HTTP: ' . $httpCode . ')');
@@ -1252,28 +1268,28 @@ class AuthController extends BaseController
 
     public function updateFaceDescriptor($id, $faceDescriptor)
     {
-        $sql = "UPDATE {$this->table} SET face_descriptor = ? WHERE id = ?";
+        $sql = "UPDATE users SET face_descriptor = ? WHERE id = ?";
         $stmt = $this->getDb()->prepare($sql);
         return $stmt->execute([$faceDescriptor, $id]);
     }
 
     public function setPasswordResetToken($id, $token, $expiry)
     {
-        $sql = "UPDATE {$this->table} SET reset_token = ?, reset_token_expiry = ? WHERE id = ?";
+        $sql = "UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?";
         $stmt = $this->getDb()->prepare($sql);
         return $stmt->execute([$token, $expiry, $id]);
     }
 
     public function updatePassword($id, $hashedPassword)
     {
-        $sql = "UPDATE {$this->table} SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?";
+        $sql = "UPDATE users SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?";
         $stmt = $this->getDb()->prepare($sql);
         return $stmt->execute([$hashedPassword, $id]);
     }
 
     public function createUserWithHashedPassword($data)
     {
-        $sql = "INSERT INTO {$this->table} (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
+        $sql = "INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
         try {
             $stmt = $this->getDb()->prepare($sql);
             $stmt->execute([
@@ -1315,6 +1331,7 @@ class AuthController extends BaseController
             ]);
             return $this->getDb()->lastInsertId();
         } catch (PDOException $e) {
+            error_log('Teacher Registration DB Error: ' . $e->getMessage());
             return false;
         }
     }

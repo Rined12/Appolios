@@ -41,24 +41,24 @@
                             <td>
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <div style="width: 32px; height: 32px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--admin-primary);">
-                                        <?= strtoupper(substr($app['name'], 0, 1)) ?>
+                                        <?= strtoupper(substr($app['name'] ?? '?', 0, 1)) ?>
                                     </div>
-                                    <div style="font-weight: 700; color: #1e293b;"><?= htmlspecialchars($app['name']) ?></div>
+                                    <div style="font-weight: 700; color: #1e293b;"><?= htmlspecialchars($app['name'] ?? 'Inconnu') ?></div>
                                 </div>
                             </td>
-                            <td style="color: #64748b; font-size: 0.9rem;"><?= htmlspecialchars($app['email']) ?></td>
+                            <td style="color: #64748b; font-size: 0.9rem;"><?= htmlspecialchars($app['email'] ?? 'Sans email') ?></td>
                             <td>
-                                <a href="<?= APP_URL ?>/<?= htmlspecialchars($app['cv_path']) ?>" target="_blank" class="admin-badge admin-badge-info" style="text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                                <a href="<?= APP_URL ?>/<?= htmlspecialchars($app['cv_path'] ?? '') ?>" target="_blank" class="admin-badge admin-badge-info" style="text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
                                     <i class="bi bi-file-earmark-pdf"></i> Voir le CV
                                 </a>
                             </td>
                             <td style="color: #64748b; font-size: 0.9rem;"><?= date('d M, Y H:i', strtotime($app['created_at'])) ?></td>
                             <td style="text-align: right;">
                                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                    <button onclick="openApproveModal(<?= $app['id'] ?>, '<?= addslashes($app['name']) ?>')" class="btn-admin" style="background: #dcfce7; color: #15803d; border: none; padding: 6px 12px;">
+                                    <button onclick="openApproveModal(<?= $app['id'] ?>, '<?= addslashes($app['name'] ?? 'Inconnu') ?>')" class="btn-admin" style="background: #dcfce7; color: #15803d; border: none; padding: 6px 12px;">
                                         <i class="bi bi-check-lg"></i> Approuver
                                     </button>
-                                    <button onclick="openRejectModal(<?= $app['id'] ?>, '<?= addslashes($app['name']) ?>')" class="btn-admin" style="background: #fee2e2; color: #b91c1c; border: none; padding: 6px 12px;">
+                                    <button onclick="openRejectModal(<?= $app['id'] ?>, '<?= addslashes($app['name'] ?? 'Inconnu') ?>')" class="btn-admin" style="background: #fee2e2; color: #b91c1c; border: none; padding: 6px 12px;">
                                         <i class="bi bi-x-lg"></i> Rejeter
                                     </button>
                                 </div>

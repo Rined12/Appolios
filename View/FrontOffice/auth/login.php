@@ -9,7 +9,7 @@
 <section class="neo-auth-wrap neo-login-page">
     <div class="neo-glass-card neo-auth-grid">
         <aside class="neo-auth-info">
-            <h2>Welcome Back</h2>
+            <h2><?= htmlspecialchars($lang['auth_headline'] ?? 'Welcome Back') ?></h2>
             <p class="neo-muted" style="margin-top: 0.5rem;">Access your dashboard, continue courses, and track your
                 achievements.</p>
             <div class="neo-badges" style="margin-top: 1rem;">
@@ -19,9 +19,12 @@
             </div>
 
             <div class="neo-login-hero-visual">
-                <div class="neo-login-hero-circle"></div>
-                <img src="<?= APP_URL ?>/View/assets/images/instructor/06.jpg" alt="Student learning"
-                    class="neo-login-hero-photo">
+                <img src="<?= APP_URL ?>/View/assets/images/branding/appolios-login-logo.png"
+                    alt="<?= htmlspecialchars(APP_NAME) ?> — Apprenez mieux, avancez plus loin."
+                    class="neo-login-hero-logo"
+                    width="400"
+                    height="320"
+                    loading="lazy">
             </div>
         </aside>
 
@@ -35,9 +38,9 @@
                     <line x1="19" y1="12" x2="5" y2="12"></line>
                     <polyline points="12 19 5 12 12 5"></polyline>
                 </svg>
-                Back to Home
+                <?= htmlspecialchars($lang['back_home'] ?? 'Back to Home') ?>
             </a>
-            <h2>Sign In</h2>
+            <h2><?= htmlspecialchars($lang['sign_in_title'] ?? 'Sign In') ?></h2>
             <p class="neo-muted" style="margin-top: 0.45rem;">Use your APPOLIOS account credentials.</p>
 
 
@@ -144,6 +147,7 @@
             }
 
             function validateRecaptcha() {
+                if (typeof grecaptcha === 'undefined') return true;
                 var response = grecaptcha.getResponse();
                 if (response.length == 0) {
                     Swal.fire({

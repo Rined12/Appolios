@@ -3,6 +3,7 @@
  * Global Quick Navigation Header
  */
 $currentPage = $_GET['url'] ?? '';
+$lang = $lang ?? [];
 ?>
 
 <!-- Quick Navigation Header -->
@@ -14,11 +15,11 @@ $currentPage = $_GET['url'] ?? '';
         </a>
     </div>
     <div class="nav-center">
-        <a href="<?= APP_ENTRY ?>?url=home/index" class="quick-link <?= ($currentPage === 'home/index') ? 'active' : '' ?>">Home</a>
-        <a href="<?= APP_ENTRY ?>?url=admin/courses" class="quick-link <?= ($currentPage === 'admin/courses') ? 'active' : '' ?>">Courses</a>
-        <a href="<?= APP_ENTRY ?>?url=about" class="quick-link">About</a>
-        <a href="<?= APP_ENTRY ?>?url=contact" class="quick-link">Contact</a>
-        <a href="<?= APP_ENTRY ?>?url=admin/dashboard" class="quick-link <?= ($currentPage === 'admin/dashboard') ? 'active' : '' ?>">Dashboard</a>
+        <a href="<?= APP_ENTRY ?>?url=home/index" class="quick-link <?= ($currentPage === 'home/index') ? 'active' : '' ?>"><?= htmlspecialchars($lang['admin_nav_home'] ?? 'Home') ?></a>
+        <a href="<?= APP_ENTRY ?>?url=admin/courses" class="quick-link <?= ($currentPage === 'admin/courses') ? 'active' : '' ?>"><?= htmlspecialchars($lang['admin_nav_courses'] ?? 'Courses') ?></a>
+        <a href="<?= APP_ENTRY ?>?url=about" class="quick-link"><?= htmlspecialchars($lang['admin_nav_about'] ?? 'About') ?></a>
+        <a href="<?= APP_ENTRY ?>?url=contact" class="quick-link"><?= htmlspecialchars($lang['admin_nav_contact'] ?? 'Contact') ?></a>
+        <a href="<?= APP_ENTRY ?>?url=admin/dashboard" class="quick-link <?= ($currentPage === 'admin/dashboard') ? 'active' : '' ?>"><?= htmlspecialchars($lang['admin_nav_dashboard'] ?? 'Dashboard') ?></a>
     </div>
     <div class="nav-right">
         <!-- Notification Bell (Integrated) -->
@@ -31,7 +32,7 @@ $currentPage = $_GET['url'] ?? '';
             </button>
             
             <div class="notif-dropdown" id="quick-notif-dropdown">
-                <div class="notif-header">Notifications</div>
+                <div class="notif-header"><?= htmlspecialchars($lang['notifications'] ?? 'Notifications') ?></div>
                 <div class="notif-body">
                     <?php if (isset($pendingTeacherApps) && $pendingTeacherApps > 0): ?>
                         <a href="<?= APP_ENTRY ?>?url=admin/teacher-applications" class="notif-item">
@@ -56,7 +57,7 @@ $currentPage = $_GET['url'] ?? '';
                     <?php if ((!isset($pendingTeacherApps) || $pendingTeacherApps == 0) && (!isset($unreadCount) || $unreadCount == 0)): ?>
                         <div style="padding: 2rem; text-align: center; color: #94a3b8; font-size: 0.9rem;">
                             <i class="bi bi-check2-circle" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem;"></i>
-                            Aucune notification
+                            <?= htmlspecialchars($lang['notif_empty'] ?? 'No notifications') ?>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -72,7 +73,7 @@ $currentPage = $_GET['url'] ?? '';
         </button>
         
         <a href="<?= APP_ENTRY ?>?url=logout" class="quick-logout">
-            <i class="bi bi-box-arrow-right"></i> Logout
+            <i class="bi bi-box-arrow-right"></i> <?= htmlspecialchars($lang['admin_logout'] ?? 'Logout') ?>
         </a>
     </div>
 </div>

@@ -20,7 +20,7 @@
                         Back
                     </a>
                 </div>
-                <a href="<?= APP_ENTRY ?>?url=admin/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #548CA8; font-weight: 600; text-decoration: none; margin-bottom: 2rem; transition: color 0.2s;">
+                <a href="<?= APP_ENTRY ?>?url=event/evenements" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; color: #548CA8; font-weight: 600; text-decoration: none; margin-bottom: 2rem; transition: color 0.2s;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                     Back to Evenements
                 </a>
@@ -99,13 +99,13 @@
 
                             <!-- Actions -->
                             <div style="display: flex; gap: 10px; align-items: stretch;">
-                                <form action="<?= APP_ENTRY ?>?url=admin/approve-evenement/<?= (int) $event['id'] ?>" method="POST" style="flex: 0 0 auto;">
+                                <form action="<?= APP_ENTRY ?>?url=event/approve-evenement/<?= (int) $event['id'] ?>" method="POST" style="flex: 0 0 auto;">
                                     <button type="submit" style="background: linear-gradient(135deg, #548CA8 0%, #355C7D 100%); color: #fff; border: none; padding: 0 1.2rem; height: 42px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; box-shadow: 0 4px 10px rgba(84, 140, 168, 0.2);" onmouseover="this.style.boxShadow='0 6px 15px rgba(84, 140, 168, 0.3)'; this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='0 4px 10px rgba(84, 140, 168, 0.2)'; this.style.transform='translateY(0)'">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                         Approve
                                     </button>
                                 </form>
-                                <form action="<?= APP_ENTRY ?>?url=admin/reject-evenement/<?= (int) $event['id'] ?>" method="POST" style="flex: 1; display: flex; gap: 8px;">
+                                <form action="<?= APP_ENTRY ?>?url=event/reject-evenement/<?= (int) $event['id'] ?>" method="POST" style="flex: 1; display: flex; gap: 8px;">
                                     <input type="text" name="rejection_reason" placeholder="Rejection reason..." required style="flex: 1; background: #fdfdfd; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 0 1rem; height: 42px; color: #1e293b; font-size: 0.9rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#E19864'" onblur="this.style.borderColor='#e2e8f0'">
                                     <button type="submit" style="background: #fff; border: 1.5px solid #e2e8f0; color: #64748b; height: 42px; padding: 0 1.2rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.borderColor='#ef4444'; this.style.color='#ef4444'; this.style.background='#fef2f2'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b'; this.style.background='#fff'">
                                         Reject
@@ -124,7 +124,7 @@
                         </div>
                         <h3 style="color: #2B4865; margin: 0 0 0.5rem 0; font-size: 1.4rem; font-weight: 700;">You're all caught up!</h3>
                         <p style="color: #64748b; margin: 0; font-size: 1rem;">There are no pending evenement requests to review right now.</p>
-                        <a href="<?= APP_ENTRY ?>?url=admin/evenements" style="display: inline-block; margin-top: 1.5rem; background: #E19864; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; box-shadow: 0 4px 10px rgba(225, 152, 100, 0.3);">View All Events</a>
+                        <a href="<?= APP_ENTRY ?>?url=event/evenements" style="display: inline-block; margin-top: 1.5rem; background: #E19864; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; box-shadow: 0 4px 10px rgba(225, 152, 100, 0.3);">View All Events</a>
                     </div>
                 <?php endif; ?>
 
