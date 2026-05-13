@@ -393,17 +393,25 @@ unset($_SESSION['errors']);
                 }
 
                 function validateRecaptcha() {
-                    var response = grecaptcha.getResponse();
-                    if (response.length == 0) {
-                        Swal.fire({
-                            icon: "warning",
-                            title: "reCAPTCHA",
-                            text: "Veuillez cocher la case 'Je ne suis pas un robot' avant de continuer.",
-                            draggable: true
-                        });
-                        return false;
+                    <?php if (empty(RECAPTCHA_SITE_KEY)): ?>
+                    return true; // Bypass if recaptcha is not configured
+                    <?php endif; ?>
+                    
+                    try {
+                        var response = grecaptcha.getResponse();
+                        if (response.length == 0) {
+                            Swal.fire({
+                                icon: "warning",
+                                title: "reCAPTCHA",
+                                text: "Veuillez cocher la case 'Je ne suis pas un robot' avant de continuer.",
+                                draggable: true
+                            });
+                            return false;
+                        }
+                        return true;
+                    } catch(e) {
+                        return true; // Bypass if grecaptcha is not loaded
                     }
-                    return true;
                 }
             </script>
 

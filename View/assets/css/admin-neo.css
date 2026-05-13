@@ -58,6 +58,25 @@
     flex-direction: column;
     border-radius: 0 30px 30px 0; /* Rounded on the right side */
     box-shadow: 10px 0 30px rgba(15, 23, 42, 0.1);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Scrollbar personnalisé pour la sidebar */
+.admin-sidebar-pro::-webkit-scrollbar {
+    width: 8px;
+}
+.admin-sidebar-pro::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05); 
+    border-radius: 10px;
+}
+.admin-sidebar-pro::-webkit-scrollbar-thumb {
+    background: #4ade80; /* Par défaut, du vert ou du bleu selon le thème */
+    background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 100%); /* Le style bleu ciel de votre image */
+    border-radius: 10px;
+}
+.admin-sidebar-pro::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7dd3fc 0%, #38bdf8 100%);
 }
 
 
@@ -130,7 +149,7 @@
     margin-top: 1rem; /* Space from top for content only */
     display: flex;
     flex-direction: column;
-    width: 100%;
+    width: calc(100% - var(--admin-sidebar-width) - 1rem);
 }
 
 

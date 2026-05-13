@@ -1287,6 +1287,24 @@ body.theme-student-events .app-footer p {
     position: sticky;
     top: 86px;
     align-self: start;
+    height: calc(100vh - 100px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Custom scrollbar for sidebar */
+.admin-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+.admin-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.admin-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(100, 116, 139, 0.3);
+    border-radius: 10px;
+}
+.admin-sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.5);
 }
 
 .admin-sidebar-nav {
