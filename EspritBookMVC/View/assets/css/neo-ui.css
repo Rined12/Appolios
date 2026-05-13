@@ -1,0 +1,2781 @@
+/* Two-column layout for evenement ressources */
+.two-col-layout {
+    display: grid;
+    grid-template-columns: 1.1fr 1.3fr;
+    gap: 2.5rem;
+    align-items: flex-start;
+    margin-top: 2.2rem;
+}
+.admin-resource-page .two-col-layout {
+    grid-template-columns: 1.1fr 1.3fr;
+    gap: 2.5rem;
+}
+.admin-resource-page .left-pane,
+.admin-resource-page .right-pane {
+    /* match teacher sizes exactly */
+    padding: 2.8rem 2.2rem 2.2rem 2.2rem;
+    min-width: 380px;
+    min-height: 520px;
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(28,40,61,0.10), 0 1.5px 0.5px rgba(183,211,220,0.08);
+    border: 1.5px solid #e8e6e3;
+}
+.admin-resource-page .ressource-form-card h3 {
+    font-size: 1.18rem;
+}
+.admin-resource-page .ressource-list-card h3 {
+    font-size: 1.13rem;
+}
+.admin-resource-page .ressource-list li {
+    padding: 1.1rem 1.2rem 0.7rem 1.2rem;
+    border-radius: 12px;
+    font-size: 0.98rem;
+}
+
+/* Make each list card and list item full-width and stacked like teacher page */
+.admin-resource-page .right-pane .ressource-list-card {
+    width: 100%;
+    box-sizing: border-box;
+}
+.admin-resource-page .right-pane .ressource-list {
+    display: block;
+}
+.admin-resource-page .right-pane .ressource-list li {
+    display: block;
+    width: 100%;
+    margin-bottom: 1.1rem;
+}
+.admin-resource-page .right-pane .ressource-list li .ressource-actions {
+    justify-content: flex-start;
+}
+
+/* Ensure the left form pane matches teacher spacing exactly */
+.admin-resource-page .left-pane .ressource-form-card {
+    width: 100%;
+}
+.left-pane, .right-pane {
+    background: linear-gradient(135deg, #fff 80%, #f3f2f0 100%);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px rgba(28,40,61,0.10), 0 1.5px 0.5px rgba(183,211,220,0.08);
+    border: 1.5px solid #e8e6e3;
+    padding: 2.8rem 2.2rem 2.2rem 2.2rem;
+    min-width: 380px;
+    min-height: 520px;
+    width: 100%;
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    transition: box-shadow 0.18s, border 0.18s;
+}
+.ressource-form-card:not(:last-child) {
+    margin-bottom: 2.2rem;
+}
+.ressource-form-card h3 {
+    font-size: 1.18rem;
+    color: #1d2430;
+    margin-bottom: 0.7rem;
+}
+.ressource-list-card {
+    margin-bottom: 2.2rem;
+}
+.ressource-list-card h3 {
+    font-size: 1.13rem;
+    color: #1d2430;
+    margin-bottom: 0.7rem;
+}
+.ressource-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.ressource-list li {
+    background: linear-gradient(120deg, #f7fafd 80%, #e8f0f6 100%);
+    border-radius: 12px;
+    margin-bottom: 1.1rem;
+    padding: 1.1rem 1.2rem 0.7rem 1.2rem;
+    box-shadow: 0 2px 8px rgba(183,211,220,0.10);
+    font-size: 0.98rem;
+    color: #1d2430;
+    border: 1.2px solid #e3eaf2;
+    transition: box-shadow 0.18s, border 0.18s;
+}
+.ressource-list li:hover {
+    box-shadow: 0 6px 18px rgba(59,130,246,0.10);
+    border-color: #b7d3dc;
+}
+.ressource-list li.empty {
+    background: none;
+    box-shadow: none;
+    color: #b0b8c1;
+    text-align: center;
+    font-style: italic;
+}
+.ressource-actions {
+    margin-top: 0.7rem;
+    display: flex;
+    gap: 0.7rem;
+    align-items: center;
+}
+.ressource-actions .btn-secondary.action-btn {
+    background: linear-gradient(135deg, #B7D3DC 0%, #9BBEC7 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 2px 8px rgba(23,54,71,0.08);
+    transition: background 0.18s, box-shadow 0.18s;
+}
+.ressource-actions .btn-secondary.action-btn:hover {
+    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    box-shadow: 0 6px 18px rgba(59,130,246,0.13);
+}
+.ressource-actions .btn.action-btn.danger {
+    background: linear-gradient(135deg, #F9B384 0%, #E8BD98 100%);
+    color: #fff;
+    border: none;
+    transition: background 0.18s, box-shadow 0.18s;
+}
+.ressource-actions .btn.action-btn.danger:hover {
+    background: linear-gradient(135deg, #e57373 0%, #e8bd98 100%);
+    box-shadow: 0 6px 18px rgba(249,179,132,0.13);
+}
+.ressource-event-label {
+    font-size: 0.85rem;
+    color: #7f98a1;
+    margin: 0.2rem 0 0.5rem 0;
+}
+@media (max-width: 900px) {
+    .two-col-layout {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    .left-pane, .right-pane {
+        max-width: 100%;
+        min-width: 0;
+        padding: 1.2rem 0.7rem 1.1rem 0.7rem;
+        min-height: unset;
+    }
+}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&display=swap');
+
+:root {
+    --neo-bg: #0b0f19;
+    --neo-surface: #0f172a;
+    --neo-surface-soft: #121d34;
+    --neo-glass: rgba(15, 23, 42, 0.64);
+    --neo-border: rgba(148, 163, 184, 0.22);
+    --neo-text: #e5e7eb;
+    --neo-muted: #94a3b8;
+    --neo-primary: #3b82f6;
+    --neo-violet: #8b5cf6;
+    --neo-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+    --neo-success: #22c55e;
+    --neo-warning: #f59e0b;
+    --neo-shadow: 0 18px 40px rgba(2, 6, 23, 0.44);
+}
+
+body.neo-dark-ui {
+    background: radial-gradient(1100px 520px at -5% -20%, rgba(59, 130, 246, 0.2), transparent 58%),
+        radial-gradient(900px 420px at 100% -18%, rgba(139, 92, 246, 0.18), transparent 60%),
+        var(--neo-bg);
+    color: var(--neo-text);
+    font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+body.neo-dark-ui .app-header {
+    background: rgba(11, 15, 25, 0.86);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+    backdrop-filter: blur(8px);
+}
+
+body.neo-dark-ui .app-brand {
+    color: #f8fafc;
+    font-family: "Poppins", "Inter", sans-serif;
+    letter-spacing: 0.03em;
+}
+
+body.neo-dark-ui .app-nav a {
+    color: #cbd5e1;
+}
+
+body.neo-dark-ui .app-nav a:hover {
+    color: #ffffff;
+}
+
+body.neo-dark-ui .app-actions .btn.btn-outline {
+    border-color: rgba(148, 163, 184, 0.38);
+    color: #e2e8f0;
+    background: rgba(15, 23, 42, 0.5);
+}
+
+body.neo-dark-ui .app-actions .btn.btn-outline:hover {
+    border-color: rgba(139, 92, 246, 0.6);
+    background: rgba(30, 41, 59, 0.72);
+}
+
+body.neo-dark-ui .app-main {
+    background: transparent;
+}
+
+body.neo-dark-ui .app-footer {
+    background: rgba(11, 15, 25, 0.88);
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+body.neo-dark-ui .app-footer p {
+    color: #94a3b8;
+}
+
+body.theme-home-lite {
+    --home-peach: #e8bd98;
+    --home-soft-blue: #b7d3dc;
+    --home-mist: #c6d7de;
+    --home-bg: #f3f2f0;
+    --home-text: #1f2836;
+    --home-muted: #556173;
+    --home-accent-orange: #e8bd98;
+    --home-accent-teal: #b7d3dc;
+    background: var(--home-bg);
+    color: #1d2430;
+}
+
+body.theme-home-lite .app-main {
+    background: transparent;
+}
+
+body.theme-home-lite .app-header {
+    background: rgba(248, 242, 241, 0.95);
+    border-bottom: 1px solid #e8dcd8;
+    box-shadow: 0 10px 24px rgba(28, 40, 61, 0.08);
+}
+
+body.theme-home-lite .app-brand {
+    color: #1d2430;
+}
+
+body.theme-home-lite .app-nav a {
+    color: #1d2430;
+}
+
+body.theme-home-lite .app-nav a:hover {
+    color: #7f98a1;
+}
+
+body.theme-home-lite .app-actions .btn.btn-outline {
+    border-color: #d6c9c4;
+    background: #fff8f6;
+    color: #1d2430;
+}
+
+.home-lite-page {
+    padding: 2.1rem 0 2.9rem;
+    background: radial-gradient(620px 300px at -5% 18%, rgba(183, 211, 220, 0.28), transparent 64%),
+        radial-gradient(620px 300px at 104% 24%, rgba(232, 189, 152, 0.24), transparent 68%),
+        var(--home-bg);
+}
+
+.home-lite-container {
+    width: min(1280px, 94vw);
+    margin: 0 auto;
+}
+
+.home-lite-hero {
+    display: grid;
+    grid-template-columns: 1fr 1.02fr;
+    gap: 1.4rem;
+    align-items: center;
+}
+
+.home-lite-kicker {
+    display: inline-flex;
+    align-items: center;
+    background: var(--home-accent-orange);
+    color: #1f2836;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border-radius: 999px;
+    padding: 0.3rem 0.72rem;
+}
+
+.home-lite-hero-copy h1 {
+    margin: 0.85rem 0 0;
+    color: var(--home-text);
+    font-family: "Poppins", "Inter", sans-serif;
+    font-size: clamp(2.25rem, 5vw, 4rem);
+    line-height: 1.04;
+}
+
+.home-lite-hero-copy h1 span {
+    color: var(--home-accent-orange);
+}
+
+.home-lite-hero-copy p {
+    margin: 0.9rem 0 0;
+    color: var(--home-muted);
+    max-width: 58ch;
+    line-height: 1.6;
+}
+
+.home-lite-actions {
+    margin-top: 1.15rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.62rem;
+}
+
+.home-lite-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.94rem;
+    padding: 0.74rem 1.2rem;
+    border: 1px solid transparent;
+}
+
+.home-lite-btn-primary {
+    color: #1f2836;
+    background: linear-gradient(135deg, #c7dce4 0%, #a8cbd7 100%);
+    box-shadow: 0 10px 20px rgba(167, 197, 208, 0.3);
+}
+
+.home-lite-btn-ghost {
+    color: #1d2430;
+    background: #fff;
+    border-color: #ebdcd7;
+}
+
+.home-lite-hero-visual {
+    min-height: 520px;
+    border-radius: 28px;
+    background: #f3f2f0;
+    border: 1px solid #c6d7de;
+    position: relative;
+    overflow: visible;
+}
+
+.home-lite-corner-logo {
+    position: absolute;
+    top: -30px;
+    left: -30px;
+    width: 260px;
+    height: 260px;
+    object-fit: cover;
+    display: block;
+    z-index: 5;
+    opacity: 0.98;
+    pointer-events: none;
+    border-radius: 50%;
+    background: #fff;
+    padding: 8px;
+    box-shadow: 0 18px 40px rgba(28,40,61,0.12);
+    border: 1px solid rgba(198,215,222,0.6);
+}
+
+@media (max-width: 900px) {
+    .home-lite-corner-logo {
+        width: 160px;
+        height: 160px;
+        top: -18px;
+        left: -12px;
+        padding: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .home-lite-corner-logo {
+        width: 110px;
+        height: 110px;
+        top: 12px;
+        left: 12px;
+    }
+}
+
+/* Global corner image for pages using the home-lite theme (BackOffice included) */
+/* Global corner image removed — kept styles for hero-local corner only */
+
+/* BackOffice table polish for events */
+.table-container {
+    margin-top: 1.25rem;
+}
+.table-header h3 {
+    font-family: "Poppins", "Inter", sans-serif;
+    font-size: 1.6rem;
+    color: var(--home-text, #1d2430);
+    margin-bottom: 0.25rem;
+}
+.table-responsive {
+    overflow: auto;
+}
+.events-wide-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: #fff;
+    border: 1px solid rgba(28,40,61,0.06);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(28,40,61,0.04);
+}
+.events-wide-table thead th {
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 700;
+    font-size: 0.84rem;
+    letter-spacing: 0.01em;
+    color: rgba(28,40,61,0.9);
+    background: linear-gradient(180deg, rgba(243,242,240,0.6), rgba(243,242,240,0.95));
+    border-bottom: 1px solid rgba(28,40,61,0.06);
+}
+.events-wide-table tbody td {
+    padding: 8px 12px;
+    vertical-align: middle;
+    color: rgba(28,40,61,0.82);
+    font-size: 0.84rem;
+    line-height: 1.35;
+}
+.events-wide-table tbody tr:nth-child(odd) td {
+    background: linear-gradient(90deg, rgba(250,251,252,0.0), rgba(250,251,252,0.0));
+}
+.events-wide-table tbody tr:hover td {
+    background: rgba(59,130,246,0.03);
+}
+.events-actions-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* Events table shell */
+.events-table-panel {
+    overflow: hidden;
+    box-shadow: 0 14px 36px rgba(28, 40, 61, 0.08);
+}
+.events-table-panel .table-header {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 255, 0.92));
+    border-bottom: 1px solid rgba(28, 40, 61, 0.08);
+}
+.events-table-panel .events-wide-table {
+    box-shadow: none;
+}
+
+.events-wide-table tbody td.events-title-cell {
+    font-weight: 600;
+    color: rgba(20, 28, 42, 0.95);
+    max-width: 200px;
+}
+.events-wide-table tbody td.events-desc-cell {
+    max-width: 240px;
+    font-size: 0.82rem;
+    color: rgba(28, 40, 61, 0.72);
+    line-height: 1.4;
+}
+.events-desc-clip {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.events-id-cell {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: rgba(28, 40, 61, 0.45);
+    width: 3rem;
+}
+.events-creator-block {
+    line-height: 1.35;
+}
+.events-creator-role {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(28, 40, 61, 0.5);
+    margin-top: 2px;
+}
+
+/* Status / approval pills */
+.event-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.event-pill--pending {
+    background: rgba(251, 191, 36, 0.18);
+    color: #92400e;
+    border-color: rgba(251, 191, 36, 0.35);
+}
+.event-pill--approved {
+    background: rgba(16, 185, 129, 0.14);
+    color: #047857;
+    border-color: rgba(16, 185, 129, 0.28);
+}
+.event-pill--rejected {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+    border-color: rgba(239, 68, 68, 0.22);
+}
+.event-pill--statut-planifie {
+    background: rgba(59, 130, 246, 0.12);
+    color: #1d4ed8;
+    border-color: rgba(59, 130, 246, 0.22);
+}
+.event-pill--statut-en_cours,
+.event-pill--statut-en-cours {
+    background: rgba(139, 92, 246, 0.12);
+    color: #5b21b6;
+    border-color: rgba(139, 92, 246, 0.22);
+}
+.event-pill--statut-termine,
+.event-pill--statut-terminé {
+    background: rgba(100, 116, 139, 0.14);
+    color: #334155;
+    border-color: rgba(100, 116, 139, 0.2);
+}
+.event-pill--statut-annule,
+.event-pill--statut-annulé {
+    background: rgba(248, 113, 113, 0.14);
+    color: #991b1b;
+    border-color: rgba(248, 113, 113, 0.25);
+}
+.event-pill--statut-default {
+    background: rgba(28, 40, 61, 0.06);
+    color: rgba(28, 40, 61, 0.75);
+    border-color: rgba(28, 40, 61, 0.08);
+}
+
+.events-teacher-table .events-actions-cell {
+    justify-content: flex-start;
+}
+
+/* Admin back-office — events module hero banner */
+.admin-events-hero {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 170px;
+    margin-bottom: 1.15rem;
+    border: 1px solid rgba(28, 40, 61, 0.1);
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.1);
+}
+.admin-events-hero-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center 35%;
+    transform: scale(1.03);
+    filter: saturate(1.05) brightness(0.62);
+}
+.admin-events-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(
+        105deg,
+        rgba(12, 28, 48, 0.94) 0%,
+        rgba(18, 45, 72, 0.72) 42%,
+        rgba(100, 160, 180, 0.38) 100%
+    );
+    pointer-events: none;
+}
+.admin-events-hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 1.35rem 1.5rem 1.45rem;
+    max-width: 36rem;
+}
+.admin-events-hero-kicker {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(232, 189, 152, 0.95);
+    margin-bottom: 0.45rem;
+}
+.admin-events-hero-title {
+    margin: 0 0 0.35rem;
+    font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+}
+.admin-events-hero-text {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: rgba(226, 235, 248, 0.9);
+}
+
+@media (max-width: 600px) {
+    .admin-events-hero {
+        min-height: 150px;
+    }
+    .admin-events-hero-content {
+        padding: 1.1rem 1.15rem;
+    }
+}
+
+/* Admin events module — pill toolbar (outline = “Afficher…” ghost style) */
+.admin-events-dashboard-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem 1.25rem;
+}
+
+.admin-events-header-actions {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.admin-events-header-actions .btn {
+    border-radius: 999px;
+    padding: 0.5rem 1.5rem;
+    min-height: 2.35rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+    box-shadow: none;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        opacity 0.15s ease;
+}
+
+.admin-events-header-actions .btn:focus-visible {
+    outline: 2px solid rgba(0, 86, 179, 0.45);
+    outline-offset: 2px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Ghost / outline — thin blue ring, same blue text, white fill (reference UI) */
+.admin-events-header-actions .btn.btn-outline {
+    color: #0056b3;
+    background: #ffffff;
+    border: 1.5px solid #0056b3;
+}
+
+.admin-events-header-actions .btn.btn-outline:hover {
+    color: #004494;
+    border-color: #004494;
+    background: rgba(0, 86, 179, 0.04);
+}
+
+/* Teal — filled pill, flat (no heavy shadow) */
+.admin-events-header-actions .btn.btn-secondary {
+    color: #ffffff;
+    border: 1.5px solid rgba(0, 70, 90, 0.2);
+    background: #6fa3b5;
+}
+
+.admin-events-header-actions .btn.btn-secondary:hover {
+    background: #5f94a8;
+    border-color: rgba(0, 70, 90, 0.28);
+}
+
+/* Orange CTA — filled pill, flat */
+.admin-events-header-actions .btn.btn-yellow {
+    color: #ffffff;
+    border: 1.5px solid rgba(140, 60, 20, 0.25);
+    background: linear-gradient(180deg, #de804d 0%, #c55f32 100%);
+}
+
+.admin-events-header-actions .btn.btn-yellow:hover {
+    background: linear-gradient(180deg, #e58d5c 0%, #cf6a38 100%);
+    border-color: rgba(140, 60, 20, 0.32);
+}
+
+.admin-events-header-actions .btn:active {
+    opacity: 0.92;
+}
+
+@media (max-width: 640px) {
+    .admin-events-header-actions {
+        width: 100%;
+        justify-content: stretch;
+        box-sizing: border-box;
+    }
+
+    .admin-events-header-actions .btn {
+        flex: 1 1 auto;
+        justify-content: center;
+        min-width: 0;
+    }
+}
+
+/* Button helpers */
+.btn-sm {
+    padding: 6px 10px;
+    font-size: 0.84rem;
+    border-radius: 8px;
+}
+.btn-pill {
+    border-radius: 999px;
+}
+.btn-secondary.action-btn {
+    background: linear-gradient(135deg, #B7D3DC 0%, #9BBEC7 100%);
+    color: #fff;
+    border: none;
+    box-shadow: 0 6px 18px rgba(23,54,71,0.08);
+}
+.btn.action-btn.danger {
+    background: linear-gradient(135deg, #F9B384 0%, #E8BD98 100%);
+    color: #fff;
+    border: none;
+}
+.resource-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    background: rgba(183,211,220,0.18);
+    color: #1d2430;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.78rem;
+}
+
+.events-table-panel .events-wide-table .btn-sm {
+    padding: 4px 8px;
+    font-size: 0.78rem;
+    border-radius: 6px;
+}
+/* Action buttons in events table: keep them side-by-side, slightly shorter and a bit narrower */
+.events-wide-table td.events-actions-cell {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+
+.events-wide-table td.events-actions-cell .btn {
+    padding: 4px 8px;
+    font-size: 0.78rem;
+    border-radius: 6px;
+    min-width: 56px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Make danger (delete) button visually distinct but consistent size */
+.events-wide-table td.events-actions-cell .btn.action-btn.danger {
+    padding: 4px 8px;
+}
+
+.events-wide-table td.events-actions-cell .btn.btn-sm {
+    padding: 4px 8px;
+    min-width: 50px;
+}
+
+@media (max-width: 900px) {
+    .events-wide-table thead th {
+        padding: 8px 10px;
+        font-size: 0.8rem;
+    }
+    .events-wide-table tbody td {
+        padding: 7px 10px;
+        font-size: 0.8rem;
+    }
+}
+
+
+.home-lite-bg-half {
+    position: absolute;
+    border-radius: 999px;
+    width: 280px;
+    height: 280px;
+    opacity: 0.95;
+}
+
+.home-lite-bg-half-left {
+    left: -70px;
+    bottom: 0;
+    width: 260px;
+    height: 130px;
+    border-radius: 260px 260px 0 0;
+    background: rgba(183, 211, 220, 0.9);
+}
+
+.home-lite-bg-half-right {
+    right: 0;
+    top: 0;
+    width: 120px;
+    height: 100%;
+    border-radius: 0;
+    background: rgba(232, 189, 152, 0.95);
+}
+
+/* Decorative background + side images for resource form pages */
+.admin-resource-page {
+    position: relative;
+    overflow: visible;
+}
+
+.admin-resource-page .background-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(600px 350px at 10% 20%, rgba(59,130,246,0.06), transparent 25%),
+        radial-gradient(500px 250px at 90% 80%, rgba(244,156,110,0.05), transparent 22%);
+}
+
+.admin-resource-page .page-decor {
+    position: absolute;
+    top: 84px;
+    width: 260px;
+    opacity: 0.12;
+    filter: blur(2px) saturate(1.02);
+    z-index: 0;
+    pointer-events: none;
+}
+
+.admin-resource-page .page-decor img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 12px;
+    transform: scale(1.03);
+}
+
+.admin-resource-page .page-decor-left { left: -68px; transform: rotate(-3deg); }
+.admin-resource-page .page-decor-right { right: -68px; transform: rotate(3deg); }
+
+@media (max-width: 1000px) {
+    .admin-resource-page .page-decor { display: none; }
+    .admin-resource-page .background-overlay { background: radial-gradient(400px 200px at 50% 0%, rgba(59,130,246,0.03), transparent 40%); }
+}
+
+.admin-resource-page .form-photos,
+.teacher-resource-page .form-photos {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 1.4rem;
+    align-items: flex-start;
+    z-index: 1;
+}
+.admin-resource-page .form-photos img,
+.teacher-resource-page .form-photos img {
+    width: 160px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(27,39,58,0.08);
+    border: 1px solid rgba(0,0,0,0.04);
+    display: block;
+}
+
+.form-with-photos {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 2rem;
+    align-items: start;
+    width: 100%;
+}
+.form-with-photos .form-panel {
+    max-width: none;
+}
+
+@media (max-width: 1000px) {
+    .form-with-photos {
+        grid-template-columns: 1fr;
+    }
+    .admin-resource-page .form-photos,
+    .teacher-resource-page .form-photos {
+        display: none;
+    }
+}
+
+.home-lite-shape {
+    position: absolute;
+    border-radius: 24px;
+    opacity: 0.98;
+}
+
+.home-lite-shape-teal {
+    width: 250px;
+    height: 170px;
+    right: 58px;
+    top: 120px;
+    transform: rotate(-11deg);
+    background: rgba(183, 211, 220, 0.7);
+}
+
+.home-lite-shape-orange {
+    width: 220px;
+    height: 140px;
+    right: 32px;
+    top: 214px;
+    transform: rotate(-15deg);
+    background: rgba(232, 189, 152, 0.78);
+}
+
+.home-lite-hero-photo {
+    position: absolute;
+    bottom: 0;
+    right: 92px;
+    width: 370px;
+    max-width: 78%;
+    object-fit: contain;
+    filter: drop-shadow(0 16px 28px rgba(27, 39, 58, 0.2));
+}
+
+.home-lite-float {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.home-lite-float-check {
+    left: 26px;
+    top: 188px;
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+    background: #fff;
+    color: #bfa18a;
+    box-shadow: 0 10px 20px rgba(31, 42, 61, 0.16);
+    font-size: 1.2rem;
+}
+
+.home-lite-float-dot {
+    right: 38px;
+    top: 54px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #b7d3dc;
+}
+
+.home-lite-about {
+    margin-top: 1.65rem;
+    text-align: center;
+    border-top: 1px solid #ecdfdb;
+    border-bottom: 1px solid #ecdfdb;
+    padding: 1.75rem 0 1.5rem;
+}
+
+.home-lite-label {
+    display: inline-flex;
+    border-radius: 999px;
+    padding: 0.27rem 0.66rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: #b7d3dc;
+    color: #1f2836;
+}
+
+.home-lite-about h2 {
+    margin: 0.72rem auto 0;
+    max-width: 860px;
+    color: var(--home-text);
+    font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+    line-height: 1.34;
+}
+
+.home-lite-stats {
+    margin-top: 1.3rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.home-lite-stats article strong {
+    font-size: clamp(2rem, 3.8vw, 3rem);
+    font-family: "Poppins", "Inter", sans-serif;
+    color: #1d2430;
+}
+
+.home-lite-stats article p {
+    margin: 0.24rem auto 0;
+    max-width: 210px;
+    color: #515d6f;
+    line-height: 1.5;
+    font-size: 0.92rem;
+}
+
+.home-lite-courses {
+    margin-top: 1.35rem;
+}
+
+.home-lite-courses-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.home-lite-label-orange {
+    background: #e8bd98;
+}
+
+.home-lite-courses-head h3 {
+    margin: 0.5rem 0 0;
+    color: var(--home-text);
+    font-size: clamp(1.45rem, 2.4vw, 2.1rem);
+}
+
+.home-lite-filter {
+    display: flex;
+    align-items: center;
+    width: min(420px, 100%);
+    border: 1px solid #ebddd8;
+    background: #fff;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.home-lite-filter input {
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    padding: 0.72rem 0.92rem;
+    color: #1f2631;
+}
+
+.home-lite-filter button {
+    width: 46px;
+    height: 46px;
+    border: 0;
+    background: #e8bd98;
+    color: #1f2836;
+    font-size: 1.05rem;
+}
+
+.home-lite-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.home-lite-course-card {
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid #eadeda;
+    background: #fffdfd;
+    box-shadow: 0 14px 28px rgba(31, 42, 61, 0.1);
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-lite-course-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 18px 34px rgba(31, 42, 61, 0.14);
+}
+
+.home-lite-course-cover {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 7px;
+}
+
+.home-lite-course-cover-peach {
+    background: linear-gradient(90deg, rgba(232, 189, 152, 0.92) 0%, rgba(226, 178, 138, 0.92) 100%);
+}
+
+.home-lite-course-cover-blue {
+    background: linear-gradient(90deg, rgba(183, 211, 220, 0.95) 0%, rgba(160, 194, 205, 0.92) 100%);
+}
+
+.home-lite-course-img {
+    display: block;
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+}
+
+.home-lite-course-body {
+    padding: 0.9rem;
+}
+
+.home-lite-course-body h4 {
+    margin: 0;
+    color: #1f2631;
+    font-size: 1.14rem;
+}
+
+.home-lite-course-body p {
+    margin: 0.52rem 0 0;
+    color: #5a6577;
+    line-height: 1.55;
+}
+
+.home-lite-card-link {
+    margin-top: 0.82rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    border-radius: 10px;
+    padding: 0.58rem 0.88rem;
+    background: #1d2430;
+    color: #fff;
+    font-weight: 700;
+}
+
+.neo-page {
+    padding: 2.2rem 0 2.8rem;
+    min-height: calc(100vh - 145px);
+}
+
+.neo-container {
+    width: min(1280px, 94vw);
+    margin: 0 auto;
+}
+
+.neo-glass-card {
+    background: var(--neo-glass);
+    border: 1px solid var(--neo-border);
+    border-radius: 18px;
+    box-shadow: var(--neo-shadow);
+    backdrop-filter: blur(14px);
+}
+
+.neo-section-title h1,
+.neo-section-title h2,
+.neo-section-title h3,
+.neo-hero h1 {
+    font-family: "Poppins", "Inter", sans-serif;
+    color: #f8fafc;
+    margin: 0;
+}
+
+.neo-section-title p,
+.neo-muted,
+.neo-meta {
+    color: var(--neo-muted);
+}
+
+.neo-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.78rem 1.15rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.neo-btn:hover {
+    transform: translateY(-2px);
+}
+
+.neo-btn-primary {
+    color: #fff;
+    background: var(--neo-gradient);
+    box-shadow: 0 12px 26px rgba(59, 130, 246, 0.34);
+}
+
+.neo-btn-outline {
+    color: #e2e8f0;
+    border-color: rgba(148, 163, 184, 0.42);
+    background: rgba(30, 41, 59, 0.46);
+}
+
+.neo-btn-warning {
+    color: #111827;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    box-shadow: 0 12px 26px rgba(245, 158, 11, 0.32);
+}
+
+.neo-hero {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 1.2rem;
+    padding: 1.25rem;
+}
+
+.neo-hero h1 {
+    font-size: clamp(1.9rem, 3.4vw, 3rem);
+    line-height: 1.08;
+    margin-bottom: 0.75rem;
+}
+
+.neo-pill-row {
+    margin-top: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.neo-pill {
+    border: 1px solid rgba(148, 163, 184, 0.38);
+    color: #dbeafe;
+    background: rgba(30, 41, 59, 0.45);
+    border-radius: 999px;
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 0.32rem 0.7rem;
+}
+
+.neo-grid-3 {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.95rem;
+}
+
+.neo-stat-card {
+    padding: 1rem;
+}
+
+.neo-stat-card h4 {
+    margin: 0;
+    color: #cbd5e1;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.neo-stat-card strong {
+    margin-top: 0.32rem;
+    display: block;
+    color: #f8fafc;
+    font-size: 1.8rem;
+    font-weight: 800;
+    font-family: "Poppins", "Inter", sans-serif;
+}
+
+.neo-dashboard-layout {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 1rem;
+}
+
+.neo-sidebar {
+    padding: 1rem;
+    position: sticky;
+    top: 90px;
+    align-self: start;
+}
+
+.neo-sidebar-brand {
+    font-family: "Poppins", "Inter", sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.9rem;
+    color: #f8fafc;
+}
+
+.neo-sidebar-group {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.4rem;
+}
+
+.neo-sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: #cbd5e1;
+    padding: 0.62rem 0.7rem;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    font-size: 0.93rem;
+    font-weight: 600;
+}
+
+.neo-sidebar-link:hover,
+.neo-sidebar-link.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.45);
+    color: #ffffff;
+}
+
+.neo-main-stack {
+    display: grid;
+    gap: 1rem;
+}
+
+.neo-toolbar {
+    padding: 1rem 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.neo-toolbar h1 {
+    font-family: "Poppins", "Inter", sans-serif;
+    margin: 0;
+    color: #f8fafc;
+    font-size: clamp(1.55rem, 2.8vw, 2.3rem);
+}
+
+.neo-toolbar p {
+    margin: 0.2rem 0 0;
+    color: #94a3b8;
+}
+
+.neo-courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.9rem;
+}
+
+.neo-home-gallery {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.neo-home-gallery-card {
+    overflow: hidden;
+    border-radius: 18px;
+}
+
+.neo-home-gallery-img {
+    display: block;
+    width: 100%;
+    height: 360px;
+    object-fit: cover;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.neo-home-gallery-card:hover .neo-home-gallery-img {
+    transform: scale(1.02);
+    filter: saturate(1.05);
+}
+
+.neo-home-hero-gallery {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
+}
+
+.neo-home-hero-img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.neo-course-card {
+    overflow: hidden;
+}
+
+.neo-course-thumb {
+    height: 150px;
+    background: linear-gradient(145deg, rgba(59, 130, 246, 0.4) 0%, rgba(139, 92, 246, 0.5) 100%);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #e0e7ff;
+    font-size: 1.9rem;
+}
+
+.neo-course-body {
+    padding: 0.95rem;
+}
+
+.neo-course-body h3 {
+    margin: 0;
+    color: #f8fafc;
+    font-family: "Poppins", "Inter", sans-serif;
+    font-size: 1.06rem;
+}
+
+.neo-rating {
+    margin-top: 0.35rem;
+    color: #fbbf24;
+    font-size: 0.88rem;
+}
+
+.neo-rating span {
+    color: #94a3b8;
+}
+
+.neo-progress-wrap {
+    margin-top: 0.8rem;
+}
+
+.neo-progress-track {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(51, 65, 85, 0.74);
+    overflow: hidden;
+}
+
+.neo-progress-value {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--neo-gradient);
+}
+
+.neo-progress-meta {
+    margin-top: 0.32rem;
+    font-size: 0.82rem;
+    color: #94a3b8;
+}
+
+.neo-split {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 1rem;
+}
+
+.neo-video-frame {
+    border-radius: 14px;
+    border: 1px solid var(--neo-border);
+    overflow: hidden;
+    background: #0b1220;
+    min-height: 360px;
+}
+
+.neo-video-frame iframe,
+.neo-video-frame video {
+    width: 100%;
+    min-height: 360px;
+    border: 0;
+}
+
+.neo-notes,
+.neo-comments,
+.neo-profile-card {
+    padding: 1rem;
+}
+
+.neo-notes textarea {
+    width: 100%;
+    min-height: 130px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.36);
+    background: rgba(15, 23, 42, 0.62);
+    color: #e5e7eb;
+    padding: 0.72rem;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.neo-comment-item {
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    border-radius: 12px;
+    background: rgba(30, 41, 59, 0.42);
+    padding: 0.62rem 0.7rem;
+    margin-bottom: 0.55rem;
+}
+
+.neo-badges {
+    margin-top: 0.7rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.neo-badge {
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 0.32rem 0.66rem;
+    border: 1px solid transparent;
+}
+
+.neo-badge.success {
+    color: #bbf7d0;
+    background: rgba(34, 197, 94, 0.18);
+    border-color: rgba(34, 197, 94, 0.32);
+}
+
+.neo-badge.warning {
+    color: #fde68a;
+    background: rgba(245, 158, 11, 0.2);
+    border-color: rgba(245, 158, 11, 0.34);
+}
+
+.neo-badge.primary {
+    color: #dbeafe;
+    background: rgba(59, 130, 246, 0.22);
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+.neo-auth-wrap {
+    min-height: 100vh;
+    padding: 2.2rem 0;
+    display: grid;
+    align-items: center;
+}
+
+body.auth-page.neo-dark-ui {
+    background: #ffffff;
+}
+
+body.auth-page.neo-dark-ui .app-main,
+body.auth-page.neo-dark-ui .app-main.app-main-auth {
+    background: #ffffff;
+}
+
+body.auth-page.neo-dark-ui .app-header {
+    background: #ffffff;
+    border-bottom: 1px solid #e7edf3;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+body.auth-page.neo-dark-ui .app-brand {
+    color: #27406f;
+}
+
+body.auth-page.neo-dark-ui .app-nav a {
+    color: #334155;
+}
+
+body.auth-page.neo-dark-ui .app-nav a:hover {
+    color: #27406f;
+}
+
+.neo-auth-grid {
+    width: min(1020px, 94vw);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-radius: 22px;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid #e7edf3;
+    box-shadow: 0 22px 44px rgba(15, 23, 42, 0.12);
+}
+
+.neo-auth-info {
+    padding: 1.6rem;
+    background: #ffffff;
+    border-right: 1px solid #e6edf4;
+    position: relative;
+    overflow: hidden;
+}
+
+.neo-auth-form {
+    padding: 1.6rem;
+    background: #ffffff;
+}
+
+.neo-auth-form h2,
+.neo-auth-info h2 {
+    margin: 0;
+    color: #27406f;
+    font-family: "Poppins", "Inter", sans-serif;
+}
+
+.neo-login-page .neo-muted {
+    color: #63748d;
+}
+
+.neo-login-page .neo-badge.primary {
+    color: #35557d;
+    background: rgba(160, 208, 221, 0.25);
+    border-color: rgba(160, 208, 221, 0.62);
+}
+
+.neo-login-page .neo-badge.success {
+    color: #50637f;
+    background: rgba(169, 177, 219, 0.24);
+    border-color: rgba(169, 177, 219, 0.55);
+}
+
+.neo-login-page .neo-badge.warning {
+    color: #9a5d31;
+    background: rgba(232, 189, 156, 0.28);
+    border-color: rgba(232, 189, 156, 0.62);
+}
+
+.neo-login-hero-visual {
+    margin-top: 1.05rem;
+    min-height: 280px;
+    border-radius: 16px;
+    border: 1px solid #e4edf4;
+    background: linear-gradient(180deg, #fcf8f5 0%, #ffffff 100%);
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    place-items: end center;
+}
+
+.neo-login-hero-visual::before,
+.neo-login-hero-visual::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+}
+
+.neo-login-hero-visual::before {
+    width: 240px;
+    height: 240px;
+    left: -42px;
+    bottom: -52px;
+    background: rgba(160, 208, 221, 0.55);
+}
+
+.neo-login-hero-visual::after {
+    width: 150px;
+    height: 150px;
+    right: -38px;
+    top: 20px;
+    background: rgba(205, 211, 223, 0.7);
+}
+
+.neo-login-hero-circle {
+    position: absolute;
+    width: 170px;
+    height: 170px;
+    border-radius: 999px;
+    right: 70px;
+    bottom: -50px;
+    background: rgba(232, 189, 156, 0.62);
+}
+
+.neo-login-hero-photo {
+    width: min(320px, 92%);
+    position: relative;
+    z-index: 2;
+    object-fit: contain;
+    filter: saturate(1.08) contrast(1.02);
+}
+
+.neo-field {
+    margin-top: 0.78rem;
+}
+
+.neo-field label {
+    display: block;
+    font-size: 0.87rem;
+    color: #334155;
+    margin-bottom: 0.28rem;
+}
+
+.neo-field input,
+.neo-field textarea,
+.neo-field select {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid #cfe0ec;
+    background: #f8fcff;
+    color: #1e293b;
+    padding: 0.72rem 0.8rem;
+}
+
+.neo-field input:focus,
+.neo-field textarea:focus,
+.neo-field select:focus {
+    outline: none;
+    border-color: #8fbfd0;
+    box-shadow: 0 0 0 3px rgba(160, 208, 221, 0.28);
+}
+
+.neo-login-page .neo-btn-primary {
+    background: linear-gradient(135deg, #27406f 0%, #7fb8c9 100%);
+    box-shadow: 0 12px 24px rgba(39, 64, 111, 0.2);
+}
+
+.neo-login-page .neo-btn-warning {
+    background: linear-gradient(135deg, #e8bd9c 0%, #d7773c 100%);
+    color: #ffffff;
+    box-shadow: 0 12px 24px rgba(215, 119, 60, 0.26);
+}
+
+.neo-login-page a[style*="#93c5fd"] {
+    color: #27406f !important;
+    font-weight: 700;
+}
+
+.neo-alert {
+    margin-top: 0.8rem;
+    border-radius: 12px;
+    padding: 0.66rem 0.72rem;
+    font-size: 0.86rem;
+    border: 1px solid transparent;
+}
+
+.neo-alert.error {
+    color: #fecaca;
+    background: rgba(127, 29, 29, 0.38);
+    border-color: rgba(248, 113, 113, 0.35);
+}
+
+.neo-alert.success {
+    color: #bbf7d0;
+    background: rgba(20, 83, 45, 0.38);
+    border-color: rgba(74, 222, 128, 0.35);
+}
+
+@media (max-width: 1050px) {
+    .neo-dashboard-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .neo-sidebar {
+        position: static;
+    }
+
+    .neo-split {
+        grid-template-columns: 1fr;
+    }
+
+    .neo-hero {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 800px) {
+    .neo-grid-3 {
+        grid-template-columns: 1fr;
+    }
+
+    .neo-auth-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .neo-auth-info {
+        border-right: 0;
+        border-bottom: 1px solid var(--neo-border);
+    }
+
+    .neo-home-gallery {
+        grid-template-columns: 1fr;
+    }
+
+    .neo-home-hero-gallery {
+        grid-template-columns: 1fr;
+    }
+
+    .neo-home-hero-img {
+        height: 180px;
+    }
+
+    .neo-home-gallery-img {
+        height: 260px;
+    }
+
+    .neo-login-hero-visual {
+        min-height: 220px;
+    }
+
+    .neo-login-hero-photo {
+        width: min(250px, 88%);
+    }
+}
+
+/* Global APPOLIOS brand palette (login colors site-wide) */
+body.neo-brand {
+    --brand-navy: #27406f;
+    --brand-teal: #8fc6d5;
+    --brand-orange: #d7773c;
+    --brand-orange-soft: #fbf0e8;
+    --brand-lavender: #a9b1db;
+    --brand-gray-soft: #cdd3df;
+    --brand-bg: #fbfdff;
+    --brand-text: #25364f;
+    --brand-muted: #66778f;
+    --brand-border: #dde6ef;
+    background: radial-gradient(980px 340px at 8% -20%, rgba(160, 208, 221, 0.24), transparent 60%),
+        radial-gradient(820px 300px at 95% -10%, rgba(232, 189, 156, 0.26), transparent 64%),
+        var(--brand-bg);
+    color: var(--brand-text);
+}
+
+body.neo-brand .app-main {
+    background: transparent;
+}
+
+body.neo-brand .app-header {
+    background: #ffffff;
+    border-bottom: 1px solid var(--brand-border);
+    box-shadow: 0 10px 22px rgba(39, 64, 111, 0.08);
+}
+
+body.neo-brand .app-brand {
+    color: var(--brand-navy);
+}
+
+body.neo-brand .app-nav a {
+    color: #334155;
+}
+
+body.neo-brand .app-nav a:hover {
+    color: var(--brand-navy);
+}
+
+body.neo-brand .app-footer {
+    background: #ffffff;
+    border-top: 1px solid var(--brand-border);
+}
+
+body.neo-brand .app-footer p {
+    color: var(--brand-muted);
+}
+
+body.neo-brand .btn-primary {
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-teal) 100%);
+    box-shadow: 0 10px 20px rgba(39, 64, 111, 0.2);
+}
+
+body.neo-brand .btn-secondary {
+    background: linear-gradient(135deg, #7fb8c9 0%, #9fcfda 100%);
+}
+
+body.neo-brand .btn-yellow {
+    background: linear-gradient(135deg, #e8bd9c 0%, var(--brand-orange) 100%);
+    color: #ffffff;
+}
+
+body.neo-brand .btn-outline {
+    border-color: #cddfea;
+    color: var(--brand-navy);
+    background: #ffffff;
+}
+
+body.neo-brand .btn-outline:hover {
+    border-color: #b7c9da;
+    background: #f8fbff;
+}
+
+body.neo-brand .card,
+body.neo-brand .stat-card,
+body.neo-brand .table-container,
+body.neo-brand .module-card,
+body.neo-brand .feature-item,
+body.neo-brand .student-event-card,
+body.neo-brand .ressource-list-card,
+body.neo-brand .ressource-form-card,
+body.neo-brand .form-container,
+body.neo-brand .admin-sidebar-nav {
+    background: #ffffff;
+    border-color: var(--brand-border);
+    box-shadow: 0 12px 24px rgba(39, 64, 111, 0.08);
+}
+
+body.neo-brand .card-icon,
+body.neo-brand .stat-icon,
+body.neo-brand .feature-icon {
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-teal) 60%, var(--brand-lavender) 100%);
+}
+
+body.neo-brand .dashboard-header h1,
+body.neo-brand .section-title h2,
+body.neo-brand h3,
+body.neo-brand h4 {
+    color: var(--brand-navy);
+}
+
+body.neo-brand .dashboard-header p,
+body.neo-brand .section-title p,
+body.neo-brand p,
+body.neo-brand .neo-muted {
+    color: var(--brand-muted);
+}
+
+body.neo-brand .form-group input,
+body.neo-brand .form-group textarea,
+body.neo-brand .form-group select {
+    border-color: #ccdeea;
+    background: #fbfeff;
+    color: var(--brand-text);
+}
+
+body.neo-brand .form-group input:focus,
+body.neo-brand .form-group textarea:focus,
+body.neo-brand .form-group select:focus {
+    border-color: var(--brand-teal);
+    box-shadow: 0 0 0 3px rgba(23, 179, 203, 0.2);
+}
+
+body.neo-brand .admin-side-link {
+    color: #334155;
+}
+
+body.neo-brand .admin-side-link.active,
+body.neo-brand .admin-side-link:hover {
+    background: linear-gradient(135deg, #eef8fb 0%, #f7f2ff 52%, #fcf2ea 100%);
+    color: var(--brand-navy);
+    border-color: #cfe3ef;
+}
+
+body.neo-brand .neo-glass-card {
+    background: #ffffff;
+    border-color: var(--brand-border);
+    box-shadow: 0 14px 30px rgba(39, 64, 111, 0.11);
+    backdrop-filter: none;
+}
+
+body.neo-brand .neo-auth-grid {
+    background: #ffffff;
+}
+
+body.neo-brand.theme-student-events,
+body.neo-brand.theme-student-events .app-main {
+    background: radial-gradient(940px 340px at 8% -16%, rgba(160, 208, 221, 0.18), transparent 62%),
+        radial-gradient(860px 320px at 92% -14%, rgba(232, 189, 156, 0.2), transparent 64%),
+        #fbfdff;
+}
+
+body.neo-brand.theme-student-events .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    overflow: hidden;
+    border-bottom: 1px solid #d5ddea;
+    background: linear-gradient(112deg, rgba(233, 238, 248, 0.92) 0%, rgba(250, 252, 255, 0.92) 45%, rgba(237, 248, 252, 0.92) 100%);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 12px 28px rgba(31, 41, 55, 0.09);
+}
+
+body.neo-brand.theme-student-events .app-header::before,
+body.neo-brand.theme-student-events .app-header::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+}
+
+body.neo-brand.theme-student-events .app-header::before {
+    width: 380px;
+    height: 380px;
+    left: -140px;
+    top: -280px;
+    background: radial-gradient(circle, rgba(160, 208, 221, 0.32) 0%, rgba(160, 208, 221, 0) 70%);
+}
+
+body.neo-brand.theme-student-events .app-header::after {
+    width: 320px;
+    height: 320px;
+    right: -130px;
+    top: -220px;
+    background: radial-gradient(circle, rgba(232, 189, 156, 0.28) 0%, rgba(232, 189, 156, 0) 72%);
+}
+
+body.neo-brand.theme-student-events .app-header .app-header-inner {
+    position: relative;
+    z-index: 1;
+}
+
+body.neo-brand.theme-student-events .app-nav a {
+    color: #334155;
+    transition: color 0.2s ease;
+}
+
+body.neo-brand.theme-student-events .app-nav a:hover {
+    color: #1f365f;
+}
+
+body.neo-brand.theme-student-events .app-actions .btn.btn-outline {
+    border-color: #b8c6db;
+    background: rgba(255, 255, 255, 0.78);
+    color: #243b63;
+}
+
+body.neo-brand.theme-student-events .app-actions .btn.btn-outline:hover {
+    border-color: #9db2d0;
+    background: rgba(255, 255, 255, 0.96);
+    color: #1d3256;
+}
+
+body.neo-brand.theme-student-events .student-events-page {
+    --ev-peach: #e8bd9c;
+    --ev-lavender: #a9b1db;
+    --ev-teal: #a0d0dd;
+    --ev-gray: #cdd3df;
+    --ev-navy: #27406f;
+    --ev-sidebar-bg: #1a2438;
+    --ev-sidebar-bg-soft: #263654;
+    --ev-sidebar-border: #324a71;
+    --ev-sidebar-text: #e6edf8;
+    --ev-sidebar-muted: #8fa4c6;
+    background: transparent;
+}
+
+/* Strong sidebar override to avoid legacy light backgrounds */
+body .student-space-sidebar .student-sidebar-panel {
+    background: linear-gradient(180deg, #1a2438 0%, #263654 100%) !important;
+    border: 1px solid #324a71 !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 28px rgba(11, 18, 33, 0.35) !important;
+}
+
+body .student-space-sidebar .student-sidebar-brand-text {
+    color: #f5f7fb !important;
+}
+
+body .student-space-sidebar .student-sidebar-section {
+    color: #8fa4c6 !important;
+}
+
+body .student-space-sidebar .admin-side-link {
+    color: #e6edf8 !important;
+    border-color: transparent !important;
+}
+
+body .student-space-sidebar .admin-side-link .admin-side-icon {
+    color: #93aed6 !important;
+}
+
+body .student-space-sidebar .admin-side-link:hover {
+    background: rgba(124, 170, 235, 0.2) !important;
+    border-color: #5885bf !important;
+    color: #f8fbff !important;
+}
+
+body .student-space-sidebar .admin-side-link.active {
+    background: linear-gradient(135deg, #3676b8 0%, #62a3ea 100%) !important;
+    border-color: #78b4f2 !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 18px rgba(28, 89, 163, 0.35) !important;
+}
+
+body .student-space-sidebar .admin-side-link.active .admin-side-icon {
+    color: #d8ebff !important;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-sidebar-panel,
+.student-events-page .student-sidebar-panel {
+    background: linear-gradient(180deg, var(--ev-sidebar-bg) 0%, var(--ev-sidebar-bg-soft) 100%);
+    border-color: var(--ev-sidebar-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 28px rgba(11, 18, 33, 0.35);
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-sidebar-brand-text,
+.student-events-page .student-sidebar-brand-text {
+    color: #f5f7fb;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-sidebar-section,
+.student-events-page .student-sidebar-section {
+    color: var(--ev-sidebar-muted);
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-space-sidebar .admin-side-link,
+.student-events-page .student-space-sidebar .admin-side-link {
+    color: var(--ev-sidebar-text);
+    font-weight: 700;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-space-sidebar .admin-side-link .admin-side-icon,
+.student-events-page .student-space-sidebar .admin-side-link .admin-side-icon {
+    color: #93aed6;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-space-sidebar .admin-side-link:hover,
+.student-events-page .student-space-sidebar .admin-side-link:hover {
+    background: rgba(124, 170, 235, 0.2);
+    border-color: #5885bf;
+    color: #f8fbff;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-sidebar-panel,
+body.neo-brand.theme-student-events .student-events-page .student-events-header,
+body.neo-brand.theme-student-events .student-events-page .student-event-card,
+body.neo-brand.theme-student-events .student-events-page .student-events-empty {
+    border-color: #dce4ec;
+    box-shadow: 0 12px 24px rgba(39, 64, 111, 0.09);
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-hero-top,
+.student-events-page .student-events-hero-top {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 20px;
+    border: 1px solid #dce4ec;
+    background: linear-gradient(135deg, rgba(232, 189, 156, 0.28) 0%, rgba(169, 177, 219, 0.24) 52%, rgba(160, 208, 221, 0.24) 100%);
+    box-shadow: 0 14px 30px rgba(39, 64, 111, 0.12);
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-hero-copy,
+.student-events-page .student-events-hero-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.65rem;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-hero-media,
+.student-events-page .student-events-hero-media {
+    display: grid;
+    grid-template-columns: 1.12fr 0.88fr;
+    align-items: stretch;
+    gap: 0.85rem;
+    min-height: 312px;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-hero-kicker,
+.student-events-page .student-events-hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.36rem 0.72rem;
+    border-radius: 999px;
+    border: 1px solid rgba(39, 64, 111, 0.18);
+    background: rgba(255, 255, 255, 0.58);
+    color: #27406f;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-hero-copy h1,
+.student-events-page .student-events-hero-copy h1 {
+    margin: 0;
+    font-size: clamp(1.35rem, 2.2vw, 2rem);
+    color: #1f365f;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-hero-copy p,
+.student-events-page .student-events-hero-copy p {
+    margin: 0;
+    color: #3f4f65;
+    max-width: 58ch;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-header,
+.student-events-page .student-events-header,
+.student-events-header {
+    background: #efedeb !important;
+    border-color: #e1dbd5 !important;
+    box-shadow: 0 8px 18px rgba(25, 38, 59, 0.08) !important;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-header h2 {
+    margin: 0;
+    color: #223b66;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-header p {
+    margin-top: 0.28rem;
+    color: #4a5970;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-header-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: fit-content;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid #d3daea;
+    background: #ffffff;
+    color: #334d7b;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-space-sidebar .admin-side-link.active {
+    background: linear-gradient(135deg, #3676b8 0%, #62a3ea 100%);
+    border-color: #78b4f2;
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(28, 89, 163, 0.35);
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-space-sidebar .admin-side-link.active .admin-side-icon {
+    color: #d8ebff;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-grid,
+.student-events-page .student-events-grid {
+    gap: 1.25rem;
+    align-items: stretch;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-card,
+.student-events-page .student-event-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.72rem;
+    padding: 1.08rem 1.08rem 1.15rem;
+    border-radius: 20px;
+    border: 1px solid #d8e0ea;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 12px 26px rgba(24, 39, 65, 0.1);
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-card::before {
+    background: linear-gradient(90deg, #e8bd9c 0%, #a9b1db 56%, #a0d0dd 100%);
+    height: 4px;
+    opacity: 1;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-topline,
+.student-events-page .student-event-topline {
+    margin-bottom: 0.1rem;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-status,
+body.neo-brand.theme-student-events .student-events-page .student-event-type,
+.student-events-page .student-event-status,
+.student-events-page .student-event-type {
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 0.34rem 0.7rem;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-status {
+    background: #fff2e8;
+    border-color: #f3d6bf;
+    color: #a35a2a;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-type {
+    background: #f0f2ff;
+    border-color: #d8ddf7;
+    color: #4f5e96;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-card h3,
+.student-events-page .student-event-card h3 {
+    margin: 0;
+    color: #223a64;
+    font-size: clamp(1.5rem, 1.5vw, 1.75rem);
+    line-height: 1.1;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-card p,
+.student-events-page .student-event-card p {
+    margin: 0;
+    color: #5a6b84;
+    min-height: 2.4em;
+    line-height: 1.45;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-meta,
+.student-events-page .student-event-meta {
+    margin-top: 0.18rem;
+    gap: 0.58rem;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-meta span,
+.student-events-page .student-event-meta span {
+    border-color: #d8dfeb;
+    background: #f3f6fa;
+    color: #3d4d64;
+    font-size: 0.96rem;
+    border-radius: 12px;
+    padding: 0.52rem 0.62rem;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-meta strong,
+.student-events-page .student-event-meta strong {
+    color: #1e2d48;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-card .btn.btn-primary.btn-block {
+    margin-top: auto !important;
+    padding: 0.86rem 1rem;
+    border-radius: 14px;
+    font-size: 1.02rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    background: linear-gradient(135deg, #16233c 0%, #233d67 55%, #3d6298 100%);
+    box-shadow: 0 12px 24px rgba(25, 42, 71, 0.28);
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-card {
+    backdrop-filter: blur(2px);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 30px rgba(39, 64, 111, 0.16);
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-visuals {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-visual-card,
+.student-events-page .student-events-visual-card {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid #dce5ee;
+    background: #ffffff;
+    box-shadow: 0 12px 24px rgba(39, 64, 111, 0.1);
+    position: relative;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-visual-card-main,
+.student-events-page .student-events-visual-card-main {
+    min-height: 312px;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-visual-card-sub,
+.student-events-page .student-events-visual-card-sub {
+    min-height: 312px;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-visual-card::after,
+.student-events-page .student-events-visual-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(39, 64, 111, 0) 35%, rgba(39, 64, 111, 0.18) 100%);
+    pointer-events: none;
+}
+
+body.neo-brand.theme-student-events .student-events-page .student-events-visual-img,
+.student-events-page .student-events-visual-img {
+    width: 100%;
+    height: 100%;
+    min-height: 312px;
+    object-fit: cover;
+    display: block;
+}
+
+body.neo-brand .student-courses-page {
+    background: radial-gradient(900px 320px at 12% -18%, rgba(160, 208, 221, 0.18), transparent 62%),
+        radial-gradient(820px 300px at 92% -16%, rgba(232, 189, 156, 0.18), transparent 64%),
+        #f6f8fc;
+}
+
+body.neo-brand .student-courses-page .container {
+    width: min(1320px, 95vw);
+}
+
+body.neo-brand .student-courses-page .student-courses-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    background: #fff9f8;
+    border: 1px solid #eaded9;
+    border-radius: 20px;
+    padding: 1rem 1.1rem;
+    box-shadow: 0 8px 18px rgba(25, 38, 59, 0.08);
+}
+
+body.neo-brand .student-courses-page .student-courses-hero {
+    display: grid;
+    grid-template-columns: 1fr 1.02fr;
+    gap: 1.35rem;
+    align-items: center;
+    margin-bottom: 1.2rem;
+}
+
+body.neo-brand .student-courses-page .student-courses-kicker {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.31rem 0.72rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: #fff;
+    background: #ff7a30;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-copy h1 {
+    margin: 0.8rem 0 0;
+    color: #1d2430;
+    font-family: "Poppins", "Inter", sans-serif;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    line-height: 1.04;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-copy h1 span {
+    color: #ff7a30;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-copy p {
+    margin: 0.86rem 0 0;
+    color: #546175;
+    max-width: 58ch;
+    line-height: 1.58;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-actions {
+    margin-top: 1.08rem;
+    display: flex;
+    align-items: center;
+    gap: 0.64rem;
+    flex-wrap: wrap;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-btn {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0.74rem 1.18rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-btn-primary {
+    background: linear-gradient(135deg, #21c9a5 0%, #22b897 100%);
+    color: #fff;
+    box-shadow: 0 10px 20px rgba(33, 201, 165, 0.24);
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-btn-ghost {
+    background: #fff;
+    border-color: #ead8d2;
+    color: #1d2430;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-visual {
+    min-height: 520px;
+    border-radius: 28px;
+    border: 1px solid #eadfdc;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.97) 82%);
+    position: relative;
+    overflow: hidden;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-shape {
+    position: absolute;
+    border-radius: 24px;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-shape-teal {
+    width: 250px;
+    height: 170px;
+    right: 58px;
+    top: 120px;
+    transform: rotate(-11deg);
+    background: #21c9a5;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-shape-orange {
+    width: 220px;
+    height: 140px;
+    right: 34px;
+    top: 214px;
+    transform: rotate(-15deg);
+    background: #ff7a30;
+}
+
+body.neo-brand .student-courses-page .student-courses-hero-photo {
+    position: absolute;
+    bottom: 0;
+    right: 88px;
+    width: 370px;
+    max-width: 78%;
+    object-fit: contain;
+    filter: drop-shadow(0 16px 28px rgba(27, 39, 58, 0.2));
+}
+
+body.neo-brand .student-courses-page .student-courses-impact {
+    margin-bottom: 1.15rem;
+    text-align: center;
+    border-top: 1px solid #ecdfdb;
+    border-bottom: 1px solid #ecdfdb;
+    padding: 1.7rem 0 1.45rem;
+}
+
+body.neo-brand .student-courses-page .student-courses-impact-kicker {
+    display: inline-flex;
+    border-radius: 999px;
+    padding: 0.27rem 0.66rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: #21c9a5;
+    color: #fff;
+}
+
+body.neo-brand .student-courses-page .student-courses-impact h2 {
+    margin: 0.7rem auto 0;
+    max-width: 860px;
+    color: #1f2631;
+    font-size: clamp(1.45rem, 2.4vw, 2.2rem);
+    line-height: 1.34;
+}
+
+body.neo-brand .student-courses-page .student-courses-impact-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.2rem;
+}
+
+body.neo-brand .student-courses-page .student-courses-impact-stats article strong {
+    font-size: clamp(2rem, 3.8vw, 3rem);
+    font-family: "Poppins", "Inter", sans-serif;
+    color: #1d2430;
+}
+
+body.neo-brand .student-courses-page .student-courses-impact-stats article p {
+    margin: 0.22rem auto 0;
+    max-width: 215px;
+    color: #515d6f;
+    line-height: 1.5;
+    font-size: 0.92rem;
+}
+
+body.neo-brand .student-courses-page .student-courses-section-chip {
+    display: inline-flex;
+    border-radius: 999px;
+    padding: 0.27rem 0.66rem;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: #ff7a30;
+    color: #fff;
+}
+
+body.neo-brand .student-courses-page .student-courses-header h3 {
+    margin: 0.45rem 0 0;
+    color: #1d2430;
+    font-size: clamp(1.42rem, 2.2vw, 2rem);
+}
+
+body.neo-brand .student-courses-page .student-courses-header p {
+    margin: 0.25rem 0 0;
+    color: #5d6a7d;
+}
+
+body.neo-brand .student-courses-page .student-courses-search {
+    display: flex;
+    align-items: center;
+    width: min(420px, 100%);
+    border: 1px solid #ebddd8;
+    background: #fff;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+body.neo-brand .student-courses-page .student-courses-search input {
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    padding: 0.72rem 0.92rem;
+    color: #1f2631;
+}
+
+body.neo-brand .student-courses-page .student-courses-search button {
+    width: 46px;
+    height: 46px;
+    border: 0;
+    background: #ff7a30;
+    color: #fff;
+    font-size: 1.05rem;
+}
+
+body.neo-brand .student-courses-page .student-courses-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.15rem;
+}
+
+body.neo-brand .student-courses-page .student-course-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 1.05rem;
+    border-radius: 20px;
+    border: 1px solid #d8e0ea;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 12px 24px rgba(24, 39, 65, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+body.neo-brand .student-courses-page .student-course-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 30px rgba(24, 39, 65, 0.14);
+}
+
+body.neo-brand .student-courses-page .student-course-icon {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 0.2rem;
+}
+
+body.neo-brand .student-courses-page .student-course-card h3 {
+    margin: 0;
+    color: #223b66;
+    font-size: clamp(1.55rem, 1.3vw, 1.85rem);
+    line-height: 1.15;
+}
+
+body.neo-brand .student-courses-page .student-course-author {
+    margin: 0;
+    color: #5e6f85;
+    font-size: 0.98rem;
+}
+
+body.neo-brand .student-courses-page .student-course-description {
+    margin: 0;
+    color: #5a6d88;
+    line-height: 1.5;
+    min-height: 4.5em;
+}
+
+body.neo-brand .student-courses-page .student-course-footer {
+    margin-top: auto;
+    padding-top: 0.92rem;
+    border-top: 1px solid #dbe3ed;
+}
+
+body.neo-brand .student-courses-page .student-course-btn {
+    border-radius: 13px;
+    padding: 0.82rem 1rem;
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+
+body.neo-brand .student-courses-page .student-course-card .btn.btn-primary.student-course-btn {
+    background: linear-gradient(135deg, #16233c 0%, #233d67 55%, #3d6298 100%);
+    box-shadow: 0 12px 24px rgba(25, 42, 71, 0.28);
+}
+
+body.neo-brand .student-courses-page .student-course-card .btn.btn-secondary.student-course-btn {
+    background: linear-gradient(135deg, #1eaf86 0%, #5ec9af 100%);
+    box-shadow: 0 10px 20px rgba(23, 136, 103, 0.22);
+}
+
+body.neo-brand .student-courses-page .student-course-enrolled {
+    text-align: center;
+    margin: 0.5rem 0 0;
+    font-size: 0.88rem;
+    color: #169972;
+    font-weight: 700;
+}
+
+body.neo-brand .student-courses-page .student-courses-empty {
+    text-align: center;
+    padding: 3.1rem 1.2rem;
+    border: 1px solid #d9e2ed;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+body.neo-brand .student-courses-page .student-courses-empty-icon {
+    width: 80px;
+    height: 80px;
+    background: #e8edf4;
+    border-radius: 50%;
+    margin: 0 auto 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.neo-brand .student-courses-page .student-courses-empty h3 {
+    margin: 0 0 0.35rem;
+    color: #223b66;
+}
+
+body.neo-brand .student-courses-page .student-courses-empty p {
+    margin: 0;
+    color: #5b6d86;
+}
+
+@media (max-width: 800px) {
+    body.neo-brand .student-courses-page .student-courses-hero {
+        grid-template-columns: 1fr;
+    }
+
+    body.neo-brand .student-courses-page .student-courses-hero-visual {
+        min-height: 420px;
+    }
+
+    body.neo-brand .student-courses-page .student-courses-hero-photo {
+        right: 50%;
+        transform: translateX(50%);
+        width: min(340px, 78%);
+    }
+
+    body.neo-brand .student-courses-page .student-courses-impact-stats {
+        grid-template-columns: 1fr;
+    }
+
+    body.neo-brand .student-courses-page .student-courses-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    body.neo-brand .student-courses-page .student-courses-search {
+        width: 100%;
+    }
+
+    .home-lite-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .home-lite-hero-visual {
+        min-height: 420px;
+    }
+
+    .home-lite-hero-photo {
+        right: 50%;
+        transform: translateX(50%);
+        width: min(340px, 78%);
+    }
+
+    .home-lite-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .home-lite-courses-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .home-lite-filter {
+        width: 100%;
+    }
+
+    .home-lite-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body.neo-brand.theme-student-events .student-events-page .student-events-hero-top,
+    .student-events-page .student-events-hero-top {
+        grid-template-columns: 1fr;
+        padding: 0.85rem;
+    }
+
+    body.neo-brand.theme-student-events .student-events-page .student-events-hero-media,
+    .student-events-page .student-events-hero-media {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    body.neo-brand.theme-student-events .student-events-page .student-events-visuals {
+        grid-template-columns: 1fr;
+    }
+
+    body.neo-brand.theme-student-events .student-events-page .student-events-visual-img,
+    .student-events-page .student-events-visual-img {
+        min-height: 220px;
+    }
+
+}

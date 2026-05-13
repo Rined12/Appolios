@@ -1,0 +1,13 @@
+# Dependencies
+realtime-node/node_modules/
+
+# Local / secrets
+.env
+.env.local
+*.log
+
+# OS / IDE
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/

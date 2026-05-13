@@ -10,9 +10,11 @@
 # OS Files
 Thumbs.db
 .DS_Store
+Desktop.ini
 
 # Dependencies
 vendor/
+**/node_modules/
 node_modules/
 
 # Temporary files
@@ -22,3 +24,9 @@ node_modules/
 
 # Logs
 *.log
+
+# Runtime uploads (keep folders locally; do not commit user files)
+uploads/cvs/
+uploads/groupes/
+uploads/chat/
+uploads/**/*.pdf

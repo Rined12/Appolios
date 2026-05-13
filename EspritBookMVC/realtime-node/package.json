@@ -1,0 +1,16 @@
+{
+  "name": "appolios-realtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Socket.IO realtime server for APPOLIOS discussions",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "mysql2": "^3.14.1",
+    "socket.io": "^4.8.1"
+  }
+}
